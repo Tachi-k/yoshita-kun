@@ -26,7 +26,7 @@ canvas{display:block;background:#17283c}
 #changeBgm small{display:block;font:600 11px system-ui;margin-bottom:2px}
 #changeBgm:active{transform:translateY(2px);box-shadow:0 1px 0 #b58b18}
 #changeBgm:focus-visible{outline:3px solid #fff;outline-offset:3px}
-#startBtn{position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;font:900 32px system-ui;letter-spacing:2px;padding:14px 52px;border-radius:44px;border:0;background:#ffdf50;color:#20304a;box-shadow:0 6px 0 #c9971e,0 10px 24px #0006;touch-action:manipulation;animation:pulse 1.1s ease-in-out infinite}
+#startBtn{position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;font:900 26px system-ui;letter-spacing:2px;padding:11px 37px;border-radius:44px;border:0;background:#ffdf50;color:#20304a;box-shadow:0 6px 0 #c9971e,0 10px 24px #0006;touch-action:manipulation;animation:pulse 1.1s ease-in-out infinite}
 #startBtn:active{transform:translateX(-50%) translateY(4px);box-shadow:0 2px 0 #c9971e}
 @keyframes pulse{50%{scale:1.07}}
 #fs{display:none}
@@ -53,7 +53,7 @@ canvas{display:block;background:#17283c}
   .pad{gap:10px}
   #dpad{width:min(184px,40vw);height:min(160px,36vw)}
   .topbtns{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px)}
-  #startBtn{top:calc(env(safe-area-inset-top) + 56.25vw*.6 - 30px);font-size:26px;padding:12px 40px}
+  #startBtn{top:calc(env(safe-area-inset-top) + 56.25vw*.6 - 24px);font-size:22px;padding:10px 29px}
   .btn{width:min(92px,21vw);height:min(92px,21vw)}#jump{width:min(110px,25vw);height:min(110px,25vw)}
 }
 @media (hover:hover) and (pointer:fine){.help{display:block}.hint{display:none}}
@@ -548,7 +548,7 @@ function updateBoss(p,oldY){
   if(b.landed&&b.st!=='intro'){const br={x:b.x+10,y:b.y+8,w:b.w-20,h:b.h-8};
     if(rect(p,br)){const fromAbove=oldY+p.h<=br.y+18&&p.vy>0;
       if(fromAbove){
-        if(b.st==='stun'&&b.inv<=0){b.hp--;b.inv=50;b.flash=40;score+=500;p.vy=-13;p.inv=Math.max(p.inv,75);
+        if(b.st==='stun'&&b.inv<=0){if(mode==='title')demoBossShownAt=demoT;b.hp--;b.inv=50;b.flash=40;score+=500;p.vy=-13;p.inv=Math.max(p.inv,75);
           // 踏んだら、ボスが飛び出す方向と反対側へ大きく弾き飛ばされる
           {const esc=b.x+b.w/2<AX+480?1:-1;p.kickVx=-esc*5.5;p.kickT=40;p.facing=-esc;}shake=16;sound('bosshit');boom(p.x+p.w/2,b.y+10,14,['#fff','#ffdf50']);
           if(b.hp<=0){holes=holes.filter(h=>h!==b.hole);b.hole=null;bgo('dead');b.vy=-9;sound('boom');banner('','',0)}else bossEscape()}
@@ -691,19 +691,45 @@ function drawCannon(){if(inBasement)return;
     // ボタンに隠れないよう、右上にも大きく予告
     const low=cannonWarn.y>ground-50,bx=camera+W-150,by=150;x.fillStyle='#e64040e0';x.beginPath();if(x.roundRect)x.roundRect(bx-80,by-26,190,40,10);else x.rect(bx-80,by-26,190,40);x.fill();x.fillStyle='#fff';x.font='900 22px system-ui';x.fillText(low?'！足もと注意 ◀':'！頭上注意 ◀',bx+15,by+2);x.textAlign='left';}}
 let goalSX=0,goalSY=0,balloonLift=0,balloonVy=0;
-let mode='title',demoT=0,demoIdx=0,demoLastX=0,demoStuck=0,demoHop=false,demoDodge=0;
-// デモは毎回同じ展開になるよう乱数を固定（うまく遊べる展開を選んである）。本番は普通の乱数
+let mode='title',demoT=0,demoIdx=0,demoScene='field',demoDodge=0,demoBossShownAt=0;
+const DEMO_SCENES=['field','miss','rain','boss'];
+// デモは通常の操作入力だけで動かし、場面ごとに開始位置を変える。
 const realRandom=Math.random;
-function seeded(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296}}
-let DEMO_SEEDS={1:[1,2,13,16],2:[317,398]};
-function startDemo(){mode='title';{const k=demoIdx%2===0?1:2,list=DEMO_SEEDS[k];Math.random=seeded(list[Math.floor(demoIdx/2)%list.length]);}score=0;coinProgress=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;demoT=0;demoStuck=0;
-  if(demoIdx%2===0)loadStage(1);else{loadStage(2);player.x=AX+80;player.y=ground-42;}
-  demoIdx++;bannerT=0;}
+function seeded(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^(t>>>14))>>>0)/4294967296}}
+function startDemo(){
+  mode='title';demoScene=DEMO_SCENES[demoIdx++%DEMO_SCENES.length];
+  Math.random=seeded(demoScene==='boss'?317:1);
+  score=0;coinProgress=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;
+  demoT=0;demoDodge=0;demoBossShownAt=0;
+  loadStage(demoScene==='boss'?2:1);
+  if(demoScene==='miss')player.x=1100;
+  if(demoScene==='rain')player.x=1480;
+  if(demoScene==='boss')player.x=AX+80;
+  if(demoScene!=='field'){
+    player.y=ground-player.h;
+    player.on=true;
+    lastSafeX=player.x;
+    camera=demoScene==='boss'?AX:Math.max(0,player.x-240);
+  }
+  bannerT=0;
+}
 function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
 function startGame(){mode='game';Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
 // デモ用の自動操作
 function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=false;   // デモも無敵ではない（ぶつかればミス）
-  if(p.on)demoHop=false;else if(demoHop&&p.vy<-7.5)p.vy=-7.5;   // 穴を越えるだけなら小ジャンプ
+  if(demoScene==='miss'){keys.right=true;return;}
+  if(demoScene==='rain'){
+    if(!inBonus()){
+      keys.left=crossed1&&p.x>1330;
+      return;
+    }
+    const target=items.filter(it=>it.type==='coin').sort((a,b)=>b.y-a.y)[0];
+    if(target){
+      const dx=target.x-(p.x+p.w/2);
+      keys.right=dx>8;keys.left=dx<-8;
+    }
+    return;
+  }
   if(stage===2&&arenaOn&&boss){demoBossAI(p);return}
   const pc=p.x+p.w/2,onGround=p.on&&Math.abs(p.y+p.h-ground)<3;
   if(p.hole){if(p.on){keys.jump=true;keys.right=true;}return}
@@ -721,9 +747,9 @@ function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=fa
   else if(ha&&inHole(ha).length>0){                                         // 敵が入った穴：少し待って埋める（連鎖）
     if(s&&s.bury&&(inHole(ha).length>=2||ha.t<HOLE_T-200||fd<70))dig();
     else if(!(s&&s.bury))keys.right=true;}
-  else if(ha&&ha.stage===3){if(foe&&foe.x>ha.x&&fd<240){/* 穴の向こうから敵が来る：落ちるのを待つ */}else{keys.right=true;if(ha.x-(p.x+p.w)<14){keys.jump=true;demoHop=true;}}}   // 空の穴は小ジャンプで越える
+  else if(ha&&ha.stage===3){if(foe&&foe.x>ha.x&&fd<240){/* 穴の向こうから敵が来る：落ちるのを待つ */}else{keys.right=true;if(ha.x-(p.x+p.w)<14){keys.jump=true;}}}   // 空の穴はジャンプで越える
   else if(fd<190&&fd>70&&s&&!s.bury)digHold=true;                          // 敵の前に穴を掘る
-  else if(fd<=70){if(fd<46){keys.jump=true;keys.right=true;demoHop=true;}}   // 近づいてきたら小ジャンプで踏む
+  else if(fd<=70){if(fd<46){keys.jump=true;keys.right=true;}}   // 近づいてきたらジャンプで踏む
   else if(spot&&s&&!s.bury&&Math.abs(spot.x-(s.x+s.w/2))<16)digHold=true; // お宝を掘る
   else if(!air)keys.right=true;                                            // 上から降ってくる敵は待つ
   if(behind){digHold=false;keys.right=true;}                               // 後ろから来たら前へ歩いて逃げる
@@ -795,7 +821,21 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
-if(mode==='title'){demoT++;if(state==='play')demoAI();else if(state!=='goal'&&state!=='dying')return startDemo();if(demoT>60*(stage===2?75:45))return startDemo();}
+if(mode==='title'){
+  demoT++;
+  if(demoBossShownAt){
+    if(demoT-demoBossShownAt>=60)return startDemo();
+    if(shake>0)shake--;
+    updateParts();
+    return;
+  }
+  if(demoScene==='rain'&&bonusUsed[1]&&!inBonus())return startDemo();
+  if(demoScene==='miss'&&lives<3)return startDemo();
+  if(state==='play')demoAI();
+  else if(state!=='dying')return startDemo();
+  const limit=demoScene==='boss'?75:demoScene==='rain'?32:demoScene==='miss'?8:12;
+  if(demoT>60*limit)return startDemo();
+}
 if(bannerT>0)bannerT--;if(shake>0)shake--;updateParts();
 if(state==='ending'){endT++;updateEndPlayer();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
 if(state==='victoryFlight'){updateVictoryFlight();return}
@@ -890,8 +930,8 @@ if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'){exitBasement
 if(inBonus()&&state==='play'){roomT--;
   if(roomKind==='rain'&&roomT>20&&roomT%7===0){const r=Math.random();items.push({type:r<.03?'heart':r<.12?'gem':'coin',x:40+Math.random()*(W-80),y:-20,vx:(Math.random()-.5)*1.2,vy:1,t:300});}
   if(roomT<=0){exitBasement();return;}}
-if(mode==='game'&&stage===1&&!inBasement&&p.on&&p.x>1450)crossed1=true;
-if(mode==='game'&&stage===1&&!inBasement&&crossed1&&!bonusUsed[1]&&p.y>H+10&&p.x+p.w/2>1190&&p.x+p.w/2<1450){enterBonus('rain',1580);return;}
+if((mode==='game'||demoScene==='rain')&&stage===1&&!inBasement&&p.on&&p.x>1450)crossed1=true;
+if((mode==='game'||demoScene==='rain')&&stage===1&&!inBasement&&crossed1&&!bonusUsed[1]&&p.y>H+10&&p.x+p.w/2>1190&&p.x+p.w/2<1450){enterBonus('rain',1580);return;}
 updateCannon(p,oldY);if(state!=='play')return;
 if(p.y>H+80)die('落ちてしまった！');
 if(stage===1&&!inBasement&&state==='play'&&p.x+p.w>world-158){state='goal';goalTick=0;goalSX=p.x;goalSY=p.y;balloonLift=0;balloonVy=0;p.vy=0;p.hole=null;p.facing=1;sound('jump');}
