@@ -93,6 +93,7 @@ function banner(t,s,d=150){bannerText=t;bannerSub=s;bannerT=d}
 const COINS_PER_LIFE=100,COIN_POINTS=10;
 let coinProgress=0,stageStartCoinProgress=0;
 function loadStage(n){
+  victoryFlight=null;
   stopStageClearAudio();
   stopBossSounds();
   stage=n;stageStartScore=score;stageStartCoinProgress=coinProgress;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonT=60*8;lastSafeX=60;bonusUsed[n]=false;crossed1=false;leftHold=0;roomKind='basement';roomT=0;inBasement=false;surface=null;secret={x:n===1?2520:840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
@@ -525,7 +526,12 @@ function updateBoss(p,oldY){
     b.vy+=.3;b.y+=b.vy;if(b.t<=210&&b.t%8===0){boom(b.x+Math.random()*b.w,Math.min(ground,b.y+Math.random()*b.h),12,['#ffdf50','#ff655e','#fff']);if(b.t%16===0)sound('boom')}
     if(b.t>210&&!b.clearPlayed){b.clearPlayed=true;playBossClear();banner('GAME CLEAR!','モグラ大王 ドリモグを たおした！',300)}
     // 読み込み失敗時や再生停止時にも進行を止めない（最大8秒）。
-    if(b.t>210&&(bossClearDone||b.t>690)){stopJingle(bossClearAudio);state='ending';bonusUsed={};roomT=0;endT=0;parts=[];addTimeBonus();score+=lives*1000;endingRare=b.endingSong==='rare';endingPair=b.endingSong==='wedding';endP=null;if(endingRare)score+=5000;}return}
+    if(b.t>210&&(bossClearDone||b.t>690)){
+      stopJingle(bossClearAudio);
+      startVictoryFlight(p);
+    }
+    return;
+  }
   b.x=Math.max(L,Math.min(R,b.x));
   // 完成した穴の上を歩く・突進すると落ちる
   if(b.st==='walk'||b.st==='charge'){const cx=b.x+b.w/2,h=holes.find(h=>h.stage===3&&Math.abs(h.x+h.w/2-cx)<Math.max(12,h.w/2-28)&&!enemies.some(e=>e.alive&&e.trapHole===h));
@@ -738,11 +744,35 @@ function drawTitle(){
   x.textAlign='left';
 }
 
+// ボス撃破後、よし太くんが画面上へ飛び去ってからエンディングへ。
+const VICTORY_FLIGHT_FRAMES=54;
+let victoryFlight=null;
+function startVictoryFlight(p){
+  state='victoryFlight';
+  victoryFlight={x:p.x,y:p.y,t:0,dir:p.x+17>camera+W/2?-1:1};
+  boom(p.x+17,p.y+42,12,['#ffe57a','#fff','#9fe6ff'],3);
+  sound('whistle');
+}
+function updateVictoryFlight(){
+  const f=victoryFlight,p=player;
+  const k=++f.t/VICTORY_FLIGHT_FRAMES,progress=k*k;
+  p.x=f.x+f.dir*230*progress;
+  p.y=f.y-(f.y+100)*progress;
+  if(f.t%3===0)boom(p.x+17,p.y+42,3,['#ffe57a','#fff','#9fe6ff'],2);
+  if(f.t<VICTORY_FLIGHT_FRAMES)return;
+  victoryFlight=null;
+  state='ending';bonusUsed={};roomT=0;endT=0;parts=[];
+  addTimeBonus();score+=lives*1000;
+  endingRare=boss.endingSong==='rare';endingPair=boss.endingSong==='wedding';endP=null;
+  if(endingRare)score+=5000;
+}
+
 // ===== 更新 =====
 function update(){
 if(mode==='title'){demoT++;if(state==='play')demoAI();else if(state!=='goal'&&state!=='dying')return startDemo();if(demoT>60*(stage===2?75:45))return startDemo();}
 if(bannerT>0)bannerT--;if(shake>0)shake--;updateParts();
 if(state==='ending'){endT++;updateEndPlayer();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
+if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240)loadStage(2);return}
 if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=world-120;
@@ -828,6 +858,7 @@ for(const e of enemies){if(!e.alive)continue;
 // ボスエリア突入
 if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss();bannerT=0;timeLeft=BOSS_TIME*60;enemies.forEach(e=>e.alive=false);holes=holes.filter(h=>h.x>AX);}
 if(arenaOn&&boss)updateBoss(p,oldY);
+if(state==='victoryFlight')return;
 
 if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'){exitBasement();return;}
 if(inBonus()&&state==='play'){roomT--;
@@ -1039,7 +1070,7 @@ function draw(){
   for(const w of waves){x.fillStyle='#e0b070';x.beginPath();x.moveTo(w.x-16,ground);x.quadraticCurveTo(w.x,ground-38,w.x+16,ground);x.fill();ell(w.x,ground-6,10,6,'#fff3');}
   for(const it of items){if(it.t<120&&Math.floor(it.t/6)%2)continue;drawItem(it)}
   const p=player;
-  const pose=state==='goal'||state==='clear'?'front':state==='play'&&p.jumping&&!p.on?'jump':state==='play'&&p.walking?'walk':'front';
+  const pose=state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
   drawPlayerAt(p.x,p.y,p.facing,pose,p.stride);
   x.globalAlpha=1;
