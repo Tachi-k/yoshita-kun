@@ -1,0 +1,1156 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#17283c">
+<title>よしたくんの DIG &amp; HOP</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:#17283c;color:#fff;font-family:system-ui;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;overscroll-behavior:none}
+#stage{position:fixed;inset:0;display:flex;flex-direction:column}
+canvas{display:block;background:#17283c}
+.controls{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.pad{display:flex;gap:14px;align-items:center}
+#dpad{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:54px 1fr;width:176px;height:146px;border-radius:30px;background:rgba(233,240,255,.88);overflow:hidden;touch-action:none}
+#dpad span{display:grid;place-items:center;font-size:30px;color:#17283c;pointer-events:none}
+#dpad span:nth-child(-n+2){font-size:22px;background:rgba(23,40,60,.08);border-bottom:2px solid rgba(23,40,60,.15)}
+#dpad span:nth-child(odd){border-right:2px solid rgba(23,40,60,.15)}
+#dpad span.on{background:#ffdf50}
+.btn{width:84px;height:84px;border-radius:50%;border:0;background:rgba(233,240,255,.88);color:#17283c;font:700 14px system-ui;display:grid;place-content:center;line-height:1.15;touch-action:none;padding:0}
+.btn b{font-size:28px;display:block}
+.btn.on{transform:scale(.92);background:#ffdf50}
+#jump{width:100px;height:100px}
+.topbtns{position:absolute;top:calc(env(safe-area-inset-top) + 8px);right:calc(env(safe-area-inset-right) + 8px);display:flex;gap:8px;z-index:5}
+.topbtns button{width:44px;height:44px;border-radius:12px;border:0;background:rgba(23,40,60,.55);color:#fff;font-size:22px;padding:0;touch-action:none}
+#music.off{opacity:.6}
+.topbtns #changeBgm{width:auto;min-height:52px;height:auto;padding:6px 14px;background:#ffdf50;color:#17283c;border:2px solid #fff8;box-shadow:0 3px 0 #b58b18,0 4px 12px #0004;font:800 15px system-ui;touch-action:manipulation;line-height:1.3}
+#changeBgm small{display:block;font:600 11px system-ui;margin-bottom:2px}
+#changeBgm:active{transform:translateY(2px);box-shadow:0 1px 0 #b58b18}
+#changeBgm:focus-visible{outline:3px solid #fff;outline-offset:3px}
+#startBtn{position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;font:900 32px system-ui;letter-spacing:2px;padding:14px 52px;border-radius:44px;border:0;background:#ffdf50;color:#20304a;box-shadow:0 6px 0 #c9971e,0 10px 24px #0006;touch-action:manipulation;animation:pulse 1.1s ease-in-out infinite}
+#startBtn:active{transform:translateX(-50%) translateY(4px);box-shadow:0 2px 0 #c9971e}
+@keyframes pulse{50%{scale:1.07}}
+#fs{display:none}
+.hint,.help{font-size:13px;opacity:.8;text-align:center;margin:8px 0 0}
+.help{display:none}
+@media (orientation:landscape){
+  /* 左：方向パッド ／ 中央：ゲーム画面 ／ 右：掘る・ジャンプ（重ならない） */
+  #stage{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr);align-items:center;
+    padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+  canvas{grid-column:2;grid-row:1;width:100%;height:100%;min-width:0;min-height:0;object-fit:contain}
+  .controls{display:contents}
+  .pad{grid-row:1;padding:0 10px}
+  .controls .pad:first-child{grid-column:1}
+  .controls .pad:last-child{grid-column:3;flex-direction:column-reverse;gap:12px}   /* 上：ジャンプ　下：掘る */
+  #dpad{width:min(150px,19vw);height:min(140px,36vh);grid-template-rows:42% 1fr}
+  .btn{width:min(80px,10vw,22vh);height:min(80px,10vw,22vh)}
+  #jump{width:min(94px,12vw,26vh);height:min(94px,12vw,26vh)}
+  .hint{display:none}
+  .help{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 6px);left:50%;transform:translateX(-50%);margin:0}
+}
+@media (orientation:portrait){
+  canvas{width:100%;height:auto;aspect-ratio:16/9;margin-top:env(safe-area-inset-top)}
+  .controls{flex:1;align-items:center;gap:8px;padding:16px 12px calc(env(safe-area-inset-bottom) + 20px)}
+  .pad{gap:10px}
+  #dpad{width:min(184px,40vw);height:min(160px,36vw)}
+  .topbtns{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px)}
+  #startBtn{top:calc(env(safe-area-inset-top) + 56.25vw*.6 - 30px);font-size:26px;padding:12px 40px}
+  .btn{width:min(92px,21vw);height:min(92px,21vw)}#jump{width:min(110px,25vw);height:min(110px,25vw)}
+}
+@media (hover:hover) and (pointer:fine){.help{display:block}.hint{display:none}}
+</style></head><body>
+<div id="stage">
+<canvas id="game" width="960" height="540"></canvas>
+<p class="hint">📱 横向きにすると大きく遊べます ・ 方向パッドの上段 ↖↗ でジャンプしながら移動</p>
+<div class="controls">
+  <div class="pad"><div id="dpad"><span>↖</span><span>↗</span><span>◀</span><span>▶</span></div></div>
+  <div class="pad"><button class="btn" id="dig"><b>⛏</b>掘る</button><button class="btn" id="jump"><b>⬆</b>ジャンプ</button></div>
+</div>
+<p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
+<button id="startBtn">▶ START</button>
+<div class="topbtns"><button id="changeBgm" aria-label="BGM変更。現在：ファミコン風。アレンジ曲に切り替える" aria-pressed="false"><small>現在：ファミコン風</small>♫ BGM変更</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
+</div>
+<script>
+const c=document.querySelector('canvas'),x=c.getContext('2d'),W=960,H=540,ground=465;
+let world=4300,stage=1,AX=0,arenaOn=false,boss=null,rocks=[],waves=[],parts=[],shake=0,bannerText='',bannerSub='',bannerT=0,clearT=0,endT=0,stageStartScore=0;
+let keys={},player,coins=[],enemies=[],platforms=[],camera=0,score=0,state='play',goalTick=0,audioCtx,deathTick=0,lives=3,holes=[],digCooldown=0,digHold=false,padJump=false,bgmStep=0,curSong=null,digBuf=0,digBufT=0,failMark=null,items=[],popups=[],spots=[];
+const STARS=Array.from({length:90},(_,i)=>({x:(i*397)%W,y:(i*173)%380,s:1+(i%3),p:i}));
+const CREDITS=['モグラ大王 ドリモグを たおした！','','谷に 光が もどり','空の国に 平和が おとずれた','','','— DIG & HOP —','','STAGE 1　そよかぜの丘','STAGE 2　大王の谷','','','HERO　よしたくん','','','THANK YOU FOR PLAYING!'];
+const CREDITS_PAIR=['モグラ大王 ドリモグを たおした！','','とらわれていた ソラ姫を 助けだし','ふたりは 空の国で 結ばれた','','','— DIG & HOP —','','STAGE 1　そよかぜの丘','STAGE 2　大王の谷','','','HERO　よしたくん','PRINCESS　ソラ姫','','','おしあわせに！','','THANK YOU FOR PLAYING!'];
+let endingPair=false;   // true：お姫様と2人のエンディング（50%の確率）
+// レアエンディング（10%）：ドリモグが心を入れかえて友だちに
+const CREDITS_RARE=['モグラ大王 ドリモグを たおした！','','……と 思ったら','ドリモグは 心を入れかえ','みんなの 友だちになった！','','ソラ姫も いっしょに','空の国で 大パーティー！','','','★ RARE ENDING ★','','— DIG & HOP —','','HERO　よしたくん','PRINCESS　ソラ姫','FRIEND　ドリモグ','','','これを見られたあなたは','とってもラッキー！','','THANK YOU FOR PLAYING!'];
+let endingRare=false;
+function credits(){return endingRare?CREDITS_RARE:endingPair?CREDITS_PAIR:CREDITS}
+
+// ===== ステージ =====
+function newPlayer(inv){return {x:60,y:300,w:34,h:42,vx:0,vy:0,on:false,inv:inv,facing:1,hole:null}}
+// perch を渡すと空の踏み台の上から始まり、しばらく踏み台を往復してから地面へ降りる
+function makeEnemy(x0,hop,i,perch){return {x:x0,y:perch?perch.y-32:ground-32,w:32,h:32,alive:true,dir:i%2?1:-1,vy:0,spawnX:x0,respawns:0,type:hop?'hop':'walk',speed:hop?1.3:.7,hopT:40+i*7,grounded:true,home:perch?null:x0,range:240,perchT:perch?240+Math.floor(Math.random()*240):0}}
+function onSurface(px,y){return platforms.some(b=>Math.abs(b.y-y)<2&&px>=b.x&&px<=b.x+b.w)}
+function groundAt(px){return platforms.some(b=>b.y===ground&&px>=b.x&&px<=b.x+b.w)}
+function addPerchEnemies(idx){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));idx.forEach((k,i)=>{const f=floats[k];if(f)enemies.push(makeEnemy(f.x+f.w/2-16,i%2===1,i+20,f))})}
+function banner(t,s,d=150){bannerText=t;bannerSub=s;bannerT=d}
+function loadStage(n){
+  stopStageClearAudio();
+  stopBossSounds();
+  stage=n;stageStartScore=score;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonT=60*8;lastSafeX=60;bonusUsed[n]=false;crossed1=false;leftHold=0;roomKind='basement';inBasement=false;surface=null;secret={x:n===1?2520:840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
+  if(n===1){
+    world=4300;
+    for(let i=0;i<world/240;i++){if(i!==5&&i!==11&&i!==15)platforms.push({x:i*240,y:ground,w:240,h:75});}
+    for(let i=0;i<13;i++)platforms.push({x:320+i*285,y:325-(i%3)*40,w:115,h:18});
+    for(let i=0;i<30;i++)coins.push({x:180+i*130,y:260+(i%4)*34,taken:false});
+    for(let i=0;i<11;i++)enemies.push(makeEnemy(450+i*330,i%3===2,i));
+    addPerchEnemies([1,4,7,10]);
+    [[2,'gem'],[4,'coins'],[7,'heart'],[9,'gem'],[13,'chest'],[16,'gem']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
+    banner('STAGE 1','そよかぜの丘');
+  }else{
+    AX=2640;world=AX+960;
+    for(let i=0;i<11;i++){if(i!==4&&i!==8)platforms.push({x:i*240,y:ground,w:240,h:75});}
+    platforms.push({x:AX,y:ground,w:960,h:75});
+    for(let i=0;i<8;i++)platforms.push({x:330+i*270,y:330-(i%3)*45,w:110,h:18});
+    platforms.push({x:AX+170,y:320,w:110,h:18},{x:AX+680,y:320,w:110,h:18});
+    for(let i=0;i<18;i++)coins.push({x:200+i*120,y:270+(i%4)*30,taken:false});
+    [520,760,1320,1500,1700,1850,2250,2450].forEach((ex,i)=>enemies.push(makeEnemy(ex,i%2===1,i)));
+    addPerchEnemies([1,3,6]);
+    [[2,'gem'],[5,'heart'],[7,'coins'],[9,'chest']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
+    banner('STAGE 2','大王の谷');
+  }
+  player=newPlayer(120);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
+}
+function reset(){score=0;lives=3;keys={};loadStage(1)}
+function retry(){if(stage===2){score=stageStartScore;lives=3;keys={};loadStage(2)}else reset()}
+function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
+function inHole(h){return enemies.filter(e=>e.alive&&e.trapHole===h)}
+
+// ===== 連鎖ボーナス：1つの穴にまとめて埋めるほど高得点（1匹100／2匹400／3匹900／4匹1600） =====
+const HOLE_MAX=4,HOLE_T=600;   // 穴が開いている時間（約10秒）
+function popup(x0,y0,text,col='#fff',size=24,t=80){popups.push({x:x0,y:y0,text,col,size,t,max:t})}
+function buryHole(h){const list=inHole(h),n=list.length;if(!n)return;list.forEach(e=>e.alive=false);const pts=100*n*n;score+=pts;
+  if(n>1){popup(h.x+h.w/2,ground-70,n+'匹まとめて！ ×'+n,'#ffdf50',30,100);popup(h.x+h.w/2,ground-38,'+'+pts,'#fff',26,100);sound('chain');boom(h.x+h.w/2,ground,10*n,['#ffdf50','#fff','#ff9a3c']);shake=Math.max(shake,4+n*2)}
+  else{popup(h.x+h.w/2,ground-40,'+'+pts,'#fff',22);sound('bury')}}
+
+// ===== 宝物：キラキラ光る地面を掘ると出てくる =====
+const ITEM_INFO={coin:{pts:10},gem:{pts:300},chest:{pts:1000},heart:{pts:0}};
+function spawnItem(type,x0){items.push({type,x:x0,y:ground-14,vx:(Math.random()<.5?-1:1)*(1.5+Math.random()*2),vy:-9-Math.random()*2.5,t:720})}
+function revealTreasure(h){
+  const sp=spots.find(s=>!s.found&&s.x>=h.x-6&&s.x<=h.x+h.w+6);
+  if(sp){sp.found=true;sparkleFx(h.x+h.w/2);if(sp.type==='coins')for(let i=0;i<5;i++)spawnItem('coin',h.x+h.w/2);else spawnItem(sp.type,h.x+h.w/2);popup(h.x+h.w/2,ground-50,'お宝発見！','#7fe3ff',26);sound('treasure');}
+  else if(arenaOn){if(Math.random()<.08)spawnItem('heart',h.x+h.w/2)}
+  else if(Math.random()<.18)spawnItem('coin',h.x+h.w/2)}
+function sparkleFx(x0){boom(x0,ground,16,['#fff','#7fe3ff','#ffdf50'],5)}
+function collectItem(it){const cx=it.x;
+  if(it.type==='coin'){score+=10;sound('coin');}
+  else if(it.type==='gem'){score+=300;popup(cx,it.y-20,'💎 +300','#7fe3ff',24);sound('treasure');sparkleFx(cx);}
+  else if(it.type==='chest'){score+=1000;popup(cx,it.y-20,'宝箱！ +1000','#ffdf50',30,100);sound('treasure');boom(cx,it.y,30,['#ffdf50','#fff','#ff9a3c']);}
+  else if(it.type==='heart'){lives=Math.min(9,lives+1);popup(cx,it.y-20,'1UP！','#ff6b8a',30,100);sound('oneup');}}
+function updateItems(p){for(const it of items){it.t--;it.vy=Math.min(14,it.vy+.45);it.x+=it.vx;it.y+=it.vy;
+    // 完成した穴の上なら穴の底まで落ちる（穴の中からでも拾える）。穴が閉じたら地面の上に戻る
+    const hu=holes.find(h=>h.stage===3&&it.x>h.x+4&&it.x<h.x+h.w-4);
+    if(hu){const fl=ground+hu.h-10;if(it.y>=fl){it.y=fl;it.vy=0;it.vx=0}}
+    else if(it.vy>=0){if(it.y>ground-10&&it.y<ground+70&&it.vy<1&&platforms.some(b=>b.y===ground&&it.x>b.x&&it.x<b.x+b.w))it.y=ground-10;const b=platforms.find(b=>it.x>b.x&&it.x<b.x+b.w&&it.y+10>=b.y&&it.y+10-it.vy<=b.y+2);if(b){it.y=b.y-10;it.vy=0;it.vx*=.6}}
+    if(Math.hypot(p.x+p.w/2-it.x,p.y+p.h/2-it.y)<30){it.got=true;collectItem(it)}
+    if(it.y>H+60)it.t=0}
+  items=items.filter(it=>it.t>0&&!it.got);
+  for(const q of popups){q.t--;q.y-=.6}popups=popups.filter(q=>q.t>0)}
+
+// MP3の共通音量。HTML AudioとWeb Audioで同じ値を使う。
+const MP3_VOLUME=.2;
+
+// ===== 効果音 =====
+// ステージクリアのジングルはBGMの種類にかかわらず1回だけ再生する。
+const stageClearAudio=new Audio('audio/stage-clear.mp3');
+stageClearAudio.preload='auto';stageClearAudio.volume=MP3_VOLUME;
+function stopStageClearAudio(){stopJingle(stageClearAudio)}
+const bossIntroAudio=new Audio('audio/boss-intro.mp3'),bossClearAudio=new Audio('audio/boss-clear.mp3');
+for(const audio of [bossIntroAudio,bossClearAudio]){audio.preload='auto';audio.volume=MP3_VOLUME}
+// 登場音・クリア音も、操作時に解放したWeb Audioで再生する。
+const jingles=new Map();
+function jingleData(audio){
+  if(!jingles.has(audio))jingles.set(audio,{buffer:null,loading:null,source:null,generation:0});
+  return jingles.get(audio);
+}
+function loadJingle(audio){
+  const m=jingleData(audio);
+  if(!audioCtx)return Promise.resolve(null);
+  if(m.buffer)return Promise.resolve(m.buffer);
+  if(!m.loading)m.loading=fetch(audio.src).then(r=>{if(!r.ok)throw Error('jingle HTTP');return r.arrayBuffer()})
+    .then(ab=>new Promise((resolve,reject)=>{audioCtx.decodeAudioData(ab,resolve,reject)}))
+    .then(buffer=>m.buffer=buffer).catch(()=>null).finally(()=>{m.loading=null});
+  return m.loading;
+}
+function stopJingle(audio){
+  const m=jingleData(audio);m.generation++;
+  if(m.source){m.source.onended=null;try{m.source.stop()}catch(_){}m.source=null}
+  audio.pause();audio.currentTime=0;
+}
+function playJingle(audio,done=()=>{},failed=()=>{}){
+  stopJingle(audio);const m=jingleData(audio),generation=m.generation;
+  loadJingle(audio).then(buffer=>{
+    if(generation!==m.generation||mode!=='game')return;
+    if(!buffer||!audioCtx||audioCtx.state!=='running'){failed();done();return}
+    try{
+      const source=audioCtx.createBufferSource(),gain=audioCtx.createGain();
+      source.buffer=buffer;gain.gain.value=MP3_VOLUME;source.connect(gain);gain.connect(audioCtx.destination);
+      m.source=source;source.onended=()=>{gain.disconnect();if(generation===m.generation){m.source=null;done()}};
+      source.start();
+    }catch(_){failed();done()}
+  });
+}
+function preloadJingles(){for(const audio of [stageClearAudio,bossIntroAudio,bossClearAudio])loadJingle(audio)}
+let bossClearDone=true;
+function stopBossSounds(){for(const audio of [bossIntroAudio,bossClearAudio])stopJingle(audio);bossClearDone=true}
+function playBossIntro(){if(mode==='game')playJingle(bossIntroAudio)}
+function playBossClear(){if(mode!=='game')return;bossClearDone=false;playJingle(bossClearAudio,()=>{bossClearDone=true})}
+function victoryMusic(){
+  if(mode==='title')return;
+  playJingle(stageClearAudio,()=>{},()=>{if(mode==='game'&&state==='clear')originalVictoryMusic()});
+}
+function originalVictoryMusic(){if(mode==='title')return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();const notes=[[523,0,.13],[659,.14,.13],[784,.28,.13],[1047,.43,.25],[784,.72,.12],[1047,.86,.4],[1175,1.32,.13],[1319,1.47,.13],[1568,1.63,.55]];const start=audioCtx.currentTime+.03;for(const [hz,at,dur] of notes){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.value=hz;g.gain.setValueAtTime(.0001,start+at);g.gain.exponentialRampToValueAtTime(.13,start+at+.015);g.gain.exponentialRampToValueAtTime(.0001,start+at+dur);o.connect(g);g.connect(audioCtx.destination);o.start(start+at);o.stop(start+at+dur+.02)}}catch(e){}}
+// iPhone対策：①消音スイッチでも鳴るよう再生モードに ②指を離した瞬間に音声を解放 ③停止(interrupted)からの復帰
+let silentEl=null;
+function silentWavUrl(){const n=800,b=new ArrayBuffer(44+n),v=new DataView(b),w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);for(let i=0;i<n;i++)v.setUint8(44+i,128);return URL.createObjectURL(new Blob([b],{type:'audio/wav'}))}
+function unlockAudio(){try{if(mp3Cur){const m=mp3[mp3Cur];if(m&&musicOn&&!paused&&!document.hidden&&mp3Enabled&&m.engine==='el'&&m.el&&m.el.paused&&!m.elBad){const pr=m.el.play();if(pr&&pr.catch)pr.catch(()=>{});}}}catch(_){}
+  try{
+  if(navigator.audioSession){try{navigator.audioSession.type='playback'}catch(_){}}
+  audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state!=='running'&&audioCtx.state!=='closed')audioCtx.resume().catch(()=>{});
+  if(!audioCtx._primed){const s=audioCtx.createBufferSource();s.buffer=audioCtx.createBuffer(1,1,22050);s.connect(audioCtx.destination);s.start(0);audioCtx._primed=true}
+  // 古いiOS向け：無音の音声を流して再生モードに切り替える
+  if(!navigator.audioSession&&!silentEl&&/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document){silentEl=new Audio(silentWavUrl());silentEl.loop=true;silentEl.setAttribute('playsinline','');const pr=silentEl.play();if(pr&&pr.catch)pr.catch(()=>{silentEl=null})}
+}catch(e){}}
+['touchstart','pointerdown','touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
+function tone(hz,duration,type='square',volume=.09,delay=0,endHz=null){if(mode==='title')return;unlockAudio();if(!audioCtx)return;try{let t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,hz),t);if(endHz)o.frequency.exponentialRampToValueAtTime(Math.max(1,endHz),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+duration+.02);}catch(e){}}
+const vib={dig:12,stomp:30,bury:45,chain:[40,30,40,30,80],treasure:30,oneup:[30,30,30],hurt:[70,40,140],slam:40,bosshit:[60,30,90],boom:80};
+function buzz(kind){try{if(vib[kind]&&navigator.vibrate)navigator.vibrate(vib[kind])}catch(e){}}
+function pinSound(n){if(mode==='title')return;tone(420+n*55,.1,'square',.07,0,900+n*70);tone(1600+n*40,.05,'triangle',.04,.03);buzz('stomp');}
+function sound(kind){if(mode==='title')return;unlockAudio();buzz(kind);
+  if(kind==='coin'){tone(988,.085,'sine',.12);tone(1480,.22,'sine',.12,.085);}
+  if(kind==='jump'){tone(270,.17,'square',.055,0,540);}
+  if(kind==='stomp'){tone(190,.11,'triangle',.18,0,75);tone(95,.1,'square',.045,.035,50);}
+  if(kind==='dig'){tone(240,.09,'square',.08,0,115);tone(110,.13,'triangle',.1,.08,55);}
+  if(kind==='bury'){tone(125,.14,'triangle',.14);tone(85,.16,'square',.05,.08);}
+  if(kind==='hurt'){tone(540,.18,'sawtooth',.095,0,220);tone(280,.22,'sawtooth',.08,.18,90);tone(140,.32,'triangle',.09,.4,55);}
+  if(kind==='slam'){tone(80,.45,'sine',.32,0,30);tone(160,.15,'triangle',.12,0,60);}
+  if(kind==='bounce'){tone(420,.12,'square',.07,0,760);}
+  if(kind==='bosshit'){tone(900,.12,'sawtooth',.1,0,300);tone(200,.3,'square',.08,.08,60);}
+  if(kind==='boom'){tone(140,.5,'sawtooth',.11,0,30);}
+  if(kind==='throw'){tone(300,.12,'triangle',.08,0,150);}
+  if(kind==='burner'){try{const t=audioCtx.currentTime,len=Math.floor(audioCtx.sampleRate*.7),buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;const n=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();n.buffer=buf;f.type='lowpass';f.frequency.value=900;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.22,t+.08);g.gain.exponentialRampToValueAtTime(.0001,t+.7);n.connect(f);f.connect(g);g.connect(audioCtx.destination);n.start(t);n.stop(t+.72)}catch(e){}tone(70,.5,'sawtooth',.05,0,55);}   // バーナーのゴォーッ
+  if(kind==='rumble'){tone(42,1.3,'sawtooth',.09,0,32);tone(55,1.1,'triangle',.12,.1,40);}
+  if(kind==='roar'){tone(240,1.0,'sawtooth',.11,0,85);tone(360,.9,'square',.05,.02,120);tone(120,1.1,'sawtooth',.08,0,60);}
+  if(kind==='hurry'){[988,0,988,0,988].forEach((f,i)=>{if(f)tone(f,.09,'square',.07,i*.1)});}
+  if(kind==='boing'){tone(180,.35,'sine',.14,0,620);}
+  if(kind==='whistle'){tone(1400,.6,'sine',.06,0,700);}
+  if(kind==='cannon'){tone(110,.35,'square',.12,0,40);tone(60,.4,'sawtooth',.08,0,30);}
+  if(kind==='chain'){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.14,'square',.07,i*.07));tone(125,.2,'triangle',.14);}
+  if(kind==='treasure'){[784,988,1319,1568].forEach((f,i)=>tone(f,.18,'sine',.12,i*.08));}
+  if(kind==='oneup'){[660,880,1100,1320,1760].forEach((f,i)=>tone(f,.1,'square',.06,i*.07));}
+}
+
+// ===== BGM（すべてオリジナル曲を Web Audio で生成） =====
+let musicOn=true;try{musicOn=localStorage.getItem('skyhop-music')!=='off'}catch(_){}
+let bgmBus=null,bgmNext=0,noiseBuf=null;
+const mf=m=>440*Math.pow(2,(m-69)/12);
+function bus(){
+  if(!bgmBus&&audioCtx){bgmBus=audioCtx.createGain();bgmBus.gain.value=musicOn?1:0;bgmBus.connect(audioCtx.destination);
+    // ホールのような残響（壮大さ用）
+    try{const conv=audioCtx.createConvolver(),len=Math.floor(audioCtx.sampleRate*2.4),ir=audioCtx.createBuffer(2,len,audioCtx.sampleRate);for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}conv.buffer=ir;const rg=audioCtx.createGain();rg.gain.value=.3;bgmBus.connect(conv);conv.connect(rg);rg.connect(audioCtx.destination)}catch(_){}}
+  return bgmBus}
+function bnote(freq,t,dur,type,vol,endF){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(endF)o.frequency.exponentialRampToValueAtTime(endF,t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(bus());o.start(t);o.stop(t+dur+.02)}
+function hat(t,vol,len=.045){if(!noiseBuf){noiseBuf=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*.12),audioCtx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}const s=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();s.buffer=noiseBuf;f.type='highpass';f.frequency.value=len>.05?2500:7000;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+len);s.connect(f);f.connect(g);g.connect(bus());s.start(t);s.stop(t+len+.01)}
+// ストリングス風パッド（ノコギリ波2本をデチューン＋ローパス）
+function pad(ms,t,dur,vol){const f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();f.type='lowpass';f.frequency.value=1500;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.25);g.gain.setValueAtTime(vol,t+Math.max(.26,dur-.3));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.3);f.connect(g);g.connect(bus());for(const m of ms)for(const d of[-7,7]){const o=audioCtx.createOscillator();o.type='sawtooth';o.frequency.value=mf(m);o.detune.value=d;o.connect(f);o.start(t);o.stop(t+dur+.35)}}
+// ブラス風リード
+function brass(m,t,dur,vol){const o=audioCtx.createOscillator(),o2=audioCtx.createOscillator(),f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();o.type='sawtooth';o2.type='square';o.frequency.value=mf(m);o2.frequency.value=mf(m)/2;f.type='lowpass';f.frequency.setValueAtTime(500,t);f.frequency.exponentialRampToValueAtTime(2600,t+.06);f.frequency.exponentialRampToValueAtTime(1300,t+Math.max(.08,dur));g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.03);g.gain.setValueAtTime(vol,t+Math.max(.04,dur*.7));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.05);o.connect(f);o2.connect(f);f.connect(g);g.connect(bus());o.start(t);o2.start(t);o.stop(t+dur+.08);o2.stop(t+dur+.08)}
+function timp(t,vol,f0){bnote(f0,t,.7,'sine',vol,f0*.6)}
+function bell(m,t,vol){bnote(mf(m),t,1.6,'sine',vol);bnote(mf(m)*2.76,t,.8,'sine',vol*.3)}
+function holdLen(arr,i,max){let n=1;while(n<max&&!arr[i+n]&&(i+n)%8!==0)n++;return n}
+
+// フィールド曲：C-Am-F-G
+const MEL=[72,0,76,79,76,0,74,72, 69,0,72,76,74,72,69,0, 65,69,72,0,77,76,74,72, 71,0,74,0,79,77,74,71,
+           76,0,79,84,83,79,76,0, 81,0,79,76,72,0,76,0, 77,76,74,72,69,72,74,0, 74,0,71,74,72,0,0,0];
+const ROOT=[48,45,41,43,48,45,41,43];
+// ボス曲：Dm-B♭-C-A（短調・勇壮）
+const BOSS_MEL=[62,0,0,65,69,0,67,65, 70,0,69,67,65,0,62,0, 64,0,67,72,70,0,69,67, 69,0,0,0,73,0,76,0,
+                74,0,0,72,69,0,72,74, 77,0,74,70,74,0,70,67, 72,0,76,79,77,76,74,72, 73,0,69,73,76,0,0,0];
+const BOSS_CH=[[62,65,69],[62,65,70],[64,67,72],[61,64,69],[62,65,69],[62,65,70],[64,67,72],[61,64,69]];
+const BOSS_ROOT=[38,34,36,33,38,34,36,33];
+// エンディング曲：C-G/B-Am-F-C-F-G-C（ゆったり壮大）
+const END_MEL=[72,0,0,0,74,0,76,0, 79,0,0,0,0,0,77,76, 76,0,0,0,74,0,72,0, 74,0,0,0,0,0,0,0,
+               72,0,76,0,79,0,84,0, 81,0,0,0,79,0,77,0, 76,0,0,0,74,0,0,0, 72,0,0,0,0,0,0,0];
+const END_CH=[[60,64,67],[59,62,67],[57,60,64],[57,60,65],[60,64,67],[57,60,65],[59,62,67],[60,64,67]];
+const END_ROOT=[48,47,45,41,48,41,43,36];
+const SONGS={
+  field:{len:64,dur:()=>60/(player&&player.hole?172:140)/2/(stage===1?stage1Rush():1)/hurryMul(),step(i,t,sd){const T=stage===2?2:0,m=MEL[i];if(m)bnote(mf(m+T),t,sd*.85,'square',.04);const root=ROOT[i>>3]+T;if(i%2===0)bnote(mf(root+(i%4===2?12:0)),t,sd*1.6,'triangle',.11);if(i%4===0)bnote(150,t,.12,'sine',.22,45);if(i%8===4)hat(t,.07,.1);if(i%2===1)hat(t,.03)}},
+  boss:{len:64,dur:()=>60/(boss&&boss.hp===1?166:152)/2/bossRush(),step(i,t,sd){const bar=i>>3,b=i%8,m=BOSS_MEL[i];if(m)brass(m,t,sd*holdLen(BOSS_MEL,i,4)*.92,.045);if(b===0)pad(BOSS_CH[bar],t,sd*8,.022);bnote(mf(BOSS_ROOT[bar]+(b%2?12:0)),t,sd*.8,'sawtooth',.045);if(b===0)timp(t,.34,98);if(b===4)timp(t,.2,98);if(i%16>=14)timp(t,.13,130);if(b%2===1)hat(t,.025);if(b===4)hat(t,.06,.1)}},
+  ending:{len:64,dur:()=>60/72/2,step(i,t,sd){const bar=i>>3,b=i%8,ch=END_CH[bar];if(b===0){pad(ch,t,sd*8,.028);bnote(mf(END_ROOT[bar]),t,sd*8,'triangle',.12);timp(t,bar%4===0?.28:.12,82);bell(ch[2]+12,t,.035)}bnote(mf(ch[[0,1,2,1,2,1,0,1][b]]+12),t,sd*1.5,'triangle',.045);const m=END_MEL[i];if(m){const L=holdLen(END_MEL,i,8);brass(m,t,sd*L*.95,.03);bnote(mf(m+12),t,sd*L*.9,'sine',.025)}}}
+};
+// ウェディング曲（オリジナル）：3拍子のワルツ。F - C/E - Dm - B♭ - F - Gm - C - F
+const WED_MEL=[72,0,0,0,69,0, 67,0,72,0,76,0, 77,0,0,0,74,0, 74,0,72,0,70,0, 69,0,72,0,77,0, 79,0,0,0,77,0, 76,0,74,0,79,0, 77,0,0,0,0,0];
+const WED_CH=[[65,69,72],[64,67,72],[62,65,69],[62,65,70],[65,69,72],[62,67,70],[64,67,72],[65,69,72]];
+const WED_ROOT=[41,40,38,34,41,43,36,41];
+function organ(ms,t,dur,vol){const g=audioCtx.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.12);g.gain.setValueAtTime(vol,t+Math.max(.13,dur-.15));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.25);g.connect(bus());
+  for(const m of ms)for(const [mul,tp] of [[1,'sine'],[2,'sine'],[4,'triangle']]){const o=audioCtx.createOscillator(),og=audioCtx.createGain();o.type=tp;o.frequency.value=mf(m)*mul;og.gain.value=mul===1?1:mul===2?.45:.12;o.connect(og);og.connect(g);o.start(t);o.stop(t+dur+.3)}}
+function holdLen6(arr,i){let n=1;while(n<6&&!arr[i+n]&&(i+n)%6!==0)n++;return n}
+SONGS.wedding={len:48,dur:()=>60/84/2,step(i,t,sd){const bar=Math.floor(i/6),b=i%6,ch=WED_CH[bar];
+  if(b===0){organ(ch,t,sd*6,.018);bnote(mf(WED_ROOT[bar]),t,sd*2.2,'triangle',.13);bell(ch[2]+12,t,.04);if(bar%4===0)timp(t,.1,87);}
+  if(b===2||b===4)bnote(mf(ch[0]),t,sd*.9,'triangle',.05),bnote(mf(ch[1]),t,sd*.9,'triangle',.04);    // ズン・チャッ・チャッ
+  bnote(mf(ch[[0,1,2,1,2,1][b]]+24),t,sd*1.2,'sine',.018);                                           // オルゴール風の分散和音
+  const m=WED_MEL[i];if(m){const L=holdLen6(WED_MEL,i);bnote(mf(m),t,sd*L*.95,'sine',.07);bnote(mf(m+12),t,sd*L*.8,'triangle',.022);}}};
+// 2面道中の曲（オリジナル）：ホ短調、半音でにじり寄るベースと低い太鼓で「物騒な」感じ
+const F2_MEL=[64,0,0,0,0,0,65,64, 0,0,71,0,70,0,67,0, 65,0,0,69,0,0,72,71, 64,0,0,0,0,0,0,0,
+              69,0,0,72,0,71,69,0, 70,0,0,74,0,0,77,76, 75,0,0,71,0,0,66,0, 64,0,0,0,63,0,64,0];
+const F2_CH=[[59,64,67],[59,64,67],[60,65,69],[59,64,67],[57,60,64],[58,62,65],[59,63,66],[59,64,67]];
+const F2_ROOT=[40,40,41,40,45,46,47,40];
+function darkPad(ms,t,dur,vol){const f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();f.type='lowpass';f.frequency.value=700;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.4);g.gain.setValueAtTime(vol,t+Math.max(.41,dur-.3));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.3);f.connect(g);g.connect(bus());for(const m of ms)for(const d of[-10,10]){const o=audioCtx.createOscillator();o.type='sawtooth';o.frequency.value=mf(m-12);o.detune.value=d;o.connect(f);o.start(t);o.stop(t+dur+.35)}}
+SONGS.field2={len:64,dur:()=>60/(player&&player.hole?140:118)/2/hurryMul(),step(i,t,sd){const bar=i>>3,b=i%8,r=F2_ROOT[bar];
+  if(b===0)darkPad(F2_CH[bar],t,sd*8,.03);
+  const os=[0,0,12,0,1,0,7,0][b];bnote(mf(r+os),t,sd*.8,'sawtooth',.035);bnote(mf(r+os),t,sd*.9,'triangle',.09);   // にじり寄るベース
+  if(b===0||b===3)timp(t,b===0?.32:.18,72);if(b===6)timp(t,.12,96);                                          // ドン…ドン　低い太鼓
+  if(b===4)hat(t,.05,.1);if(b%2===1)hat(t,.018);
+  const m=F2_MEL[i];if(m){const L=holdLen(F2_MEL,i,6);bnote(mf(m),t,sd*L*.9,'square',.028);bnote(mf(m)*1.006,t,sd*L*.9,'triangle',.03);}
+  if(i===28||i===60)bell(88,t,.02);}};                                                                       // 遠くで鳴る鐘
+const toMajor=m=>{const pc=((m%12)+12)%12;return m+(pc===5||pc===10||pc===0?1:0)};
+const RARE_MEL=BOSS_MEL.map(m=>m?toMajor(m):0);
+const RARE_CH=[[62,66,69],[62,67,71],[61,64,69],[61,64,69],[62,66,69],[62,67,71],[61,64,69],[61,64,69]];
+const RARE_ROOT=[38,43,45,45,38,43,45,45];
+SONGS.rare={len:64,dur:()=>60/160/2,step(i,t,sd){const bar=i>>3,b=i%8,m=RARE_MEL[i];
+  if(m){const L=holdLen(RARE_MEL,i,4);brass(m,t,sd*L*.9,.04);bnote(mf(m+12),t,sd*L*.8,'square',.015);}
+  if(b===0){pad(RARE_CH[bar],t,sd*8,.02);bell(RARE_CH[bar][2]+12,t,.03);}
+  bnote(mf(RARE_ROOT[bar]+(b%2?7:0)),t,sd*.8,'triangle',.11);                     // ブン・チャッ（マーチのベース）
+  if(b%2===1)RARE_CH[bar].forEach(n=>bnote(mf(n),t,sd*.5,'square',.012));
+  if(b===0||b===4)bnote(150,t,.12,'sine',.22,45);if(b===2||b===6)hat(t,.07,.1);hat(t,.02);
+  if(i%16===15)timp(t,.15,110);}};
+// 地下室の曲（オリジナル）：コロコロした木琴風の宝さがしの曲
+const BS_MEL=[69,72,76,72,74,72,69,0, 65,69,72,69,74,72,69,0, 67,71,74,71,76,74,71,0, 72,0,76,0,79,0,76,0];
+const BS_ROOT=[45,41,43,48];
+SONGS.basement={len:32,dur:()=>60/128/2/hurryMul(),step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];
+  if(m){bnote(mf(m),t,sd*.6,'sine',.09);bnote(mf(m+12),t,sd*.25,'triangle',.03);}
+  bnote(mf(BS_ROOT[bar]+(b%4===2?7:b%4===3?12:0)),t,sd*.7,'triangle',.1);
+  if(b%4===0)bnote(140,t,.1,'sine',.18,50);if(b%4===2)hat(t,.05,.08);if(b%2===1)hat(t,.02);
+  if(i%8===7)bell(m?m+12:88,t,.015);}};
+SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];if(m){bnote(mf(m+5),t,sd*.7,'square',.04);bnote(mf(m+17),t,sd*.3,'sine',.04);}bnote(mf(BS_ROOT[bar]+5+(b%2?12:0)),t,sd*.7,'triangle',.11);if(b%2===0)bnote(150,t,.1,'sine',.18,50);hat(t,.025);if(b===4)hat(t,.06,.1);}};
+function currentSong(){if(mode==='title')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
+// ===== MP3のBGM（用意した場面だけ差し替え。読めない時は今までの曲が鳴る） =====
+// 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
+// 未登録の場面ではオリジナルBGMを再生。ループ区間未指定なら曲全体を繰り返す。
+const MP3_BGM={
+  field1:{src:'audio/bgm-stage1-pixel-adventure.mp3'},
+  field2:{src:'audio/bgm-stage2.mp3'}, // 2面
+  boss:{src:'audio/bgm-boss.mp3'}, // 2面後半のボス戦
+  bonus:{src:'audio/bgm-bonus.mp3'}, // ボーナスステージ
+  ending:{src:'audio/bgm-ending-solo.mp3'}, // 一人エンディング
+  wedding:{src:'audio/bgm-ending-pair.mp3'}, // ソラ姫との2人エンディング
+  rare:{src:'audio/bgm-ending-rare.mp3'} // レアエンディング
+};
+// ページを開いたときは必ずファミコン風BGMから始める。
+let mp3Enabled=false;
+// 再生のしかたは2通り：①<audio>（音程を変えずに速くできる） ②Web Audio（iPhoneでも確実に鳴る）。
+// ①が1.2秒たっても鳴り始めなければ、自動で②に切り替える。②も読めなければ今までの曲。
+// iOSでは通常BGMと同じ、タップで解放したAudioContextからMP3も再生する。
+const mp3UseWebAudio=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const mp3={};let mp3Cur=null;
+function mp3Key(song){if(!mp3Enabled)return null;const key=song==='field'&&stage===1?'field1':song;return MP3_BGM[key]?.src?key:null}
+function mp3Get(key){if(key in mp3)return mp3[key];const cfg=MP3_BGM[key];if(!cfg)return mp3[key]=null;
+  const m=mp3[key]={cfg,el:null,elBad:false,buf:null,bufBad:false,loading:false,engine:mp3UseWebAudio?'buf':'el',src:null,gain:null,pos:0,lastCtxT:0,reqT:0,elT0:0,elOK:false};
+  // iPhoneでは音声要素を作らず、全ステージ共通のWeb Audioだけを使う。
+  if(mp3UseWebAudio)return m;
+  try{const a=new Audio(cfg.src);a.preload='auto';a.loop=false;a.volume=MP3_VOLUME;a.preservesPitch=true;a.mozPreservesPitch=true;a.webkitPreservesPitch=true;
+    a.addEventListener('error',()=>{m.elBad=true});a.addEventListener('ended',()=>{if(mp3Cur===key){a.currentTime=cfg.loopStart||0;a.play().catch(()=>{})}});m.el=a;}catch(_){m.elBad=true}
+  return m}
+function mp3Load(m){if(!m||m.buf||m.bufBad||m.loading||!audioCtx)return;m.loading=true;
+  fetch(m.cfg.src).then(r=>{if(!r.ok)throw new Error('http');return r.arrayBuffer()})
+   .then(ab=>new Promise((res,rej)=>{const pr=audioCtx.decodeAudioData(ab,res,rej);if(pr&&pr.catch)pr.catch(rej)}))
+   .then(b=>{m.buf=b}).catch(()=>{m.bufBad=true}).finally(()=>{m.loading=false})}
+function mp3Wrap(m,t){const c=m.cfg;if(c.loopEnd&&t>=c.loopEnd)t=c.loopStart+((t-c.loopStart)%(c.loopEnd-c.loopStart));return Math.max(0,t)}
+function mp3StopBuf(m){if(m&&m.src){try{m.src.stop()}catch(_){}m.src=null}}
+function mp3StartBuf(m,rate){mp3StopBuf(m);const c=m.cfg,src=audioCtx.createBufferSource();src.buffer=m.buf;src.loop=true;src.loopStart=c.loopStart||0;src.loopEnd=c.loopEnd||m.buf.duration;src.playbackRate.value=rate;
+  if(!m.gain){m.gain=audioCtx.createGain();m.gain.gain.value=MP3_VOLUME;m.gain.connect(audioCtx.destination);}src.connect(m.gain);src.start(0,mp3Wrap(m,m.pos));m.src=src;m.lastCtxT=audioCtx.currentTime;}
+function mp3Halt(key){const m=mp3[key];if(!m)return;if(m.src&&audioCtx)m.pos=mp3Wrap(m,m.pos+(audioCtx.currentTime-m.lastCtxT)*m.src.playbackRate.value);if(m.el&&!m.el.paused){try{m.el.pause()}catch(_){}}if(m.engine==='el'&&m.el)m.pos=m.el.currentTime;mp3StopBuf(m);}
+function mp3Restart(key){const m=mp3[key];if(!m)return;m.pos=0;try{if(m.el)m.el.currentTime=0}catch(_){}if(m.src&&audioCtx){mp3StopBuf(m);}}
+function mp3PlayEl(m){if(!m.el||m.elBad)return;try{m.el.currentTime=mp3Wrap(m,m.pos)}catch(_){}m.reqT=Date.now();m.elT0=m.el.currentTime;m.elOK=false;const pr=m.el.play();if(pr&&pr.catch)pr.catch(()=>{m.elBad=true});}
+const BASE_DUR={field:60/140/2};
+function mp3LoopCheck(){const m=mp3Cur&&mp3[mp3Cur];if(!m||m.engine!=='el'||!m.el||m.el.paused)return;const c=m.cfg;if(c.loopEnd&&m.el.currentTime>=c.loopEnd){try{m.el.currentTime-= (c.loopEnd-c.loopStart)}catch(_){}}}
+function mp3Tick(){   // MP3の再生開始を確認してから通常BGMを止める。読み込み中は通常BGMを継続。
+  const s=currentSong(),want=(!paused&&musicOn&&!document.hidden&&mode==='game'&&audioCtx)?mp3Key(s):null;
+  if(want!==mp3Cur){if(mp3Cur)mp3Halt(mp3Cur);mp3Cur=want;if(want){const m=mp3Get(want);if(m){m.started=false;}}}
+  if(!want)return false;const m=mp3Get(want);if(!m)return false;
+  mp3Load(m);
+  const rate=Math.max(.5,Math.min(3,BASE_DUR[s]?BASE_DUR[s]/SONGS[s].dur():1));
+  if(m.engine==='el'){
+    if(m.elBad||(!m.elOK&&m.reqT&&Date.now()-m.reqT>1200)){if(m.el){try{m.pos=m.el.currentTime;m.el.pause()}catch(_){}}m.engine='buf';}
+    else{
+      if(!m.started||m.el.paused&&m.elOK){m.started=true;mp3PlayEl(m);}
+      try{m.el.playbackRate=rate}catch(_){}
+      if(!m.elOK&&!m.el.paused&&m.el.currentTime>m.elT0+.05)m.elOK=true;
+      return m.elOK&&!m.el.paused&&m.el.readyState>=3;}}
+  // Web Audio で再生
+  if(m.buf){if(audioCtx.state!=='running')return false;
+    if(!m.src)mp3StartBuf(m,rate);
+    else{const now=audioCtx.currentTime;m.pos=mp3Wrap(m,m.pos+(now-m.lastCtxT)*m.src.playbackRate.value);m.lastCtxT=now;m.src.playbackRate.value=rate;}
+    return true}
+  if(m.bufBad&&m.elBad)return false;            // どちらも使えない → 今までの曲
+  if(m.bufBad)return false;
+  return false;   // 読み込み中も通常BGMを継続する。
+}
+function bgmTick(){if(mp3Tick()){curSong=currentSong();bgmNext=0;return}if(!audioCtx||audioCtx.state!=='running')return;if(paused){bgmNext=0;return}const s=currentSong();if(s!==curSong){curSong=s;bgmStep=0;bgmNext=0}if(!s||!musicOn||document.hidden){bgmNext=0;return}const song=SONGS[s],now=audioCtx.currentTime;if(!bgmNext||bgmNext<now)bgmNext=now+.06;while(bgmNext<now+.15){song.step(bgmStep,bgmNext,song.dur());bgmNext+=song.dur();bgmStep=(bgmStep+1)%song.len}}
+// 1面の音源はタイトル表示中から先読みする（自動再生はしない）。
+mp3Get('field1');
+setInterval(bgmTick,25);
+function gameOverMusic(){if(mode==='title')return;unlockAudio();if(!audioCtx)return;[[67,0,.22],[64,.25,.22],[60,.5,.22],[55,.78,.7]].forEach(([m,at,d])=>tone(mf(m),d,'triangle',.12,.05+at))}
+
+// ===== パーティクル =====
+function boom(x0,y0,n,cols,spd=6){for(let i=0;i<n;i++)parts.push({x:x0,y:y0,vx:(Math.random()-.5)*spd,vy:-Math.random()*spd*.8,life:30+Math.random()*20,max:50,col:cols[i%cols.length],s:3+Math.random()*4,g:.2})}
+function firework(){const cx=120+Math.random()*720,cy=70+Math.random()*190,hue=Math.floor(Math.random()*360);for(let i=0;i<46;i++){const a=i/46*Math.PI*2,v=2+Math.random()*2.2;parts.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:60+Math.random()*25,max:85,col:`hsl(${hue+Math.random()*40},100%,65%)`,s:3,g:.035})}}
+function updateParts(){for(const q of parts){if(q.petal)q.vx=Math.sin(q.y*.025+q.x*.01)*.9;q.vy+=q.g;q.x+=q.vx;q.y+=q.vy;q.vx*=.99;q.life--}parts=parts.filter(q=>q.life>0)}
+function drawParts(){for(const q of parts){x.globalAlpha=Math.max(0,Math.min(1,q.life/q.max*1.5));x.fillStyle=q.col;x.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s)}x.globalAlpha=1}
+
+// ===== 操作 =====
+// ボス戦では穴が大きくなる（幅100・深さ60）
+// 掘れる場所を探す：掘りかけの穴があればそれを続ける。崖の端や隣の穴にかかる時は少しずらして掘れる場所を探す
+function digSpot(){if(bossIntroLong())return null;if(inBasement)return null;
+  const p=player;if(state!=='play'||!p.on||p.hole||Math.abs(p.y+p.h-ground)>=12)return null;
+  const hw=arenaOn?100:48,hd=arenaOn?60:48,dir=p.facing===-1?-1:1,pc=p.x+p.w/2,center=pc+dir*(hw/2+28);
+  const cur=holes.find(h=>h.stage<3&&Math.abs(h.x+h.w/2-center)<h.w/2+8&&(dir>0?(h.x+h.w>p.x+p.w-4&&h.x<p.x+p.w+110):(h.x<p.x+4&&h.x+h.w>p.x-110)));   /* 向いている側の穴だけ続きを掘る（左右対称） */if(cur)return {hole:cur};
+  // 敵が入っている穴の前なら「埋める」
+  const occ=holes.find(h=>h.stage===3&&Math.abs(h.x+h.w/2-center)<h.w/2+12&&inHole(h).length>0);if(occ)return {bury:occ};
+  for(const off of[0,-8,-16,-22,8,16,24]){const c=center+dir*off;
+    if(Math.abs(c-pc)<hw/2+6)continue;   // 足元に掘らない
+    // 穴の範囲がすべて地面の上にあるか（地面の継ぎ目をまたいでもOK、崖にかかるのはNG）
+    let ok=true;for(let sx=c-hw/2+.5;sx<=c+hw/2-.5;sx+=8)if(!groundAt(sx)){ok=false;break}if(!ok||!groundAt(c+hw/2-.5))continue;
+    if(holes.some(e=>Math.abs(e.x+e.w/2-c)<(e.w+hw)/2+1))continue;
+    return {x:c-hw/2,w:hw,h:hd};}
+  return null}
+function doDig(){const s=digSpot();if(!s)return false;
+  if(s.bury){buryHole(s.bury);holes=holes.filter(h=>h!==s.bury);digCooldown=15;sound('dig');return true}
+  let h=s.hole;if(!h){h={x:s.x,y:ground,w:s.w,h:s.h,t:HOLE_T,stage:0};holes.push(h);}h.stage++;h.t=HOLE_T;digCooldown=9;sound('dig');if(h.stage===3){revealTreasure(h);checkSecret(h);}return true}
+// ボタン/キーを押したとき：連打や着地直前の入力も取りこぼさず、掘れない場所なら×を表示
+function dig(){if(state!=='play'||inBasement||paused)return;
+  if(digCooldown>0||!player.on){digBuf=Math.min(2,digBuf+1);digBufT=24;return}
+  if(!doDig()){const p=player,dir=p.facing===-1?-1:1;failMark={x:p.x+p.w/2+dir*(arenaOn?78:52),t:30};tone(150,.08,'square',.05)}}
+// 当たり判定は見た目より少し小さめ（かすっただけでミスにならない）
+function hitBox(p){return {x:p.x+6,y:p.y+5,w:p.w-12,h:p.h-6}}
+let deathCause='';
+function die(cause=''){if(state!=='play')return;deathCause=cause;state='dying';deathTick=0;player.vx=0;player.vy=-12.5;player.on=false;sound('hurt');}
+function clampToHole(p,h){p.x=Math.max(h.x+1,Math.min(h.x+h.w-p.w-1,p.x))}
+
+// ===== ボス：モグラ大王 ドリモグ =====
+// short=true は再挑戦時の短い登場（毎回長い演出を見なくてよい）
+function newBoss(hp=3,short=false){return {x:AX+700,y:short?ground-88:ground+30,w:96,h:88,vx:0,vy:0,hp:hp,st:'intro',t:0,dir:-1,inv:0,flash:0,hole:null,landed:short,short}}
+function bossIntroLong(){return arenaOn&&boss&&boss.st==='intro'&&!boss.short}
+function bgo(st){boss.st=st;boss.t=0}
+function throwRock(p){const b=boss,sx=b.x+b.w/2,sy=b.y+10,T=48+Math.random()*16,tx=p.x+p.w/2+(Math.random()*80-40),ty=ground-14,g=.35;rocks.push({x:sx,y:sy,vx:(tx-sx)/T,vy:(ty-sy-.5*g*T*T)/T,r:13});sound('throw')}
+function bossEscape(){const b=boss;holes=holes.filter(h=>h!==b.hole);b.hole=null;b.y=ground-b.h;b.vy=-15;b.vx=b.x+b.w/2<AX+480?4.5:-4.5;bgo('escape')}
+function updateBoss(p,oldY){
+  const b=boss;b.t++;if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
+  const phase=b.hp>=3?1:b.hp===2?2:3,L=AX,R=AX+960-b.w,top=ground-b.h;
+  if(b.st==='intro'){if(b.t===1)playBossIntro();const cx=b.x+b.w/2;
+    if(b.short){b.y=top;if(b.t>40){bgo('walk');banner('','穴を掘って 大王を落とし、頭をふめ！',120)}}
+    else{b.pt=(b.pt||0)+1;if(!b.phase)b.phase='rumble';
+      if(b.phase==='rumble'){b.y=ground+30;shake=Math.max(shake,2+b.pt/12);if(b.pt%5===0)boom(cx+(Math.random()-.5)*90,ground,3,['#c9a27a','#8a6a4a'],4);if(b.pt===1||b.pt===40)sound('rumble');   // ゴゴゴ…地鳴り
+        if(b.pt>=80){b.phase='burst';b.pt=0;b.y=ground-10;b.vy=-13.5;shake=30;sound('slam');sound('boom');boom(cx,ground,46,['#c9a27a','#8a6a4a','#5e3a22'],10);}}   // 地面を突き破る
+      else if(b.phase==='burst'){b.vy+=.6;b.y+=b.vy;if(b.y>=top&&b.vy>0){b.y=top;b.vy=0;b.landed=true;shake=20;sound('slam');boom(cx,ground,18,['#c9a27a','#8a6a4a'],6);b.phase='pinwait';b.pt=0;}}
+      else if(b.phase==='pinwait'){if(b.pt>14){b.phase='pin';b.pt=0;b.vx=-13.5;b.vy=-19;b.pins=0;sound('boing');}}
+      // ピンボールのように跳ね回る
+      else if(b.phase==='pin'){b.vy+=.45;b.x+=b.vx;b.y+=b.vy;b.spin=(b.spin||0)+b.vx*.035;let hit=null;
+        if(b.x<=L){b.x=L;b.vx=Math.abs(b.vx);hit=[b.x,b.y+b.h/2];}
+        if(b.x>=R){b.x=R;b.vx=-Math.abs(b.vx);hit=[b.x+b.w,b.y+b.h/2];}
+        if(b.y<=70){b.y=70;b.vy=Math.abs(b.vy)*.95;hit=[b.x+b.w/2,b.y];}
+        if(b.y>=top&&b.vy>0){b.y=top;
+          if(b.pt>170&&Math.abs(b.x+b.w/2-(p.x+p.w/2))>300){b.phase='settle';b.pt=0;b.vx=0;b.vy=0;b.spin=0;shake=24;sound('slam');boom(b.x+b.w/2,ground,22,['#c9a27a','#8a6a4a'],7);}
+          else{b.vy=-Math.max(16.5,Math.abs(b.vy)*.97);hit=[b.x+b.w/2,ground];}}
+        if(hit){b.pins++;shake=Math.max(shake,8);pinSound(b.pins);boom(hit[0],hit[1],12,['#fff','#ffdf50','#7fe3ff'],7);b.flash=6;popup(Math.max(AX+50,Math.min(AX+910,hit[0])),Math.max(110,hit[1]-12),['ドン！','バン！','ガン！','ボヨン！'][b.pins%4],'#ffdf50',26,32);}}
+      else if(b.phase==='settle'){b.y=top;if(b.pt>=28){sound('roar');shake=14;b.phase='roar';b.pt=0;}}                 // 雄たけび
+      else if(b.phase==='roar'){if(b.pt>115){bgo('walk');banner('','穴を掘って 大王を落とし、頭をふめ！',140)}}}}
+  else if(b.st==='walk'){const tx=p.x+p.w/2-(b.x+b.w/2);if(Math.abs(tx)>8)b.dir=Math.sign(tx);b.x+=b.dir*(.8+phase*.45);
+    if(b.t>(phase===3?60:phase===2?85:110)){const r=Math.random();
+      if(phase===1){if(r<.5){bgo('jump');b.vy=-15;b.vx=Math.max(-5,Math.min(5,tx/45))}else bgo('throw')}
+      else if(r<.33){bgo('jump');b.vy=-15.5;b.vx=Math.max(-6,Math.min(6,tx/42))}
+      else if(r<.6)bgo('throw');
+      else{bgo('windup');b.dir=Math.sign(tx)||b.dir}}}
+  else if(b.st==='jump'||b.st==='escape'){b.vy+=.7;b.x+=b.vx;b.y+=b.vy;if(b.y>=top&&b.vy>0){b.y=top;b.vy=0;b.vx=0;if(b.st==='jump'){shake=18;sound('slam');const sp=4+phase;waves.push({x:b.x+b.w/2-30,dir:-1,sp},{x:b.x+b.w/2+30,dir:1,sp});boom(b.x+b.w/2,ground,10,['#c9a27a'])}bgo('walk')}}
+  else if(b.st==='throw'){if(b.t===30||(phase>=2&&b.t===48)||(phase===3&&b.t===66))throwRock(p);if(b.t>95)bgo('walk')}
+  else if(b.st==='windup'){if(b.t%6===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.t>45)bgo('charge')}
+  else if(b.st==='charge'){b.x+=b.dir*(4.5+phase);if(b.t%4===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.x<=L||b.x>=R){shake=14;sound('slam');bgo('walk')}}
+  else if(b.st==='stun'){b.y=top+40;if(b.t>(phase===3?150:210))bossEscape()}
+  else if(b.st==='dead'){b.vy+=.3;b.y+=b.vy;if(b.t<=210&&b.t%8===0){boom(b.x+Math.random()*b.w,Math.min(ground,b.y+Math.random()*b.h),12,['#ffdf50','#ff655e','#fff']);if(b.t%16===0)sound('boom')}
+    if(b.t>210&&!b.clearPlayed){b.clearPlayed=true;playBossClear();banner('GAME CLEAR!','モグラ大王 ドリモグを たおした！',300)}
+    // 読み込み失敗時や再生停止時にも進行を止めない（最大8秒）。
+    if(b.t>210&&(bossClearDone||b.t>690)){stopJingle(bossClearAudio);state='ending';endT=0;parts=[];addTimeBonus();score+=lives*1000;{const r=Math.random();endingRare=r<.1;endingPair=!endingRare&&r<.55;endP=null;if(endingRare)score+=5000;}/* レア10%・2人45%・1人45% */}return}
+  b.x=Math.max(L,Math.min(R,b.x));
+  // 完成した穴の上を歩く・突進すると落ちる
+  if(b.st==='walk'||b.st==='charge'){const cx=b.x+b.w/2,h=holes.find(h=>h.stage===3&&Math.abs(h.x+h.w/2-cx)<Math.max(12,h.w/2-28)&&!enemies.some(e=>e.alive&&e.trapHole===h));
+    if(h){b.hole=h;b.x=h.x+h.w/2-b.w/2;b.y=top+40;bgo('stun');shake=12;sound('bury');banner('','いまだ！ 頭をふめ！',80);if(p.hole===h&&p.inv<=0)die('大王が穴に落ちてきた！');}}
+  // プレイヤーとの当たり判定
+  if(b.landed&&b.st!=='intro'){const br={x:b.x+10,y:b.y+8,w:b.w-20,h:b.h-8};
+    if(rect(p,br)){const fromAbove=oldY+p.h<=br.y+18&&p.vy>0;
+      if(fromAbove){
+        if(b.st==='stun'&&b.inv<=0){b.hp--;b.inv=50;b.flash=40;score+=500;p.vy=-13;p.inv=Math.max(p.inv,75);
+          // 踏んだら、ボスが飛び出す方向と反対側へ大きく弾き飛ばされる
+          {const esc=b.x+b.w/2<AX+480?1:-1;p.kickVx=-esc*5.5;p.kickT=40;p.facing=-esc;}shake=16;sound('bosshit');boom(p.x+p.w/2,b.y+10,14,['#fff','#ffdf50']);
+          if(b.hp<=0){holes=holes.filter(h=>h!==b.hole);b.hole=null;bgo('dead');b.vy=-9;sound('boom');banner('','',0)}else bossEscape()}
+        else{p.vy=-11;p.inv=Math.max(p.inv,20);sound('bounce')}}
+      else if(b.st!=='stun'&&p.inv<=0&&rect(hitBox(p),br))die('大王にぶつかった！')}}
+  // 投げた岩
+  for(const r of rocks){r.vy+=.35;r.x+=r.vx;r.y+=r.vy;if(Math.hypot(p.x+p.w/2-r.x,p.y+p.h/2-r.y)<r.r+12&&p.inv<=0)die('岩に当たった！');if(r.y>ground-r.r){r.dead=true;boom(r.x,ground,6,['#8a8a8a','#c9a27a'],4)}}
+  rocks=rocks.filter(r=>!r.dead);
+  // 地面を走る衝撃波（穴の中なら当たらない）
+  for(const w of waves){w.x+=w.dir*w.sp;if(rect(hitBox(p),{x:w.x-14,y:ground-28,w:28,h:28})&&p.inv<=0)die('衝撃波に当たった！');if(w.x<AX-20||w.x>AX+980)w.dead=true}
+  waves=waves.filter(w=>!w.dead);
+}
+
+// ===== タイトル画面とデモプレイ =====
+let inBasement=false,surface=null,secret={x:2520,used:false};
+// ===== 隠し地下室 =====
+function checkSecret(h){if(mode!=='game'||secret.used||inBasement)return;
+  if(secret.x>=h.x-4&&secret.x<=h.x+h.w+4){h.secret=true;h.t=Math.max(h.t,HOLE_T);popup(h.x+h.w/2,ground-60,'隠し通路だ！','#ffdf50',28,110);sound('treasure');sparkleFx(h.x+h.w/2);}}
+function enterBasement(h){const p=player;roomKind='basement';roomT=0;
+  surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:h};secret.used=true;inBasement=true;
+  world=W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;
+  platforms=[{x:0,y:ground,w:W,h:75},{x:150,y:345,w:140,h:18},{x:400,y:285,w:160,h:18},{x:660,y:345,w:140,h:18}];
+  coins=[];for(let cx=110;cx<=820;cx+=40)coins.push({x:cx,y:ground-30,taken:false});
+  for(const b of platforms.slice(1))for(let cx=b.x+20;cx<=b.x+b.w-20;cx+=33)coins.push({x:cx,y:b.y-30,taken:false});
+  for(let k=0;k<9;k++){const a=Math.PI*(k/8);coins.push({x:480-Math.cos(a)*190,y:250-Math.sin(a)*90,taken:false});}
+  const put=(type,ix,surf)=>items.push({type,x:ix,y:surf-10,vx:0,vy:0,t:1e9});
+  items=[];put('chest',220,345);put('chest',480,285);put('chest',730,345);put('gem',330,ground);put('gem',600,ground);put('gem',480,ground);
+  p.x=46;p.y=40;p.vx=0;p.vy=2;p.hole=null;p.on=false;p.kickT=0;
+  banner('隠し地下室','お宝を集めて 右のはしごから戻ろう',150);sound('oneup');}
+function exitBasement(){const p=player,sf=surface,h=sf.hole,wasBonus=inBonus();
+  platforms=sf.platforms;coins=sf.coins;enemies=sf.enemies;items=sf.items;spots=sf.spots;world=sf.world;camera=sf.camera;
+  holes=h?sf.holes.filter(x=>x!==h):sf.holes;inBasement=false;surface=null;parts=[];roomKind='basement';balls=[];cannonWarn=null;cannonT=Math.max(cannonT,240);
+  p.x=h?h.x+h.w+6:sf.returnX;p.y=ground-p.h;p.vy=-8;p.moveLock=300;p.on=false;p.hole=null;p.inv=Math.max(p.inv,90);p.facing=1;lastSafeX=p.x;
+  for(const e of enemies){if(e.alive&&!e.trapHole&&Math.abs(e.x+16-(p.x+17))<170){e.x+=(e.x+16>=p.x+17?1:-1)*170;e.safe=90;}}
+  popup(p.x+17,ground-70,wasBonus?'ボーナス終了！':'地上にもどった！','#fff',24,90);sound('jump');}
+// ボーナス画面（1面：コインの雨）とボーナスステージ（2面：雲の上）
+function enterBonus(kind,returnX){const p=player;
+  surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX};inBasement=true;roomKind=kind;bonusUsed[stage]=true;
+  world=W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;items=[];coins=[];
+  if(kind==='rain'){platforms=[{x:0,y:ground,w:W,h:75}];roomT=15*60;banner('ボーナス画面！','降ってくるお宝を あつめよう',130);p.x=W/2-17;}
+  else{platforms=[{x:0,y:ground,w:W,h:75},{x:110,y:385,w:130,h:18},{x:300,y:315,w:130,h:18},{x:490,y:245,w:130,h:18},{x:690,y:175,w:170,h:18},{x:560,y:395,w:120,h:18}];
+    for(let cx=80;cx<=880;cx+=40)coins.push({x:cx,y:ground-30,taken:false});
+    for(const b of platforms.slice(1))for(let cx=b.x+18;cx<=b.x+b.w-18;cx+=32)coins.push({x:cx,y:b.y-30,taken:false});
+    for(let k=0;k<7;k++){const a=Math.PI*(k/6);coins.push({x:250+Math.cos(a)*-90+90,y:250-Math.sin(a)*70,taken:false});}
+    const put=(type,ix,surf)=>items.push({type,x:ix,y:surf-10,vx:0,vy:0,t:1e9});
+    put('chest',740,175);put('chest',810,175);put('gem',555,245);put('gem',365,315);put('chest',620,395);
+    roomT=25*60;banner('ボーナスステージ！','雲の上のお宝を あつめよう',130);p.x=40;}
+  p.y=40;p.vy=2;p.vx=0;p.on=false;p.hole=null;p.kickT=0;sound('oneup');}
+function drawBonusBg(){const g=x.createLinearGradient(0,0,0,H);
+  if(roomKind==='rain'){g.addColorStop(0,'#2b1b5a');g.addColorStop(1,'#7a4fb0');}else{g.addColorStop(0,'#5fc3ff');g.addColorStop(1,'#fff3c9');}
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  if(roomKind==='rain'){for(const s of STARS){x.globalAlpha=.3+.7*Math.abs(Math.sin(Date.now()*.003+s.p));x.fillStyle='#ffe98a';x.fillRect(s.x,s.y,s.s,s.s)}x.globalAlpha=1;}
+  else{x.fillStyle='#fff';for(let i=0;i<8;i++){const cx=(i*137+Date.now()*.01)%(W+120)-60;x.beginPath();x.ellipse(cx,105+(i%3)*45,50,16,0,0,7);x.fill();}}
+  x.textAlign='center';x.font='900 36px system-ui';x.globalAlpha=.25;x.fillStyle='#fff';x.fillText(roomKind==='rain'?'BONUS':'BONUS STAGE',W/2,H/2);x.globalAlpha=1;x.textAlign='left';}
+function drawBasementBg(){
+  x.fillStyle='#2a2030';x.fillRect(0,0,W,H);
+  x.strokeStyle='#3a2e44';x.lineWidth=2;for(let yy=40,r=0;yy<ground;yy+=32,r++)for(let xx=(r%2?-32:0);xx<W;xx+=64)x.strokeRect(xx,yy,64,32);
+  x.fillStyle='#1a131f';x.fillRect(0,0,W,40);x.fillStyle='#0a0710';x.fillRect(20,0,64,40);   // 天井と入ってきた穴
+  for(const tx of[110,480,850]){x.fillStyle='#5a4030';x.fillRect(tx-4,150,8,26);const f=Math.sin(Date.now()*.02+tx)*3;ell(tx,142,9,14+f,'#ff9a3c');ell(tx,146,5,8,'#ffe27a');x.fillStyle='#ff9a3c22';x.beginPath();x.arc(tx,150,70,0,7);x.fill();}
+  // 出口のはしご
+  const lx=W-72;x.fillStyle='#ffdf5022';x.fillRect(lx-12,40,64,ground-40);x.strokeStyle='#c8913c';x.lineWidth=5;x.beginPath();x.moveTo(lx,40);x.lineTo(lx,ground);x.moveTo(lx+40,40);x.lineTo(lx+40,ground);for(let yy=60;yy<ground;yy+=28){x.moveTo(lx,yy);x.lineTo(lx+40,yy)}x.stroke();
+  x.fillStyle='#ffdf50';x.font='bold 16px system-ui';x.textAlign='center';x.fillText('↑ 地上へ',lx+20,ground-150);x.textAlign='left';}
+// ===== 時間制限 =====
+const TIME_LIMIT={1:150,2:180},BOSS_TIME=180;   // 秒（ボス戦は時間切れなし・残り時間がボーナス）
+let timeLeft=150*60,timeBonus=0,hurryShown=false;
+// ミスしたところから再開（タイムはそのまま）。時間切れの時だけステージの最初から＆タイム満タン
+function respawnHere(){const wasB=inBasement;if(inBasement)exitBasement();let rx=wasB?player.x:lastSafeX;
+  player=newPlayer(150);rocks=[];waves=[];balls=[];cannonWarn=null;cannonT=Math.max(cannonT,180);
+  if(deathCause==='時間切れ！'&&!arenaOn){rx=60;resetTimer();banner('','時間切れ！ ステージの最初から',110);}   // 時間切れはステージの最初から・タイムも満タンに戻す
+  if(arenaOn&&boss){const bc=boss.x+boss.w/2;if(Math.abs(rx+17-bc)<260)rx=bc>AX+480?AX+60:AX+860;rx=Math.max(AX+10,Math.min(AX+910,rx));}
+  for(let k=0;k<6;k++){const h=holes.find(h=>rx+28>h.x&&rx+6<h.x+h.w);if(!h)break;rx=h.x+h.w+4;}    // 穴の上には出さない
+  player.x=rx;player.y=ground-42-40;player.on=false;
+  for(const e of enemies){if(e.alive&&!e.trapHole&&Math.abs(e.x+16-(rx+17))<170){e.x+=(e.x+16>=rx+17?1:-1)*170;e.safe=90;}}   // 近くの敵は少し離す
+  camera=arenaOn?AX:Math.max(0,Math.min(world-W,rx-240));keys.jump=false;state='play';}
+function resetTimer(){timeLeft=TIME_LIMIT[stage]*60;hurryShown=false}
+function hurry(){return mode==='game'&&state==='play'&&!arenaOn&&timeLeft<=30*60}
+function stage1Rush(){return mode==='game'&&stage===1&&!inBasement?1+.3*(1-timeLeft/(TIME_LIMIT[1]*60)):1}   // 1面もだんだん速く（最後は1.3倍）
+// 残り30秒でグッと速く、残り10秒でさらに速く
+function hurryMul(){if(!hurry())return 1;return timeLeft<=10*60?1.6:1.4}
+function bossRush(){return arenaOn?1+.35*(1-timeLeft/(BOSS_TIME*60)):1}   // ボス戦はだんだん速く
+function addTimeBonus(){timeBonus=Math.ceil(timeLeft/60)*10;score+=timeBonus}
+let lastSafeX=60;
+let roomKind='basement',roomT=0,bonusUsed={},crossed1=false,leftHold=0;   // roomKind: basement=隠し地下室 / rain=ボーナス画面 / sky=ボーナスステージ
+function inBonus(){return inBasement&&roomKind!=='basement'}   // 最後に安全な地面に立っていた位置（ミスした時の再開地点）
+// ===== エンディングでも主人公を動かせる =====
+let endP=null;
+function updateEndPlayer(){
+  if(!endP)endP={x:endingRare?W/2-60:endingPair?W/2-48:W/2-17,y:ground-42,vy:0,on:true,f:1,cool:0};
+  const q=endP,vx=(keys.right?4:0)-(keys.left?4:0),oldX=q.x;
+  q.x=Math.max(0,Math.min(W-34,q.x+vx));
+  q.walking=q.x!==oldX;
+  if(q.walking){q.f=Math.sign(vx);q.stride=(q.stride||0)+Math.abs(q.x-oldX);}
+  if((keys.jump||padJump)&&q.on){q.vy=-14;q.on=false;sound('jump');}
+  q.vy=Math.min(16,q.vy+.65);q.y+=q.vy;if(q.y>=ground-42){q.y=ground-42;q.vy=0;q.on=true;}
+  if(q.cool>0)q.cool--;
+  const near=(tx,w)=>q.x+34>tx&&q.x<tx+w;
+  if(endingPair&&near(W/2+14,34)&&!q.cool){q.cool=40;popup(W/2+10,ground-80,'♥','#ff4d6d',30,60);sound('coin');}
+  if(endingRare&&near(W/2+50,80)&&!q.cool){q.cool=60;popup(W/2+90,ground-110,'なかよし！','#ffdf50',24,60);sound('coin');}
+  if(endingRare&&near(W/2-14,34)&&!q.cool){q.cool=40;popup(W/2,ground-80,'♥','#ff4d6d',30,60);sound('coin');}}
+function drawEndPlayer(){if(!endP)return;drawPlayerAt(endP.x,endP.y,endP.f,!endP.on?'jump':endP.walking?'walk':'front',endP.stride);
+  if(endT<360&&Math.floor(endT/30)%2){x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#ffffffcc';x.fillText('← → で うごける・ジャンプもできる',W/2,H-14);x.textAlign='left';}}
+// ===== 大砲の弾：ときどき画面の右から飛んでくる =====
+let balls=[],cannonWarn=null,cannonT=60*8;
+function cannonOn(){return mode==='game'&&state==='play'&&!inBasement&&!arenaOn&&!bossIntroLong()&&player.x>500}
+function updateCannon(p,oldY){
+  if(cannonOn()){cannonT--;
+    if(cannonT===60){const low=Math.random()<.6;cannonWarn={y:low?ground-18:ground-95,t:60};sound('whistle');}
+    if(cannonT<=0){const w=cannonWarn||{y:ground-18};balls.push({x:camera+W+30,y:w.y,vx:-6.5,vy:0,r:14,dead:false});cannonWarn=null;sound('cannon');cannonT=60*(7+Math.floor(Math.random()*8));}}
+  if(cannonWarn)cannonWarn.t--;
+  const hb=hitBox(p);
+  for(const b of balls){
+    if(b.dead){b.vy+=.5;b.y+=b.vy;b.x+=b.vx*.3;continue}
+    b.x+=b.vx;if(Math.random()<.5)parts.push({x:b.x+b.r,y:b.y+(Math.random()-.5)*8,vx:1+Math.random(),vy:(Math.random()-.5)*.6,life:14,max:14,col:Math.random()<.5?'#ff9a3c':'#888',s:4,g:0});
+    const nx=Math.max(hb.x,Math.min(b.x,hb.x+hb.w)),ny=Math.max(p.y,Math.min(b.y,p.y+p.h));
+    if(Math.hypot(b.x-nx,b.y-ny)<b.r){
+      if(p.vy>0&&oldY+p.h<=b.y-b.r+10){b.dead=true;b.vy=1;p.vy=-9;score+=100;popup(b.x,b.y-24,'+100','#fff',22);sound('stomp');}
+      else if(p.inv<=0&&!p.hole)die('大砲の弾に当たった！');}}
+  balls=balls.filter(b=>b.x>camera-60&&b.y<H+60);}
+function drawCannon(){if(inBasement)return;
+  for(const b of balls){ell(b.x,b.y,b.r,b.r,'#2a2a33');ell(b.x-4,b.y-5,4,4,'#8a8aa0');x.fillStyle='#ffdf50';x.fillRect(b.x+b.r-2,b.y-2,5,4);}
+  if(cannonWarn&&Math.floor(cannonWarn.t/6)%2===0){const wx=camera+W-40,wy=cannonWarn.y;x.fillStyle='#e64040';x.beginPath();x.arc(wx,wy,16,0,7);x.fill();x.fillStyle='#fff';x.font='900 22px system-ui';x.textAlign='center';x.fillText('!',wx,wy+8);x.font='bold 20px system-ui';x.fillStyle='#e64040';x.fillText('◀',wx-28,wy+7);
+    // ボタンに隠れないよう、右上にも大きく予告
+    const low=cannonWarn.y>ground-50,bx=camera+W-150,by=150;x.fillStyle='#e64040e0';x.beginPath();if(x.roundRect)x.roundRect(bx-80,by-26,190,40,10);else x.rect(bx-80,by-26,190,40);x.fill();x.fillStyle='#fff';x.font='900 22px system-ui';x.fillText(low?'！足もと注意 ◀':'！頭上注意 ◀',bx+15,by+2);x.textAlign='left';}}
+let goalSX=0,goalSY=0,balloonLift=0,balloonVy=0;
+let mode='title',demoT=0,demoIdx=0,demoLastX=0,demoStuck=0,demoHop=false,demoDodge=0;
+// デモは毎回同じ展開になるよう乱数を固定（うまく遊べる展開を選んである）。本番は普通の乱数
+const realRandom=Math.random;
+function seeded(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296}}
+let DEMO_SEEDS={1:[1,2,13,16],2:[317,398]};
+function startDemo(){mode='title';{const k=demoIdx%2===0?1:2,list=DEMO_SEEDS[k];Math.random=seeded(list[Math.floor(demoIdx/2)%list.length]);}score=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;demoT=0;demoStuck=0;
+  if(demoIdx%2===0)loadStage(1);else{loadStage(2);player.x=AX+80;player.y=ground-42;}
+  demoIdx++;bannerT=0;}
+function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
+function startGame(){mode='game';Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
+// デモ用の自動操作
+function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=false;   // デモも無敵ではない（ぶつかればミス）
+  if(p.on)demoHop=false;else if(demoHop&&p.vy<-7.5)p.vy=-7.5;   // 穴を越えるだけなら小ジャンプ
+  if(stage===2&&arenaOn&&boss){demoBossAI(p);return}
+  const pc=p.x+p.w/2,onGround=p.on&&Math.abs(p.y+p.h-ground)<3;
+  if(p.hole){if(p.on){keys.jump=true;keys.right=true;}return}
+  const foe=enemies.filter(e=>e.alive&&!e.trapHole&&e.x+16>pc&&e.x+16-pc<220&&Math.abs(e.y+e.h-ground)<6).sort((a,b)=>a.x-b.x)[0];
+  const behind=enemies.some(e=>e.alive&&!e.trapHole&&e.x+16<pc&&pc-(e.x+16)<64&&Math.abs(e.y+e.h-ground)<6);
+  const air=enemies.some(e=>e.alive&&!e.grounded&&!e.trapHole&&Math.abs(e.x+16-(pc+40))<50&&e.y<ground-40);
+  const ha=holes.filter(h=>h.x+h.w>pc-4&&h.x+h.w/2-pc<140).sort((a,b)=>a.x-b.x)[0];
+  // 空中：前の敵より低い位置に降りそうなら前進をやめる（横からぶつからない）
+  if(!p.on){const f2=enemies.find(e=>e.alive&&!e.trapHole&&e.x+16>pc-10&&e.x+16-pc<95&&Math.abs(e.y+e.h-ground)<6);
+    keys.right=!(f2&&p.vy>0&&p.y+p.h>f2.y-4);return}
+  if(!onGround){keys.right=true;return}   // 空の踏み台の上では跳ばずに歩いて降りる
+  const spot=spots.find(s=>!s.found&&s.x>pc+30&&s.x-pc<120);
+  p.facing=1;const s=digSpot(),fd=foe?foe.x-(p.x+p.w):999;
+  if(ha&&ha.stage<3&&fd>24)digHold=true;                                   // 掘りかけを完成させる
+  else if(ha&&inHole(ha).length>0){                                         // 敵が入った穴：少し待って埋める（連鎖）
+    if(s&&s.bury&&(inHole(ha).length>=2||ha.t<HOLE_T-200||fd<70))dig();
+    else if(!(s&&s.bury))keys.right=true;}
+  else if(ha&&ha.stage===3){if(foe&&foe.x>ha.x&&fd<240){/* 穴の向こうから敵が来る：落ちるのを待つ */}else{keys.right=true;if(ha.x-(p.x+p.w)<14){keys.jump=true;demoHop=true;}}}   // 空の穴は小ジャンプで越える
+  else if(fd<190&&fd>70&&s&&!s.bury)digHold=true;                          // 敵の前に穴を掘る
+  else if(fd<=70){if(fd<46){keys.jump=true;keys.right=true;demoHop=true;}}   // 近づいてきたら小ジャンプで踏む
+  else if(spot&&s&&!s.bury&&Math.abs(spot.x-(s.x+s.w/2))<16)digHold=true; // お宝を掘る
+  else if(!air)keys.right=true;                                            // 上から降ってくる敵は待つ
+  if(behind){digHold=false;keys.right=true;}                               // 後ろから来たら前へ歩いて逃げる
+  if(keys.right&&!groundAt(p.x+6))keys.jump=true;                           // 崖のぎりぎりで踏み切る
+}
+function demoBossAI(p){const b=boss,pc=p.x+p.w/2,bc=b.x+b.w/2,dx=bc-pc,dist=Math.abs(dx),dirB=dx>0?1:-1;
+  const L=AX+20,R=AX+940,spaceAway=dirB>0?pc-L:R-pc;
+  // 自分の穴には歩いて入らない
+  const move=d=>{const nx=pc+d*26;if(holes.some(h=>h.stage===3&&nx>h.x&&nx<h.x+h.w&&!inHole(h).length&&!(boss&&boss.hole===h)))return;if(d>0)keys.right=true;else if(d<0)keys.left=true};
+  if(b.st==='intro'||b.st==='dead')return;
+  if(p.hole){if(p.on){keys.jump=true;move(-dirB);}return}
+  if(b.st!=='jump'&&b.st!=='escape')demoDodge=0;
+  // 空の踏み台に乗ってしまったら、ボスと反対側の端から降りる
+  if(p.on&&p.y+p.h<ground-2&&b.st!=='stun'){const pl=platforms.find(q=>q.y<ground-1&&pc>=q.x-4&&pc<=q.x+q.w+4);if(pl){const d=(bc>pl.x+pl.w/2)?-1:1;if(d>0)keys.right=true;else keys.left=true;}return}
+  if(b.st==='stun'){if(dist>18)move(dirB);if(dist<84&&p.on)keys.jump=true;return}
+  // ボスのジャンプ：着地点を予測して離れる（逃げ場がなければ下をくぐる）
+  if(b.st==='jump'||b.st==='escape'){const top=ground-b.h,disc=b.vy*b.vy+1.4*(top-b.y);const t=disc>0?(-b.vy+Math.sqrt(disc))/.7:0,lx=Math.max(AX+48,Math.min(AX+912,bc+b.vx*t));
+    if(Math.abs(lx-pc)<120||demoDodge){if(!demoDodge){const away=lx>pc?-1:1,room=away<0?pc-L:R-pc;demoDodge=room>130?away:-away;}move(demoDodge);}   // 逃げる向きは一度決めたら変えない
+    if(waves.some(w=>Math.abs(w.x-pc)<70&&Math.sign(pc-w.x)===w.dir)&&p.on)keys.jump=true;return}
+  if(waves.some(w=>Math.abs(w.x-pc)<70&&Math.sign(pc-w.x)===w.dir)&&p.on){keys.jump=true;return}
+  const between=h=>(h.x+h.w/2-pc)*dirB>0&&(bc-(h.x+h.w/2))*dirB>0;
+  const hb=holes.find(h=>h.stage===3&&between(h)),hd=holes.find(h=>h.stage<3&&between(h));
+  if(hb){const edge=dirB>0?hb.x:hb.x+hb.w,gapToHole=Math.abs(edge-pc);p.facing=dirB;
+    if(gapToHole<40)move(-dirB);else if(gapToHole>140&&b.st!=='charge')move(dirB);}   // 穴の手前で待ち構える
+  else if(hd){p.facing=dirB;digHold=true;}
+  else if(dist>=140&&p.on&&spaceAway<170&&dist>320){move(dirB);}   // 壁ぎわは逃げ場がないので、少し前に出てから掘る
+  else if(dist>=140&&p.on){p.facing=dirB;const sp=digSpot();if(sp&&!sp.bury&&between({x:sp.x,w:sp.w}))digHold=true;else move(-dirB);}  // ボスとの間に穴を掘る
+  else{if(spaceAway>120)move(-dirB);else if(p.on&&b.st==='walk'&&dist<150){keys.jump=true;move(dirB);}}   // 近すぎる：逃げる／追い詰められたら飛び越える
+  for(const r of rocks){const g=.35,c0=r.y-(ground-13),disc=r.vy*r.vy-2*g*c0;if(disc<0)continue;const t=(-r.vy+Math.sqrt(disc))/g,lx=r.x+r.vx*t;
+    if(Math.abs(lx-pc)<80&&t<70){keys.left=keys.right=false;digHold=false;const away=lx>pc?-1:1,room=away<0?pc-L:R-pc;move(room>90?away:-away);if(!keys.left&&!keys.right&&t<14&&p.on)keys.jump=true;break;}}
+}
+function drawTitle(){
+  x.fillStyle='#0007';x.fillRect(0,0,W,H);
+  x.textAlign='center';x.lineJoin='round';
+  const bob=Math.sin(Date.now()*.003)*6;
+  x.font='900 96px system-ui';x.lineWidth=14;x.strokeStyle='#20304a';x.strokeText('DIG & HOP',W/2,175+bob);
+  const g=x.createLinearGradient(0,110,0,190);g.addColorStop(0,'#fff6a8');g.addColorStop(1,'#ffb43c');x.fillStyle=g;x.fillText('DIG & HOP',W/2,175+bob);
+  x.font='bold 30px system-ui';x.lineWidth=6;x.strokeText('よしたくんの だいぼうけん',W/2,228);x.fillStyle='#fff';x.fillText('よしたくんの だいぼうけん',W/2,228);
+  drawPlayerAt(W/2-17,246,1,'front');
+  // 「デモ」表示：上部に大きなバッジ＋画面の四隅に枠
+  const on=Math.floor(Date.now()/500)%2;
+  x.fillStyle=on?'#e64040':'#b52f2f';x.beginPath();if(x.roundRect)x.roundRect(W/2-150,18,300,52,26);else x.rect(W/2-150,18,300,52);x.fill();
+  x.fillStyle='#fff';x.font='900 30px system-ui';x.fillText((on?'● ':'　')+'デモプレイ中',W/2,55);
+  x.strokeStyle='#e64040';x.lineWidth=8;x.strokeRect(4,4,W-8,H-8);
+  x.font='bold 20px system-ui';x.fillStyle='#fff';x.fillText('STARTボタンで ゲーム開始',W/2,H-24);
+  x.textAlign='left';
+}
+
+// ===== 更新 =====
+function update(){
+if(mode==='title'){demoT++;if(state==='play')demoAI();else if(state!=='goal'&&state!=='dying')return startDemo();if(demoT>60*(stage===2?75:45))return startDemo();}
+if(bannerT>0)bannerT--;if(shake>0)shake--;updateParts();
+if(state==='ending'){endT++;updateEndPlayer();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
+if(state==='clear'){clearT++;if(clearT>240)loadStage(2);return}
+if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';gameOverMusic();}}return;}
+if(state==='goal'){goalTick++;const p=player,bx=world-120;
+  if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
+  else{if(goalTick>45){balloonVy=Math.min(4.2,balloonVy+.045);balloonLift+=balloonVy;}if(goalTick===32||goalTick%26===0)sound('burner');p.x=bx-17;p.y=ground-38-28-balloonLift;}
+  if(goalTick>230){state='clear';clearT=0;addTimeBonus();victoryMusic();}return;}
+if(state!=='play')return;
+const p=player;
+if(mode==='game'&&!bossIntroLong()&&timeLeft>0&&arenaOn&&!inBonus())timeLeft--;   // ボス戦：減るだけでミスにはならない
+else if(mode==='game'&&!bossIntroLong()&&timeLeft>0&&!inBonus()){timeLeft--;
+  if(timeLeft===30*60&&!hurryShown){hurryShown=true;banner('','あと30秒！ いそげ！',100);sound('hurry');}
+  if(timeLeft<=30*60&&timeLeft>0&&timeLeft%60===0){if(timeLeft<=10*60){tone(1175,.09,'square',.07);tone(880,.09,'square',.05,.12);}else tone(880,.06,'square',.035);}   // 残り30秒から1秒ごとにピッ（10秒からはピピッ）
+  if(timeLeft===0){die('時間切れ！');return;}}
+if(digCooldown>0)digCooldown--;
+if(digBufT>0&&--digBufT===0)digBuf=0;
+{const s=digCooldown===0&&(digBuf>0||digHold)?digSpot():null;if(s&&(digBuf>0||!s.bury)){if(digBuf>0)digBuf--;doDig();}}  // 長押しでは埋めない（タップで埋める）
+if(failMark&&--failMark.t<=0)failMark=null;
+
+// 穴のタイマー：プレイヤーやボスが中にいる穴は塞がらない
+for(const h of holes){if(p.hole===h&&(p.y+p.h<ground-2||p.x+p.w<h.x||p.x>h.x+h.w))p.hole=null;if(p.hole===h||(boss&&boss.hole===h))continue;h.t--;if(h.stage===3&&h.t<=0)buryHole(h);}
+updateItems(p);
+holes=holes.filter(h=>h.t>0);
+
+const oldX=p.x,oldY=p.y;if(p.inv>0)p.inv--;
+if(p.kickT>0){p.kickT--;p.vx=p.kickVx;if(p.on&&p.kickT<20)p.kickT=0;}   // 弾き飛ばされ中は操作より優先
+else{p.vx=(keys.right?4.4:0)-(keys.left?4.4:0);if(p.vx)p.facing=Math.sign(p.vx);}
+// 地下室・ボーナスから戻った直後は、押しっぱなしの移動を少しだけ無視（指を離せばすぐ動ける）
+if(p.moveLock>0){if(!keys.left&&!keys.right)p.moveLock=0;else{p.moveLock--;p.vx=0;}}
+if(bossIntroLong()){p.vx=0;}else if((keys.jump||padJump)&&p.on){p.vy=-16.5;p.on=false;p.jumping=true;sound('jump');}
+p.vy=Math.min(16,p.vy+.65);
+p.x=Math.max(arenaOn?AX:0,Math.min(world-p.w,p.x+p.vx));
+if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!bonusUsed[2]){if(p.x<=0&&keys.left&&p.on){leftHold++;if(leftHold===20)popup(30,ground-70,'…？','#fff',22,40);if(leftHold>45){leftHold=0;enterBonus('sky',60);return;}}else leftHold=0;}
+if(p.hole&&p.y+p.h>ground-2)clampToHole(p,p.hole);
+p.y+=p.vy;p.on=false;
+if(p.hole&&p.y+p.h<=ground-2)p.hole=null;
+if(p.hole){const floor=ground+p.hole.h;if(p.y+p.h>=floor){p.y=floor-p.h;p.vy=0;p.on=true;if(p.hole.secret&&!inBasement){enterBasement(p.hole);return;}}}
+else if(p.vy>=0){const cx=p.x+p.w/2;
+  const pit=(oldY+p.h<=ground+10&&p.y+p.h>=ground)?holes.find(h=>h.stage===3&&cx>h.x+4&&cx<h.x+h.w-4&&!trappedIn(h)):null;
+  if(pit){p.hole=pit;clampToHole(p,pit);}
+  else for(const b of platforms){if(rect(p,b)&&oldY+p.h<=b.y+10){p.y=b.y-p.h;p.vy=0;p.on=true;}}}
+
+if(p.on)p.jumping=false;
+p.walking=p.on&&!p.kickT&&p.x!==oldX;
+if(p.walking)p.stride=(p.stride||0)+Math.abs(p.x-oldX);
+
+if(!inBasement&&p.on&&!p.hole&&Math.abs(p.y+p.h-ground)<2&&groundAt(p.x+2)&&groundAt(p.x+p.w-2)&&!holes.some(h=>p.x+p.w>h.x-4&&p.x<h.x+h.w+4))lastSafeX=p.x;
+for(const coin of coins){if(!coin.taken&&Math.hypot(p.x+p.w/2-coin.x,p.y+p.h/2-coin.y)<30){coin.taken=true;score+=10;sound('coin');}}
+
+for(const e of enemies){if(!e.alive)continue;
+  if(e.trapHole){const list=inHole(e.trapHole),k=list.indexOf(e),n=list.length;e.x=e.trapHole.x+(e.trapHole.w-e.w)/2+(k-(n-1)/2)*9;e.y=ground+3;e.vy=0;continue;}
+  // 足場の端では引き返す（地面では崖に落ちない・遠くへ行きすぎない）
+  let perched=false;
+  if(e.grounded){const surfY=e.y+e.h;perched=surfY<ground-1;
+    if(perched){if(e.perchT>0&&e.x>camera-40&&e.x<camera+W+40)e.perchT--;}else{if(e.home===null)e.home=e.x;e.perchT=0;}
+    const look=e.type==='hop'?52:8,aheadOf=d=>e.x+(d>0?e.w+look:-look);
+    // 近くにプレイヤーがいたら寄ってくる（崖の向こうへは行かない）。プレイヤーが穴の中にいる時は追わない
+    const dx=p.x+p.w/2-(e.x+e.w/2);
+    e.chasing=!perched&&!p.hole&&Math.abs(dx)<420&&Math.abs(dx)>4&&p.y+p.h>=ground-90&&onSurface(aheadOf(Math.sign(dx)),surfY);
+    if(e.chasing){e.dir=Math.sign(dx);e.home=e.x;}
+    else if((!perched||e.perchT>0)&&!onSurface(aheadOf(e.dir),surfY))e.dir*=-1;
+    else if(!perched&&Math.abs(e.x-e.home)>e.range&&Math.sign(e.x-e.home)===e.dir)e.dir*=-1;}
+  else e.chasing=false;
+  if(e.type==='hop'&&e.grounded&&!(perched&&e.perchT>0)&&--e.hopT<=0){e.vy=-10.5;e.grounded=false;e.hopT=55+Math.floor(Math.random()*50);}
+  if(e.safe>0)e.safe--;
+  e.x+=e.dir*(e.kick>0?3.2:e.speed*(e.chasing?1.45:1));if(e.kick>0)e.kick--;
+  if(e.x<0||e.x>world-e.w){e.dir*=-1;e.x=Math.max(0,Math.min(world-e.w,e.x));}
+  const ecx=e.x+e.w/2;
+  const trap=e.vy>=0?holes.find(h=>h.stage===3&&ecx>h.x+3&&ecx<h.x+h.w-3&&e.y+e.h>=ground-12&&e.y+e.h<=ground+18&&!(boss&&boss.hole===h)&&inHole(h).length<HOLE_MAX):null;
+  if(trap){e.trapHole=trap;e.x=trap.x+(trap.w-e.w)/2;e.y=ground+3;e.vy=0;sound('stomp');{const n=inHole(trap).length;if(n>1){popup(trap.x+trap.w/2,ground-90,n+'匹目！','#ffdf50',26,60);tone(523+n*130,.12,'square',.07)}trap.t=Math.max(trap.t,150);}if(p.hole===trap&&p.inv<=0)die('穴に敵が落ちてきた！');continue;}
+  const foot=e.y+e.h;
+  const support=e.vy>=0?platforms.find(b=>e.x+e.w>b.x&&e.x<b.x+b.w&&foot<=b.y+12&&foot>=b.y-18):null;
+  if(support){e.y=support.y-e.h;e.vy=0;e.grounded=true;}else{e.grounded=false;e.vy=Math.min(14,e.vy+.65);e.y+=e.vy;}
+  // 崖に落ちた敵は、近くの空の踏み台に降ってきて再登場
+  if(e.y>H+100){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));
+    const pl=floats.reduce((best,b)=>!best||Math.abs(b.x+b.w/2-e.spawnX)<Math.abs(best.x+best.w/2-e.spawnX)?b:best,null);
+    e.x=pl.x+pl.w/2-e.w/2;e.y=pl.y-e.h-140;e.vy=0;e.respawns++;e.grounded=false;e.dir=e.respawns%2?1:-1;e.home=null;e.perchT=240+Math.floor(Math.random()*180);continue;}
+  if(rect(p,e)){if(oldY+p.h<=e.y+14&&p.vy>0){e.alive=false;p.vy=-9;score+=e.type==='hop'?80:50;sound('stomp');}
+    // 上から降ってきた敵が頭に当たっても、ミスにせず跳ね返す
+    else if(e.vy>1&&e.y+e.h-e.vy<=p.y+12){e.vy=-7;e.dir=(e.x+16<p.x+p.w/2)?-1:1;e.kick=30;e.safe=50;e.grounded=false;sound('bounce');popup(e.x+16,e.y-6,'ポン！','#fff',18,40);}
+    else if(p.inv<=0&&!(e.safe>0)&&rect(hitBox(p),e)){die('敵にぶつかった！');}}
+}
+
+// ボスエリア突入
+if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss();bannerT=0;timeLeft=BOSS_TIME*60;enemies.forEach(e=>e.alive=false);holes=holes.filter(h=>h.x>AX);}
+if(arenaOn&&boss)updateBoss(p,oldY);
+
+if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'){exitBasement();return;}
+if(inBonus()&&state==='play'){roomT--;
+  if(roomKind==='rain'&&roomT>20&&roomT%7===0){const r=Math.random();items.push({type:r<.03?'heart':r<.12?'gem':'coin',x:40+Math.random()*(W-80),y:-20,vx:(Math.random()-.5)*1.2,vy:1,t:300});}
+  if(roomT<=0){exitBasement();return;}}
+if(mode==='game'&&stage===1&&!inBasement&&p.on&&p.x>1450)crossed1=true;
+if(mode==='game'&&stage===1&&!inBasement&&crossed1&&!bonusUsed[1]&&p.y>H+10&&p.x+p.w/2>1190&&p.x+p.w/2<1450){enterBonus('rain',1580);return;}
+updateCannon(p,oldY);if(state!=='play')return;
+if(p.y>H+80)die('落ちてしまった！');
+if(stage===1&&!inBasement&&state==='play'&&p.x+p.w>world-158){state='goal';goalTick=0;goalSX=p.x;goalSY=p.y;balloonLift=0;balloonVy=0;p.vy=0;p.hole=null;p.facing=1;sound('jump');}
+camera=arenaOn?AX:Math.max(0,Math.min(world-W,p.x-240));}
+
+// ===== 描画 =====
+function ell(cx,cy,rx,ry,col){x.fillStyle=col;x.beginPath();x.ellipse(cx,cy,rx,ry,0,0,7);x.fill()}
+function drawCrown(cx,y,s){x.fillStyle='#ffcf28';x.beginPath();x.moveTo(cx-20*s,y);x.lineTo(cx-20*s,y-14*s);x.lineTo(cx-10*s,y-5*s);x.lineTo(cx,y-18*s);x.lineTo(cx+10*s,y-5*s);x.lineTo(cx+20*s,y-14*s);x.lineTo(cx+20*s,y);x.closePath();x.fill();x.fillStyle='#e64040';x.fillRect(cx-3*s,y-7*s,6*s,5*s)}
+// ソラ姫（オリジナルキャラ）：黒髪・水色のドレス・花かんむり
+function drawPartner(px,py,facing){const f=facing;
+  x.fillStyle='#3fc1c9';x.beginPath();x.moveTo(px+6,py+18);x.lineTo(px+28,py+18);x.lineTo(px+36,py+46);x.lineTo(px-2,py+46);x.closePath();x.fill();   // ドレス
+  x.fillStyle='#fff';x.fillRect(px+4,py+40,26,4);
+  x.fillStyle='#2b1d1a';x.beginPath();x.ellipse(px+17,py+12,14,13,0,0,7);x.fill();x.fillRect(px+(f>0?3:20),py+12,11,20);   // 髪
+  x.fillStyle='#ffd1a0';x.fillRect(px+8,py+8,18,15);                                              // 顔
+  x.fillStyle='#222';x.fillRect(px+(f===-1?11:20),py+13,3,4);x.fillStyle='#ff9bb0';x.fillRect(px+(f===-1?9:22),py+18,4,2);
+  for(let k=0;k<5;k++){x.fillStyle=['#ff6b8a','#ffd84d','#ffffff','#ff9ad5','#7fe3ff'][k];x.beginPath();x.arc(px+5+k*6,py+2,3.2,0,7);x.fill();}   // 花かんむり
+  x.fillStyle='#ff6b8a';x.beginPath();x.arc(px+17+f*14,py+30,5,0,7);x.fill();x.fillStyle='#5fbf5f';x.fillRect(px+16+f*14,py+33,2,8);}   // ブーケ
+function drawHeart(cx,cy,r,col){x.fillStyle=col;x.beginPath();x.arc(cx-r/2,cy,r/2,0,7);x.arc(cx+r/2,cy,r/2,0,7);x.fill();x.beginPath();x.moveTo(cx-r,cy+r*.15);x.lineTo(cx,cy+r*1.1);x.lineTo(cx+r,cy+r*.15);x.closePath();x.fill()}
+function drawPlayerAt(px,py,facing,pose,stride=0){
+  const walking=pose==='walk',jumping=pose==='jump';
+  const swing=walking?Math.sin(stride*.19):0;
+  const bob=walking?Math.abs(swing)*1.7:0;
+  const gold='#ffc75e',shade='#d88933',coat='#292b8b',lapel='#6462c3',hoof='#77869d';
+  const line=(color,width,ax,ay,bx,by)=>{
+    x.strokeStyle=color;x.lineWidth=width;x.beginPath();x.moveTo(ax,ay);x.lineTo(bx,by);x.stroke();
+  };
+  x.save();
+  x.translate(px+17,py+42);
+  x.scale(walking?facing:1,1);
+  x.lineCap='round';
+  if(walking){
+    line('#c6ccd9',8,-1,-13,-2-swing*7,-5-Math.max(0,swing)*3);
+    ell(-swing*7,-3-Math.max(0,swing)*3,5,3,hoof);
+    line('#e9edf3',8,2,-13,2+swing*7,-5-Math.max(0,-swing)*3);
+    ell(4+swing*7,-3-Math.max(0,-swing)*3,5,3,hoof);
+  }else{
+    line('#e9edf3',9,-5,-13,-6,-5);
+    line('#e9edf3',9,5,-13,jumping?9:6,jumping?-8:-5);
+    ell(-6,-3,5,3,hoof);
+    ell(jumping?9:6,jumping?-6:-3,5,3,hoof);
+  }
+  x.translate(0,-bob);
+  if(!walking){
+    // 正面から見て左にある腕が、よしたくんの右腕。
+    line(coat,7,-9,-23,jumping?-19:-15,jumping?-39:-19);
+    ell(jumping?-19:-16,jumping?-42:-18,4,4,hoof);
+    line(coat,7,9,-23,16,-19);
+    ell(17,-18,4,3,hoof);
+  }
+  ell(0,-19,walking?9:12,10,coat);
+  if(!walking){
+    line(lapel,3,-6,-23,-5,-12);
+    line(lapel,3,6,-23,5,-12);
+    line(gold,5,0,-24,0,-11);
+  }
+  if(walking){
+    line(lapel,6,-2,-23,-2-swing*5,-15);
+    ell(-2-swing*6,-13,3,3,hoof);
+  }
+  ell(walking?-10:-14,-38,6,3,shade);
+  if(!walking)ell(14,-38,6,3,shade);
+  ell(walking?-6:-9,-46,3,6,'#e8edf1');
+  if(!walking)ell(9,-46,3,6,'#e8edf1');
+  ell(walking?1:0,-35,walking?13:16,14,shade);
+  ell(walking?1:0,-36,walking?12:15,13,gold);
+
+  // 赤・白・黒のねじり鉢巻。
+  ell(0,-45,11,4,'#672b2c');
+  ell(-7,-46,3,3,'#e64b4f');
+  ell(-3,-44,3,3,'#fff4de');
+  ell(1,-45,3,3,'#292538');
+  ell(5,-44,3,3,'#e64b4f');
+  ell(8,-46,3,3,'#fff4de');
+  if(walking){
+    ell(6,-36,2.4,2.8,'#201f2d');
+    ell(6.6,-37,1,1,'#fff');
+    ell(11,-29,8,5,'#fff4df');
+    ell(15,-30,1.5,1,'#62515b');
+    line('#8f543f',1,10,-26,13,-26);
+  }else{
+    ell(-6,-36,2.5,2.8,'#201f2d');
+    ell(6,-36,2.5,2.8,'#201f2d');
+    ell(-5.3,-37,1,1,'#fff');
+    ell(6.7,-37,1,1,'#fff');
+    ell(0,-29,10,6,'#fff4df');
+    ell(-4,-30,1.5,1,'#62515b');
+    ell(4,-30,1.5,1,'#62515b');
+    ell(0,-25,3,1.8,'#b74a62');
+  }
+  x.restore();
+}
+function drawItem(it){const ix=it.x,iy=it.y;
+  if(it.type==='coin'){x.fillStyle='#ffcf28';x.beginPath();x.ellipse(ix,iy,8,11,0,0,7);x.fill();x.strokeStyle='#a86c00';x.lineWidth=2;x.stroke();}
+  else if(it.type==='gem'){x.fillStyle='#4fc3ff';x.beginPath();x.moveTo(ix,iy-12);x.lineTo(ix+11,iy-3);x.lineTo(ix,iy+11);x.lineTo(ix-11,iy-3);x.closePath();x.fill();x.fillStyle='#c8f0ff';x.beginPath();x.moveTo(ix,iy-12);x.lineTo(ix+5,iy-3);x.lineTo(ix-5,iy-3);x.closePath();x.fill();}
+  else if(it.type==='heart'){x.fillStyle='#ff4d6d';x.beginPath();x.arc(ix-5,iy-3,6,0,7);x.arc(ix+5,iy-3,6,0,7);x.fill();x.beginPath();x.moveTo(ix-11,iy-1);x.lineTo(ix,iy+11);x.lineTo(ix+11,iy-1);x.closePath();x.fill();}
+  else if(it.type==='chest'){x.fillStyle='#8a5a2b';x.fillRect(ix-15,iy-10,30,20);x.fillStyle='#a8743a';x.fillRect(ix-15,iy-14,30,7);x.fillStyle='#ffcf28';x.fillRect(ix-15,iy-4,30,4);x.fillRect(ix-3,iy-8,6,9);}
+  if(it.type!=='coin'&&Math.floor(Date.now()/150)%2){x.fillStyle='#fff';x.fillRect(ix+8,iy-14,3,3);}}
+function drawPopups(){x.textAlign='center';for(const q of popups){x.globalAlpha=Math.min(1,q.t/20);x.font='bold '+q.size+'px system-ui';x.lineWidth=5;x.strokeStyle='#20304a';x.strokeText(q.text,q.x,q.y);x.fillStyle=q.col;x.fillText(q.text,q.x,q.y);}x.globalAlpha=1;x.textAlign='left'}
+// 1面ゴールの熱気球（ロープで地面につながれている）
+function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=Math.sin(Date.now()*.0015)*3;
+  const firing=state==='goal'&&goalTick>28,flame=firing?(.8+Math.random()*.5):(Math.floor(Date.now()/900)%3===0?.35:0);
+  if(part==='back'){
+    if(!(state==='goal'&&goalTick>45)&&state!=='clear'){x.strokeStyle='#8a6a4a';x.lineWidth=2;x.beginPath();x.moveTo(bx-30,top+30);x.lineTo(bx-70,ground);x.moveTo(bx+30,top+30);x.lineTo(bx+70,ground);x.stroke();x.fillStyle='#5a4030';x.fillRect(bx-74,ground-6,8,8);x.fillRect(bx+66,ground-6,8,8);}
+    x.strokeStyle='#6b5a4a';x.lineWidth=2;x.beginPath();x.moveTo(bx-26+sway,cy+66);x.lineTo(bx-28,top);x.moveTo(bx+26+sway,cy+66);x.lineTo(bx+28,top);x.moveTo(bx-10+sway,cy+70);x.lineTo(bx-10,top);x.moveTo(bx+10+sway,cy+70);x.lineTo(bx+10,top);x.stroke();
+    // 球皮（ストライプ）
+    x.save();x.beginPath();x.ellipse(bx+sway,cy,64,74,0,0,7);x.clip();
+    const cols=['#ff5a5a','#ffe14d','#4fc3ff','#ffffff','#ff5a5a','#ffe14d','#4fc3ff'];for(let k=0;k<7;k++){x.fillStyle=cols[k];x.fillRect(bx-64+sway+k*18.3,cy-80,18.4,160);}
+    x.fillStyle='#ffffff55';x.beginPath();x.ellipse(bx-22+sway,cy-30,14,28,-.3,0,7);x.fill();x.restore();
+    x.fillStyle='#d94a4a';x.beginPath();x.moveTo(bx-30+sway,cy+64);x.lineTo(bx+30+sway,cy+64);x.lineTo(bx+16+sway,cy+82);x.lineTo(bx-16+sway,cy+82);x.closePath();x.fill();
+    if(flame>0){x.fillStyle='#ff9a3c';x.beginPath();x.moveTo(bx-9,top-6);x.quadraticCurveTo(bx,top-6-48*flame,bx+9,top-6);x.fill();x.fillStyle='#ffe27a';x.beginPath();x.moveTo(bx-4,top-6);x.quadraticCurveTo(bx,top-6-28*flame,bx+4,top-6);x.fill();}
+    x.fillStyle='#444';x.fillRect(bx-6,top-8,12,6);
+  }else{
+    x.fillStyle='#a8743a';x.fillRect(bx-30,top,60,38);x.strokeStyle='#7a5226';x.lineWidth=2;for(let k=1;k<4;k++){x.beginPath();x.moveTo(bx-30,top+k*9.5);x.lineTo(bx+30,top+k*9.5);x.stroke();}for(let k=1;k<6;k++){x.beginPath();x.moveTo(bx-30+k*10,top);x.lineTo(bx-30+k*10,top+38);x.stroke();}
+    x.fillStyle='#5a3a1a';x.fillRect(bx-32,top-3,64,6);
+  }}
+function drawEnemy(e){
+  if(e.type==='hop'){
+    x.strokeStyle='#245f30';x.lineWidth=3;const legY=e.grounded?e.y+e.h:e.y+e.h+5;
+    x.beginPath();x.moveTo(e.x+9,e.y+22);x.lineTo(e.x+5,e.y+27);x.lineTo(e.x+10,legY);x.moveTo(e.x+23,e.y+22);x.lineTo(e.x+27,e.y+27);x.lineTo(e.x+22,legY);x.stroke();
+    ell(e.x+e.w/2,e.y+13,e.w/2,13,'#3e9e52');
+    x.fillStyle='#fff';x.fillRect(e.x+7,e.y+7,6,7);x.fillRect(e.x+19,e.y+7,6,7);
+    x.fillStyle='#222';x.fillRect(e.x+(e.dir>0?10:7),e.y+10,3,4);x.fillRect(e.x+(e.dir>0?22:19),e.y+10,3,4);
+  }else{
+    x.fillStyle='#b64b65';x.fillRect(e.x,e.y+8,e.w,e.h-8);x.fillStyle='#fff';x.fillRect(e.x+6,e.y+14,6,7);x.fillRect(e.x+20,e.y+14,6,7);x.fillStyle='#222';x.fillRect(e.x+9,e.y+17,3,4);x.fillRect(e.x+23,e.y+17,3,4);
+  }
+}
+function drawBoss(b){
+  if(b.st==='dead'&&b.t%6<3)return;if(b.st==='intro'&&!b.short&&b.phase==='rumble')return;
+  const fl=b.flash>0&&b.flash%6<3,cx=b.x+b.w/2,d=b.dir,y=b.y,stun=b.st==='stun';
+  x.save();
+  if(b.spin){const ry=y+b.h/2;x.translate(cx,ry);x.rotate(b.spin);x.translate(-cx,-ry);}
+  if(stun&&b.hole){x.beginPath();x.rect(b.x-80,-2000,b.w+160,ground+2000);x.rect(b.hole.x,ground,b.hole.w,b.hole.h);x.clip();}
+  ell(cx-26,y+b.h-6,18,9,fl?'#fff':'#4a2f22');ell(cx+26,y+b.h-6,18,9,fl?'#fff':'#4a2f22');
+  ell(cx,y+50,48,40,fl?'#fff':(b.st==='windup'&&b.t%8<4?'#8a4a30':'#6b4430'));
+  ell(cx+d*6,y+60,28,25,fl?'#fff':'#c99a6e');
+  ell(cx-d*44,y+58,11,9,'#f2a7a0');ell(cx+d*46,y+56,12,9,'#f2a7a0');
+  // ドリルの鼻
+  x.fillStyle='#c0c8d8';x.beginPath();x.moveTo(cx+d*30,y+30);x.lineTo(cx+d*66,y+40);x.lineTo(cx+d*30,y+50);x.closePath();x.fill();
+  x.strokeStyle='#7b8496';x.lineWidth=2;x.beginPath();for(let k=0;k<3;k++){const xx=cx+d*(38+k*9);x.moveTo(xx,y+33+k*2.5);x.lineTo(xx,y+47-k*2.5)}x.stroke();
+  // 目
+  if(stun||b.st==='dead'){x.strokeStyle='#222';x.lineWidth=3;x.beginPath();for(const ex of[cx+d*4,cx+d*22]){x.moveTo(ex-5,y+24);x.lineTo(ex+5,y+34);x.moveTo(ex+5,y+24);x.lineTo(ex-5,y+34)}x.stroke();}
+  else{ell(cx+d*4,y+29,6,7,'#fff');ell(cx+d*22,y+29,6,7,'#fff');x.fillStyle='#222';x.fillRect(cx+d*4+d*1-1.5,y+28,3,5);x.fillRect(cx+d*22+d*1-1.5,y+28,3,5);
+    x.strokeStyle='#2a1810';x.lineWidth=3;x.beginPath();x.moveTo(cx+d*-4,y+18);x.lineTo(cx+d*10,y+22);x.moveTo(cx+d*16,y+22);x.lineTo(cx+d*30,y+17);x.stroke();}
+  drawCrown(cx-d*4,y+12,1.1);
+  x.restore();
+  if(stun){for(let k=0;k<3;k++){const a=b.t*.12+k*2.1;x.fillStyle='#ffdf50';x.font='bold 18px system-ui';x.fillText('★',cx+Math.cos(a)*36-8,y-6+Math.sin(a)*8)}}
+}
+function drawSky(){
+  let sky=x.createLinearGradient(0,0,0,H);
+  if(stage===2){sky.addColorStop(0,'#ff9f6b');sky.addColorStop(.55,'#c8709a');sky.addColorStop(1,'#5b3e7e');}
+  else{sky.addColorStop(0,'#71c7ff');sky.addColorStop(1,'#e1f8ff');}
+  x.fillStyle=sky;x.fillRect(0,0,W,H);
+  x.fillStyle=stage===2?'#ffd6c4':'#fff';
+  for(let i=0;i<22;i++){let cx=(i*257-camera*.25)%(W+220);if(cx< -100)cx+=W+220;x.beginPath();x.ellipse(cx,85+(i%4)*48,55,18,0,0,7);x.fill();}
+}
+function drawArenaBg(){
+  x.fillStyle='#3a2848';x.fillRect(AX,150,960,ground-150);
+  for(let xx=AX;xx<AX+960;xx+=80)x.fillRect(xx,118,44,34);
+  x.strokeStyle='#4f3a64';x.lineWidth=2;
+  for(let yy=150,r=0;yy<ground;yy+=30,r++)for(let xx=AX+(r%2?-30:0);xx<AX+960;xx+=60)x.strokeRect(Math.max(AX,xx),yy,Math.min(60,AX+960-Math.max(AX,xx)),30);
+  for(const tx of[AX+110,AX+850]){x.fillStyle='#5a4030';x.fillRect(tx-4,250,8,28);const f=Math.sin(Date.now()*.02+tx)*3;ell(tx,242+f*.3,9,14+f,'#ff9a3c');ell(tx,246,5,8,'#ffe27a');}
+}
+function draw(){
+  if(state==='ending'){drawEnding();return}
+  x.save();if(shake>0)x.translate((realRandom()-.5)*shake*.8,(realRandom()-.5)*shake*.8);
+  if(inBasement){if(roomKind==='basement')drawBasementBg();else drawBonusBg();}else drawSky();
+  x.save();x.translate(-camera,0);
+  if(!inBasement)for(let i=0;i<world/300;i++){x.fillStyle=stage===2?'#7a5f94':'#88c888';x.beginPath();x.arc(i*300+90,ground+50,115,Math.PI,0);x.fill();}
+  if(stage===2&&!inBasement)drawArenaBg();
+  for(const b of platforms){x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
+  // ボス登場：地面に広がるひび割れ
+  if(bossIntroLong()&&boss.phase==='rumble'){const cx=boss.x+boss.w/2,L=boss.pt/80;x.strokeStyle='#2a1810';x.lineWidth=3;x.beginPath();
+    for(const [dx,dy] of [[-1,.3],[1,.25],[-.6,.8],[.7,.9],[.1,1]]){x.moveTo(cx,ground+2);x.lineTo(cx+dx*70*L,ground+2+dy*30*L);x.lineTo(cx+dx*110*L,ground+4+dy*55*L);}x.stroke();}
+  // 隠し場所の目印：土に小さなひび割れ（よく見ないと気づかない）
+  if(!inBasement&&!secret.used&&!holes.some(h=>h.secret)){const sx=secret.x;x.strokeStyle='#5e3a22';x.lineWidth=2;x.beginPath();x.moveTo(sx-9,ground+20);x.lineTo(sx-2,ground+29);x.lineTo(sx-6,ground+37);x.moveTo(sx-2,ground+29);x.lineTo(sx+7,ground+26);x.lineTo(sx+10,ground+34);x.stroke();}
+  for(const h of holes){if(h.secret&&h.stage===3){const g=.5+Math.sin(Date.now()*.008)*.3;x.fillStyle=`rgba(255,223,80,${g*.35})`;x.fillRect(h.x-6,ground-14,h.w+12,14);}}
+  for(const h of holes){const depth=h.stage===3?h.h:h.stage*h.h/4;x.fillStyle='#241922';x.fillRect(h.x,h.y,h.w,depth);x.fillStyle='#68422d';x.fillRect(h.x,h.y+depth-4,h.w,4);x.strokeStyle='#dfb06e';x.lineWidth=2;x.strokeRect(h.x,h.y,h.w,depth);if(h.stage<3){x.fillStyle='#fff';x.font='bold 15px system-ui';x.fillText(h.stage+'/3',h.x+h.w/2-15,h.y-8);}else if(!(boss&&boss.hole===h)){x.fillStyle='#0004';x.fillRect(h.x+4,h.y-11,h.w-8,5);x.fillStyle=player.hole===h?'#5fc8ff':(h.t<90?'#ff655e':'#ffdf50');x.fillRect(h.x+4,h.y-11,(h.w-8)*Math.min(1,h.t/HOLE_T),5);}
+    if(h.secret&&h.stage===3){x.strokeStyle='#ffdf50';x.lineWidth=3;x.strokeRect(h.x,h.y,h.w,h.h);x.strokeStyle='#c8913c';x.beginPath();x.moveTo(h.x+14,h.y+4);x.lineTo(h.x+14,h.y+h.h);x.moveTo(h.x+h.w-14,h.y+4);x.lineTo(h.x+h.w-14,h.y+h.h);for(let yy=h.y+12;yy<h.y+h.h;yy+=10){x.moveTo(h.x+14,yy);x.lineTo(h.x+h.w-14,yy)}x.stroke();}
+    // 連鎖バッジ：何匹入っているか・埋めたら何点か・あと何匹で倍率が上がるか
+    const n=inHole(h).length;if(n>0){const cx=h.x+h.w/2,by=h.y-46,pulse=1+Math.sin(Date.now()*.012)*.06;
+      x.save();x.translate(cx,by);x.scale(pulse,pulse);x.fillStyle=n>1?'#ff9a3c':'#20304acc';x.beginPath();x.roundRect?x.roundRect(-46,-20,92,30,10):x.rect(-46,-20,92,30);x.fill();
+      x.fillStyle='#fff';x.textAlign='center';x.font='bold 18px system-ui';x.fillText(n+'匹 ×'+n+' = '+(100*n*n),0,1);x.restore();
+      x.textAlign='center';x.font='bold 13px system-ui';x.lineWidth=4;x.strokeStyle='#20304a';const sub=n<HOLE_MAX?'もう1匹で ×'+(n+1)+'！':'MAX！ 埋めよう';x.strokeText(sub,cx,by+26);x.fillStyle='#ffdf50';x.fillText(sub,cx,by+26);x.textAlign='left';}}
+  // お宝のキラキラ
+  for(const s of spots){if(s.found)continue;const tw=(Date.now()*.006+s.x)%6.28;for(let k=0;k<3;k++){const a=tw+k*2.1,sx=s.x+Math.cos(a)*16,sy=ground+4+Math.sin(a*1.3)*5,r=2+Math.abs(Math.sin(a*2))*3;x.fillStyle=k===0?'#fff':'#ffe98a';x.beginPath();x.moveTo(sx,sy-r*2);x.lineTo(sx+r*.6,sy);x.lineTo(sx,sy+r*2);x.lineTo(sx-r*.6,sy);x.closePath();x.fill();x.beginPath();x.moveTo(sx-r*2,sy);x.lineTo(sx,sy+r*.6);x.lineTo(sx+r*2,sy);x.lineTo(sx,sy-r*.6);x.closePath();x.fill();}}
+  // 掘る位置のガイド（点線）と、掘れなかった時の×
+  if(state==='play'){const s=digSpot();
+    if(s&&s.bury){const h=s.bury;x.save();x.setLineDash([6,5]);x.strokeStyle='#ffdf50';x.lineWidth=3;x.strokeRect(h.x-2,ground-2,h.w+4,h.h+4);x.restore();x.textAlign='center';x.font='bold 13px system-ui';x.fillStyle='#ffdf50';x.fillText('掘るで埋める',h.x+h.w/2,ground+h.h+18);x.textAlign='left';}
+    else if(s&&!s.hole){x.save();x.setLineDash([6,5]);x.strokeStyle='#ffffffaa';x.lineWidth=2;x.strokeRect(s.x+1,ground+2,s.w-2,10);x.restore();}}
+  if(failMark){x.globalAlpha=Math.min(1,failMark.t/12);x.strokeStyle='#ff4d4d';x.lineWidth=5;x.beginPath();x.moveTo(failMark.x-10,ground-8);x.lineTo(failMark.x+10,ground+12);x.moveTo(failMark.x+10,ground-8);x.lineTo(failMark.x-10,ground+12);x.stroke();x.globalAlpha=1;}
+  for(const a of coins){if(a.taken)continue;x.fillStyle='#ffcf28';x.beginPath();x.ellipse(a.x,a.y,11,15,0,0,7);x.fill();x.strokeStyle='#a86c00';x.lineWidth=3;x.stroke();}
+  for(const e of enemies){if(!e.alive||e.trapHole)continue;
+    // 空中の敵は地面に影を出す（どこに落ちてくるか分かる）
+    if(!e.grounded&&e.y+e.h<ground-16&&platforms.some(b=>b.y===ground&&e.x+16>b.x&&e.x+16<b.x+b.w)){const s=Math.max(.3,1-(ground-e.y-e.h)/400);x.fillStyle='#0004';x.beginPath();x.ellipse(e.x+16,ground+2,16*s,4*s,0,0,7);x.fill();}
+    // もうすぐ踏み台から降りる敵は「！」
+    if(e.grounded&&e.y+e.h<ground-1&&e.perchT>0&&e.perchT<75){x.fillStyle='#ff4d4d';x.font='bold 22px system-ui';x.fillText('!',e.x+12,e.y-6-Math.abs(Math.sin(e.perchT*.3))*5);}}
+  for(const e of enemies){if(!e.alive)continue;if(e.trapHole){x.save();x.beginPath();x.rect(e.trapHole.x,ground,e.trapHole.w,36);x.clip();}drawEnemy(e);if(e.trapHole)x.restore();}
+  if(stage===1&&!inBasement)drawBalloon('back');
+  if(boss)drawBoss(boss);
+  drawCannon();
+  for(const r of rocks){ell(r.x,r.y,r.r,r.r,'#7d7d86');ell(r.x-4,r.y-4,4,4,'#a9a9b3');}
+  for(const w of waves){x.fillStyle='#e0b070';x.beginPath();x.moveTo(w.x-16,ground);x.quadraticCurveTo(w.x,ground-38,w.x+16,ground);x.fill();ell(w.x,ground-6,10,6,'#fff3');}
+  for(const it of items){if(it.t<120&&Math.floor(it.t/6)%2)continue;drawItem(it)}
+  const p=player;
+  const pose=state==='goal'||state==='clear'?'front':state==='play'&&p.jumping&&!p.on?'jump':state==='play'&&p.walking?'walk':'front';
+  x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
+  drawPlayerAt(p.x,p.y,p.facing,pose,p.stride);
+  x.globalAlpha=1;
+  if(stage===1&&!inBasement)drawBalloon('front');
+  drawParts();drawPopups();
+  if(arenaOn){x.fillStyle='#2a1d36';x.fillRect(AX-24,140,28,ground-140);}
+  x.restore();
+  // HUD
+  x.fillStyle=inBasement?'#fff':stage===2?'#2a1a30':'#20304a';x.font='bold 24px system-ui';x.fillText('SCORE '+score,22,38);x.fillText('♥ × '+lives,220,38);x.fillText('STAGE '+stage,330,38);if(spots.length&&!arenaOn)x.fillText('💎 '+spots.filter(s=>s.found).length+'/'+spots.length,470,38);
+  if(mode==='game'){const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+    // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
+    const bx0=arenaOn?440:600,by0=6,bw=arenaOn?140:170,bh=46;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
+    x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 13px system-ui';x.fillText(arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+19);
+    x.fillStyle='#fff';x.font='900 32px system-ui';x.textAlign='right';x.fillText(String(sec),bx0+bw-14,by0+37);x.textAlign='left';x.restore();}
+  if(!arenaOn&&!inBasement)x.fillText(stage===1?'GOAL →':'BOSS →',805,38);
+  x.font='16px system-ui';
+  const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':'ボーナス！ 時間内に たくさん集めよう'):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  if(!bossIntroLong())x.fillText(hint,22,65);
+  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){x.font='bold 16px system-ui';x.fillText('モグラ大王 ドリモグ',590,30);x.fillStyle='#0006';x.fillRect(590,38,300,16);x.fillStyle='#e64040';x.fillRect(592,40,296*boss.hp/3,12);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(590,38,300,16);}
+  x.restore();
+  // ボス登場の演出（映画のような黒帯と名前のカットイン）
+  if(bossIntroLong()){const T=boss.t,bar=Math.min(1,T/25)*46;x.fillStyle='#000';x.fillRect(0,0,W,bar);x.fillRect(0,H-bar,W,bar);
+    x.textAlign='center';
+    if(boss.phase==='rumble'){x.globalAlpha=.5+.5*Math.abs(Math.sin(T*.25));x.font='900 54px system-ui';x.lineWidth=8;x.strokeStyle='#20304a';x.fillStyle='#ffb43c';const jx=(realRandom()-.5)*6;x.strokeText('ゴゴゴゴ…',W/2+jx,190);x.fillText('ゴゴゴゴ…',W/2+jx,190);x.globalAlpha=1;}
+    if(boss.phase==='roar'){const P=boss.pt,k=Math.min(1,P/18),e=1-Math.pow(1-Math.max(0,Math.min(1,(P-10)/22)),3),out=P>95?Math.min(1,(P-95)/20):0;
+      x.globalAlpha=1-out;x.fillStyle='#000a';x.fillRect(0,175,W*k,150);x.fillStyle='#e64040';x.fillRect(0,175,W*k,6);x.fillRect(W*(1-k),319,W*k,6);
+      if(P>10){x.font='bold 26px system-ui';x.fillStyle='#ffdf50';x.fillText('谷の 支配者',W/2-(1-e)*500,222);
+        x.font='900 84px system-ui';x.lineWidth=10;x.strokeStyle='#5e1010';x.fillStyle='#fff';const tx=W/2+(1-e)*700;x.strokeText('モグラ大王 ドリモグ',tx,300);x.fillText('モグラ大王 ドリモグ',tx,300);}
+      x.globalAlpha=1;}
+    x.textAlign='left';}
+  // バナー・オーバーレイ
+  x.textAlign='center';
+  if(bannerT>0&&state==='play'&&!paused&&(bannerText||bannerSub)){x.globalAlpha=Math.min(1,bannerT/30);x.lineWidth=6;x.strokeStyle='#20304a';x.fillStyle='#fff';
+    if(bannerText){x.font='bold 52px system-ui';x.strokeText(bannerText,W/2,210);x.fillText(bannerText,W/2,210);}
+    x.font='bold 28px system-ui';x.strokeText(bannerSub,W/2,bannerText?258:200);x.fillText(bannerSub,W/2,bannerText?258:200);x.globalAlpha=1;}
+  if(state==='goal'){x.fillStyle='#20304a';x.font='bold 30px system-ui';x.fillText('GOAL!',W/2,110);}
+  // ミスの理由を表示
+  if((state==='dying'||state==='lose')&&deathCause){x.font='bold 30px system-ui';x.lineWidth=6;x.strokeStyle='#20304a';x.fillStyle='#ff8a8a';const yy=state==='lose'?150:200;x.strokeText(deathCause,W/2,yy);x.fillText(deathCause,W/2,yy);}
+  if(state==='clear'){x.fillStyle='#0008';x.fillRect(0,0,W,H);x.fillStyle='#ffdf50';x.font='bold 56px system-ui';x.fillText('STAGE 1 CLEAR!',W/2,215);x.fillStyle='#fff';x.font='bold 26px system-ui';x.fillText('TIME BONUS  +'+timeBonus,W/2,265);x.font='24px system-ui';x.fillText('つぎは 大王の谷へ…',W/2,310);}
+  if(state==='lose'){x.fillStyle='#0009';x.fillRect(0,0,W,H);x.fillStyle='white';x.font='bold 54px system-ui';x.fillText('ゲームオーバー',W/2,235);x.font='26px system-ui';x.fillText(stage===2?'タップで ステージ2から再挑戦':'画面をタップ / Rキーで再挑戦',W/2,295);}
+  x.textAlign='left';
+}
+function creditsY(){return H+40-endT*.75}
+function endingDone(){return creditsY()+credits().length*46<110}
+function drawMoleFriend(cx,y,s,t){x.save();x.translate(cx,y);x.scale(s,s);
+  ell(-22,82,16,8,'#4a2f22');ell(22,82,16,8,'#4a2f22');ell(0,48,46,38,'#6b4430');ell(-4,58,27,24,'#c99a6e');
+  const wave=Math.sin(t*.2)*10;ell(42,40-wave,12,9,'#f2a7a0');ell(-44,56,11,9,'#f2a7a0');   // 手をふる
+  x.fillStyle='#c0c8d8';x.beginPath();x.moveTo(-28,30);x.lineTo(-60,38);x.lineTo(-28,46);x.closePath();x.fill();
+  x.strokeStyle='#2a1810';x.lineWidth=3;x.beginPath();x.arc(-6,30,5,Math.PI*1.1,Math.PI*1.9);x.moveTo(-17,30);x.arc(-22,30,5,Math.PI*1.1,Math.PI*1.9);x.stroke();  // にっこり目
+  x.beginPath();x.arc(-12,44,9,.2*Math.PI,.8*Math.PI);x.stroke();ell(-30,40,5,3,'#ff9bb0');ell(6,40,5,3,'#ff9bb0');
+  x.restore();drawCrown(cx-4*s,y+12*s,1.1*s);}
+function drawRainbow(){const cols=['#ff5a5a','#ffa43c','#ffe14d','#6fdc6f','#4fc3ff','#7a7aff','#c86bff'];x.globalAlpha=.55;cols.forEach((c,i)=>{x.strokeStyle=c;x.lineWidth=12;x.beginPath();x.arc(W/2,ground+60,330-i*12,Math.PI,0);x.stroke();});x.globalAlpha=1}
+function drawEnding(){
+  const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b1030');g.addColorStop(1,'#3a2a5a');x.fillStyle=g;x.fillRect(0,0,W,H);
+  for(const s of STARS){x.globalAlpha=.35+.65*Math.abs(Math.sin(endT*.03+s.p));x.fillStyle='#fff';x.fillRect(s.x,s.y,s.s,s.s)}x.globalAlpha=1;
+  drawParts();
+  x.fillStyle='#2d5a3a';x.fillRect(0,ground,W,H-ground);x.fillStyle='#3f7a4f';x.fillRect(0,ground,W,10);
+  const px=W/2-17,py=ground-42-Math.abs(Math.sin(endT*.07))*16;
+  if(endingRare){drawRainbow();const jump=k=>Math.abs(Math.sin(endT*.13+k))*18;
+    drawEndPlayer();
+    drawPartner(W/2-14,ground-46-jump(1),endP&&endP.x+17<W/2+3?-1:1);
+    drawMoleFriend(W/2+90,ground-88*.75-jump(2),.75,endT);
+    x.textAlign='center';const on=Math.floor(endT/20)%2;x.font='900 30px system-ui';x.lineWidth=6;x.strokeStyle='#7a4a00';x.fillStyle=on?'#ffe14d':'#fff6a8';x.strokeText('★ RARE ENDING ★',W/2,48);x.fillText('★ RARE ENDING ★',W/2,48);x.textAlign='left';
+  }else if(endingPair){const bx=W/2-48,by=ground-42-Math.abs(Math.sin(endT*.06))*8,py2=ground-46-Math.abs(Math.sin(endT*.06+.5))*8;
+    // 花のアーチ
+    x.strokeStyle='#fff8';x.lineWidth=6;x.beginPath();x.arc(W/2,ground,120,Math.PI,0);x.stroke();for(let k=0;k<=12;k++){const a=Math.PI+k*Math.PI/12;x.fillStyle=['#ff9ad5','#fff','#ffd84d'][k%3];x.beginPath();x.arc(W/2+Math.cos(a)*120,ground+Math.sin(a)*120,6,0,7);x.fill();}
+    drawEndPlayer();drawPartner(W/2+14,py2,endP&&endP.x+17>W/2+31?1:-1);
+    const hb=1+Math.sin(endT*.12)*.15;drawHeart(W/2,ground-100-Math.sin(endT*.05)*6,13*hb,'#ff4d6d');
+  }else{drawEndPlayer();}
+  x.textAlign='center';x.fillStyle='#fff';x.shadowColor='#000';x.shadowBlur=6;
+  const sy=creditsY();
+  credits().forEach((l,i)=>{const y=sy+i*46;if(y>-40&&y<ground-60){x.font=(i===0||l.startsWith('—'))?'bold 34px system-ui':'26px system-ui';x.fillText(l,W/2,y)}});
+  if(endingDone()){x.font='bold 64px system-ui';x.fillStyle='#ffdf50';x.fillText('THE END',W/2,190);x.fillStyle='#fff';x.font='bold 28px system-ui';x.fillText('FINAL SCORE  '+score,W/2,245);x.font='22px system-ui';if(Math.floor(endT/30)%2)x.fillText('タップで もういちど あそぶ',W/2,300);}
+  x.shadowBlur=0;x.textAlign='left';
+}
+
+// 固定60fps：120Hz画面のスマホでも速くならない
+// ===== 一時停止（ゲーム中に画面をタップ） =====
+let paused=false;
+function canPause(){return mode==='game'&&state==='play'}
+function clearInput(){keys.left=keys.right=keys.jump=false;padJump=false;digHold=false;digBuf=0;document.querySelectorAll('.on').forEach(el=>el.classList.remove('on'))}
+function setPause(on){if(on&&!canPause())return;if(paused===on)return;paused=on;clearInput();if(on)tone(520,.08,'square',.05);else tone(780,.08,'square',.05);}
+function drawPause(){x.fillStyle='#0009';x.fillRect(0,0,W,H);x.textAlign='center';x.fillStyle='#fff';x.font='900 72px system-ui';x.fillText('PAUSE',W/2,250);
+  x.font='bold 24px system-ui';x.fillText('画面をタップで さいかい',W/2,305);x.font='18px system-ui';x.fillStyle='#cfd8ea';x.fillText('SCORE '+score+'　　♥ × '+lives,W/2,350);x.textAlign='left';}
+const STEP=1000/60;let last=0,acc=0;
+function loop(t){if(!last)last=t;acc+=Math.min(100,t-last);last=t;if(paused)acc=0;while(acc>=STEP){update();acc-=STEP;}mp3LoopCheck();draw();if(mode==='title')drawTitle();if(paused)drawPause();requestAnimationFrame(loop)}
+toTitle();
+requestAnimationFrame(loop);
+
+// キーボード
+document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(mode==='title'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose')retry();else reset()}});
+document.addEventListener('keyup',e=>{let k=e.key.toLowerCase();if(['arrowleft','a'].includes(k))keys.left=false;if(['arrowright','d'].includes(k))keys.right=false;if([' ','arrowup','w'].includes(k))keys.jump=false});
+
+// 方向パッド：下段で移動、上段（↖↗）でジャンプしながら移動。指を離さずスライドで切り替え
+const dpad=document.getElementById('dpad'),[dul,dur,dl,dr]=dpad.children;let dpadId=null;
+function dpadSet(e){const r=dpad.getBoundingClientRect(),right=e.clientX>r.left+r.width/2,up=e.clientY<dul.getBoundingClientRect().bottom;keys.left=!right;keys.right=right;padJump=up;dl.classList.toggle('on',!right&&!up);dr.classList.toggle('on',right&&!up);dul.classList.toggle('on',!right&&up);dur.classList.toggle('on',right&&up)}
+function dpadEnd(e){if(e.pointerId!==dpadId)return;dpadId=null;keys.left=keys.right=false;padJump=false;for(const s of dpad.children)s.classList.remove('on')}
+dpad.addEventListener('pointerdown',e=>{e.preventDefault();if(mode==='title')return;unlockAudio();dpadId=e.pointerId;try{dpad.setPointerCapture(e.pointerId)}catch(_){}dpadSet(e)});
+dpad.addEventListener('pointermove',e=>{if(e.pointerId===dpadId)dpadSet(e)});
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>dpad.addEventListener(ev,dpadEnd));
+
+// ボタン（マルチタッチ対応）
+function holdButton(el,down,up){let id=null;el.addEventListener('pointerdown',e=>{e.preventDefault();if(mode==='title')return;unlockAudio();id=e.pointerId;try{el.setPointerCapture(id)}catch(_){}el.classList.add('on');down()});const end=e=>{if(e.pointerId!==id)return;id=null;el.classList.remove('on');up()};['pointerup','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,end))}
+holdButton(document.getElementById('jump'),()=>keys.jump=true,()=>keys.jump=false);
+holdButton(document.getElementById('dig'),()=>{dig();},()=>{}); // 1タップにつき1回だけ掘る。デモAIの自動掘削は維持
+
+c.addEventListener('pointerdown',()=>{if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone())toTitle();else if(canPause())setPause(true);});
+
+// スクロール・ズーム・長押しメニューを防止
+document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturestart',e=>e.preventDefault());
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('dblclick',e=>e.preventDefault());
+
+// アプリ切替時に入力をリセット
+document.addEventListener('visibilitychange',()=>{if(document.hidden)setPause(true);try{if(!document.hidden)unlockAudio()}catch(_){}keys.left=keys.right=keys.jump=false;padJump=false;digHold=false;last=0;acc=0;document.querySelectorAll('.on').forEach(el=>el.classList.remove('on'))});
+
+// スタートボタン（click で開始：iPhoneの音もこの操作で鳴らせる）
+document.getElementById('startBtn').addEventListener('click',e=>{e.stopPropagation();startGame()});
+
+// 音楽ON/OFFボタン（設定は次回も保持）
+const mb=document.getElementById('music');
+function setMusic(on){musicOn=on;mb.textContent=on?'🎵':'🔇';mb.classList.toggle('off',!on);try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02)}
+mb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();unlockAudio();setMusic(!musicOn)});
+setMusic(musicOn);
+
+// あらかじめ用意したMP3とオリジナルBGMを切り替える。
+const changeBgm=document.getElementById('changeBgm');
+function updateBgmButton(){
+  const current=mp3Enabled?'アレンジ曲':'ファミコン風',next=mp3Enabled?'ファミコン風':'アレンジ曲';
+  changeBgm.replaceChildren();
+  const status=document.createElement('small');status.textContent='現在：'+current;
+  changeBgm.append(status,document.createTextNode('♫ BGM変更'));
+  changeBgm.setAttribute('aria-label','BGM変更。現在：'+current+'。'+next+'に切り替える');
+  changeBgm.title=next+'に切り替える';
+  changeBgm.setAttribute('aria-pressed',String(mp3Enabled));
+}
+changeBgm.addEventListener('click',e=>{
+  e.stopPropagation();unlockAudio();
+  if(mp3Cur){mp3Halt(mp3Cur);mp3Cur=null}
+  mp3Enabled=!mp3Enabled;
+  curSong=null;bgmNext=0;bgmStep=0;
+  if(mp3Enabled){
+    setMusic(true);
+    // 再生要求とAudioContextの復帰をクリック処理内で行い、iOSの操作制限に対応。
+    unlockAudio();
+    const key=mp3Key(currentSong());
+    if(key&&!paused&&mode==='game'&&!document.hidden){
+      const m=mp3Get(key);mp3Load(m);mp3Cur=key;m.started=true;
+      if(m.engine==='el')mp3PlayEl(m);
+    }
+  }
+  updateBgmButton();bgmTick();
+});
+updateBgmButton();
+
+// 全画面ボタン（対応端末のみ：主にAndroid）
+const fs=document.getElementById('fs'),root=document.documentElement;
+if(root.requestFullscreen&&document.fullscreenEnabled){fs.style.display='block';fs.addEventListener('click',async()=>{try{await root.requestFullscreen();await screen.orientation?.lock?.('landscape')}catch(_){}});document.addEventListener('fullscreenchange',()=>fs.style.display=document.fullscreenElement?'none':'block')}
+</script></body></html>
