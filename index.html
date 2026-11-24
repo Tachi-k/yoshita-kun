@@ -707,7 +707,11 @@ function startDemo(){
   if(demoScene==='cannon'){player.x=1660;cannonT=61;enemies=[];}
   if(demoScene==='rain')player.x=1480;
   if(demoScene==='boss')player.x=AX+80;
-  if(demoScene==='basement')player.x=secret.x-69;
+  if(demoScene==='basement'){
+    player.x=secret.x-69;
+    // はしごを見せる間は、入口に近い敵だけデモから外す。
+    enemies=enemies.filter(e=>Math.abs(e.x+e.w/2-secret.x)>300);
+  }
   if(demoScene==='goal')player.x=world-275;
   if(demoScene!=='field'){
     player.y=ground-player.h;
