@@ -90,10 +90,12 @@ function onSurface(px,y){return platforms.some(b=>Math.abs(b.y-y)<2&&px>=b.x&&px
 function groundAt(px){return platforms.some(b=>b.y===ground&&px>=b.x&&px<=b.x+b.w)}
 function addPerchEnemies(idx){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));idx.forEach((k,i)=>{const f=floats[k];if(f)enemies.push(makeEnemy(f.x+f.w/2-16,i%2===1,i+20,f))})}
 function banner(t,s,d=150){bannerText=t;bannerSub=s;bannerT=d}
+const COINS_PER_LIFE=100,COIN_POINTS=10;
+let coinProgress=0,stageStartCoinProgress=0;
 function loadStage(n){
   stopStageClearAudio();
   stopBossSounds();
-  stage=n;stageStartScore=score;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonT=60*8;lastSafeX=60;bonusUsed[n]=false;crossed1=false;leftHold=0;roomKind='basement';inBasement=false;surface=null;secret={x:n===1?2520:840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
+  stage=n;stageStartScore=score;stageStartCoinProgress=coinProgress;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonT=60*8;lastSafeX=60;bonusUsed[n]=false;crossed1=false;leftHold=0;roomKind='basement';roomT=0;inBasement=false;surface=null;secret={x:n===1?2520:840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
   if(n===1){
     world=4300;
     for(let i=0;i<world/240;i++){if(i!==5&&i!==11&&i!==15)platforms.push({x:i*240,y:ground,w:240,h:75});}
@@ -117,8 +119,8 @@ function loadStage(n){
   }
   player=newPlayer(120);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
 }
-function reset(){score=0;lives=3;keys={};loadStage(1)}
-function retry(){if(stage===2){score=stageStartScore;lives=3;keys={};loadStage(2)}else reset()}
+function reset(){score=0;coinProgress=0;lives=3;keys={};bonusUsed={};loadStage(1)}
+function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;lives=3;keys={};loadStage(2)}else reset()}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
 function inHole(h){return enemies.filter(e=>e.alive&&e.trapHole===h)}
@@ -139,11 +141,30 @@ function revealTreasure(h){
   else if(arenaOn){if(Math.random()<.08)spawnItem('heart',h.x+h.w/2)}
   else if(Math.random()<.18)spawnItem('coin',h.x+h.w/2)}
 function sparkleFx(x0){boom(x0,ground,16,['#fff','#7fe3ff','#ffdf50'],5)}
+function addLife(cx,cy){
+  if(lives>=9)return;
+  lives++;
+  popup(cx,cy,'1UP！','#ff6b8a',30,100);
+  sound('oneup');
+}
+function collectCoins(count,cx,cy){
+  score+=count*COIN_POINTS;
+  coinProgress+=count;
+  if(coinProgress>=COINS_PER_LIFE){
+    coinProgress-=COINS_PER_LIFE;
+    addLife(cx,cy);
+  }
+}
 function collectItem(it){const cx=it.x;
-  if(it.type==='coin'){score+=10;sound('coin');}
-  else if(it.type==='gem'){score+=300;popup(cx,it.y-20,'💎 +300','#7fe3ff',24);sound('treasure');sparkleFx(cx);}
-  else if(it.type==='chest'){score+=1000;popup(cx,it.y-20,'宝箱！ +1000','#ffdf50',30,100);sound('treasure');boom(cx,it.y,30,['#ffdf50','#fff','#ff9a3c']);}
-  else if(it.type==='heart'){lives=Math.min(9,lives+1);popup(cx,it.y-20,'1UP！','#ff6b8a',30,100);sound('oneup');}}
+  if(it.type==='coin'){collectCoins(1,cx,it.y-20);sound('coin');}
+  else if(it.type==='gem'){score+=50;popup(cx,it.y-20,'💎 +50','#7fe3ff',24);sound('treasure');sparkleFx(cx);}
+  else if(it.type==='chest'){
+    collectCoins(100,cx,it.y-50);
+    popup(cx,it.y-20,'宝箱！ コイン100枚分','#ffdf50',30,100);
+    sound('treasure');boom(cx,it.y,30,['#ffdf50','#fff','#ff9a3c']);
+  }
+  else if(it.type==='heart'){addLife(cx,it.y-20);}
+}
 function updateItems(p){for(const it of items){it.t--;it.vy=Math.min(14,it.vy+.45);it.x+=it.vx;it.y+=it.vy;
     // 完成した穴の上なら穴の底まで落ちる（穴の中からでも拾える）。穴が閉じたら地面の上に戻る
     const hu=holes.find(h=>h.stage===3&&it.x>h.x+4&&it.x<h.x+h.w-4);
@@ -477,7 +498,7 @@ function updateBoss(p,oldY){
   else if(b.st==='dead'){b.vy+=.3;b.y+=b.vy;if(b.t<=210&&b.t%8===0){boom(b.x+Math.random()*b.w,Math.min(ground,b.y+Math.random()*b.h),12,['#ffdf50','#ff655e','#fff']);if(b.t%16===0)sound('boom')}
     if(b.t>210&&!b.clearPlayed){b.clearPlayed=true;playBossClear();banner('GAME CLEAR!','モグラ大王 ドリモグを たおした！',300)}
     // 読み込み失敗時や再生停止時にも進行を止めない（最大8秒）。
-    if(b.t>210&&(bossClearDone||b.t>690)){stopJingle(bossClearAudio);state='ending';endT=0;parts=[];addTimeBonus();score+=lives*1000;{const r=Math.random();endingRare=r<.1;endingPair=!endingRare&&r<.55;endP=null;if(endingRare)score+=5000;}/* レア10%・2人45%・1人45% */}return}
+    if(b.t>210&&(bossClearDone||b.t>690)){stopJingle(bossClearAudio);state='ending';bonusUsed={};roomT=0;endT=0;parts=[];addTimeBonus();score+=lives*1000;{const r=Math.random();endingRare=r<.1;endingPair=!endingRare&&r<.55;endP=null;if(endingRare)score+=5000;}/* レア10%・2人45%・1人45% */}return}
   b.x=Math.max(L,Math.min(R,b.x));
   // 完成した穴の上を歩く・突進すると落ちる
   if(b.st==='walk'||b.st==='charge'){const cx=b.x+b.w/2,h=holes.find(h=>h.stage===3&&Math.abs(h.x+h.w/2-cx)<Math.max(12,h.w/2-28)&&!enemies.some(e=>e.alive&&e.trapHole===h));
@@ -526,14 +547,14 @@ function exitBasement(){const p=player,sf=surface,h=sf.hole,wasBonus=inBonus();
 function enterBonus(kind,returnX){const p=player;
   surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX};inBasement=true;roomKind=kind;bonusUsed[stage]=true;
   world=W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;items=[];coins=[];
-  if(kind==='rain'){platforms=[{x:0,y:ground,w:W,h:75}];roomT=15*60;banner('ボーナス画面！','降ってくるお宝を あつめよう',130);p.x=W/2-17;}
+  if(kind==='rain'){platforms=[{x:0,y:ground,w:W,h:75}];roomT=25*60;banner('ボーナス画面！','降ってくるお宝を あつめよう',130);p.x=W/2-17;}
   else{platforms=[{x:0,y:ground,w:W,h:75},{x:110,y:385,w:130,h:18},{x:300,y:315,w:130,h:18},{x:490,y:245,w:130,h:18},{x:690,y:175,w:170,h:18},{x:560,y:395,w:120,h:18}];
     for(let cx=80;cx<=880;cx+=40)coins.push({x:cx,y:ground-30,taken:false});
     for(const b of platforms.slice(1))for(let cx=b.x+18;cx<=b.x+b.w-18;cx+=32)coins.push({x:cx,y:b.y-30,taken:false});
     for(let k=0;k<7;k++){const a=Math.PI*(k/6);coins.push({x:250+Math.cos(a)*-90+90,y:250-Math.sin(a)*70,taken:false});}
     const put=(type,ix,surf)=>items.push({type,x:ix,y:surf-10,vx:0,vy:0,t:1e9});
     put('chest',740,175);put('chest',810,175);put('gem',555,245);put('gem',365,315);put('chest',620,395);
-    roomT=25*60;banner('ボーナスステージ！','雲の上のお宝を あつめよう',130);p.x=40;}
+    roomT=35*60;banner('ボーナスステージ！','雲の上のお宝を あつめよう',130);p.x=40;}
   p.y=40;p.vy=2;p.vx=0;p.on=false;p.hole=null;p.kickT=0;sound('oneup');}
 function drawBonusBg(){const g=x.createLinearGradient(0,0,0,H);
   if(roomKind==='rain'){g.addColorStop(0,'#2b1b5a');g.addColorStop(1,'#7a4fb0');}else{g.addColorStop(0,'#5fc3ff');g.addColorStop(1,'#fff3c9');}
@@ -616,7 +637,7 @@ let mode='title',demoT=0,demoIdx=0,demoLastX=0,demoStuck=0,demoHop=false,demoDod
 const realRandom=Math.random;
 function seeded(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296}}
 let DEMO_SEEDS={1:[1,2,13,16],2:[317,398]};
-function startDemo(){mode='title';{const k=demoIdx%2===0?1:2,list=DEMO_SEEDS[k];Math.random=seeded(list[Math.floor(demoIdx/2)%list.length]);}score=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;demoT=0;demoStuck=0;
+function startDemo(){mode='title';{const k=demoIdx%2===0?1:2,list=DEMO_SEEDS[k];Math.random=seeded(list[Math.floor(demoIdx/2)%list.length]);}score=0;coinProgress=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;demoT=0;demoStuck=0;
   if(demoIdx%2===0)loadStage(1);else{loadStage(2);player.x=AX+80;player.y=ground-42;}
   demoIdx++;bannerT=0;}
 function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
@@ -741,7 +762,7 @@ p.walking=p.on&&!p.kickT&&p.x!==oldX;
 if(p.walking)p.stride=(p.stride||0)+Math.abs(p.x-oldX);
 
 if(!inBasement&&p.on&&!p.hole&&Math.abs(p.y+p.h-ground)<2&&groundAt(p.x+2)&&groundAt(p.x+p.w-2)&&!holes.some(h=>p.x+p.w>h.x-4&&p.x<h.x+h.w+4))lastSafeX=p.x;
-for(const coin of coins){if(!coin.taken&&Math.hypot(p.x+p.w/2-coin.x,p.y+p.h/2-coin.y)<30){coin.taken=true;score+=10;sound('coin');}}
+for(const coin of coins){if(!coin.taken&&Math.hypot(p.x+p.w/2-coin.x,p.y+p.h/2-coin.y)<30){coin.taken=true;collectCoins(1,coin.x,coin.y-20);sound('coin');}}
 
 for(const e of enemies){if(!e.alive)continue;
   if(e.trapHole){const list=inHole(e.trapHole),k=list.indexOf(e),n=list.length;e.x=e.trapHole.x+(e.trapHole.w-e.w)/2+(k-(n-1)/2)*9;e.y=ground+3;e.vy=0;continue;}
@@ -1000,10 +1021,10 @@ function draw(){
   if(arenaOn){x.fillStyle='#2a1d36';x.fillRect(AX-24,140,28,ground-140);}
   x.restore();
   // HUD
-  x.fillStyle=inBasement?'#fff':stage===2?'#2a1a30':'#20304a';x.font='bold 24px system-ui';x.fillText('SCORE '+score,22,38);x.fillText('♥ × '+lives,220,38);x.fillText('STAGE '+stage,330,38);if(spots.length&&!arenaOn)x.fillText('💎 '+spots.filter(s=>s.found).length+'/'+spots.length,470,38);
-  if(mode==='game'){const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+  x.fillStyle=inBasement?'#fff':stage===2?'#2a1a30':'#20304a';x.font='bold 24px system-ui';x.fillText('SCORE '+score,22,38);x.fillText('♥ × '+lives,220,38);x.fillText('STAGE '+stage,300,38);if(spots.length&&!arenaOn)x.fillText('💎 '+spots.filter(s=>s.found).length+'/'+spots.length,510,38);
+  if(mode==='game'){x.font='bold 14px system-ui';x.fillText('コイン '+coinProgress+'/'+COINS_PER_LIFE,400,38);const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
-    const bx0=arenaOn?440:600,by0=6,bw=arenaOn?140:170,bh=46;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
+    const bx0=arenaOn?480:600,by0=6,bw=arenaOn?100:170,bh=46;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
     x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 13px system-ui';x.fillText(arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+19);
     x.fillStyle='#fff';x.font='900 32px system-ui';x.textAlign='right';x.fillText(String(sec),bx0+bw-14,by0+37);x.textAlign='left';x.restore();}
   if(!arenaOn&&!inBasement)x.fillText(stage===1?'GOAL →':'BOSS →',805,38);
