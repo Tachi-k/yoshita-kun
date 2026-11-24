@@ -353,7 +353,7 @@ SONGS.basement={len:32,dur:()=>60/128/2/hurryMul(),step(i,t,sd){const bar=i>>3,b
   if(i%8===7)bell(m?m+12:88,t,.015);}};
 SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];if(m){bnote(mf(m+5),t,sd*.7,'square',.04);bnote(mf(m+17),t,sd*.3,'sine',.04);}bnote(mf(BS_ROOT[bar]+5+(b%2?12:0)),t,sd*.7,'triangle',.11);if(b%2===0)bnote(150,t,.1,'sine',.18,50);hat(t,.025);if(b===4)hat(t,.06,.1);}};
 function currentSong(){if(mode==='title')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
-// ===== MP3のBGM（用意した場面だけ差し替え。読めない時は今までの曲が鳴る） =====
+// ===== MP3のBGM（エンディングはアレンジ曲の読み込みを待つ） =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
 // 未登録の場面ではオリジナルBGMを再生。ループ区間未指定なら曲全体を繰り返す。
 const MP3_BGM={
@@ -415,7 +415,11 @@ function mp3Tick(){   // MP3の再生開始を確認してから通常BGMを止�
   if(m.bufBad)return false;
   return false;   // 読み込み中も通常BGMを継続する。
 }
-function bgmTick(){if(mp3Tick()){curSong=currentSong();bgmNext=0;return}if(!audioCtx||audioCtx.state!=='running')return;if(paused){bgmNext=0;return}const s=currentSong();if(s!==curSong){curSong=s;bgmStep=0;bgmNext=0}if(!s||!musicOn||document.hidden){bgmNext=0;return}const song=SONGS[s],now=audioCtx.currentTime;if(!bgmNext||bgmNext<now)bgmNext=now+.06;while(bgmNext<now+.15){song.step(bgmStep,bgmNext,song.dur());bgmNext+=song.dur();bgmStep=(bgmStep+1)%song.len}}
+function bgmTick(){
+  const playingArrangement=mp3Tick();
+  // エンディングでは、アレンジ曲の準備中にファミコン風BGMを流さない。
+  if(playingArrangement||(mp3Enabled&&state==='ending')){curSong=currentSong();bgmNext=0;return}
+  if(!audioCtx||audioCtx.state!=='running')return;if(paused){bgmNext=0;return}const s=currentSong();if(s!==curSong){curSong=s;bgmStep=0;bgmNext=0}if(!s||!musicOn||document.hidden){bgmNext=0;return}const song=SONGS[s],now=audioCtx.currentTime;if(!bgmNext||bgmNext<now)bgmNext=now+.06;while(bgmNext<now+.15){song.step(bgmStep,bgmNext,song.dur());bgmNext+=song.dur();bgmStep=(bgmStep+1)%song.len}}
 // 1面の音源はタイトル表示中から先読みする（自動再生はしない）。
 mp3Get('field1');
 setInterval(bgmTick,25);
@@ -495,10 +499,17 @@ function updateBoss(p,oldY){
   else if(b.st==='windup'){if(b.t%6===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.t>45)bgo('charge')}
   else if(b.st==='charge'){b.x+=b.dir*(4.5+phase);if(b.t%4===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.x<=L||b.x>=R){shake=14;sound('slam');bgo('walk')}}
   else if(b.st==='stun'){b.y=top+40;if(b.t>(phase===3?150:210))bossEscape()}
-  else if(b.st==='dead'){b.vy+=.3;b.y+=b.vy;if(b.t<=210&&b.t%8===0){boom(b.x+Math.random()*b.w,Math.min(ground,b.y+Math.random()*b.h),12,['#ffdf50','#ff655e','#fff']);if(b.t%16===0)sound('boom')}
+  else if(b.st==='dead'){
+    if(!b.endingSong){
+      const r=Math.random();
+      b.endingSong=r<.1?'rare':r<.55?'wedding':'ending';
+    }
+    // ボス撃破演出中に、このあと使うエンディング曲だけを先読みする。
+    if(mode==='game'&&mp3Enabled&&musicOn)mp3Load(mp3Get(b.endingSong));
+    b.vy+=.3;b.y+=b.vy;if(b.t<=210&&b.t%8===0){boom(b.x+Math.random()*b.w,Math.min(ground,b.y+Math.random()*b.h),12,['#ffdf50','#ff655e','#fff']);if(b.t%16===0)sound('boom')}
     if(b.t>210&&!b.clearPlayed){b.clearPlayed=true;playBossClear();banner('GAME CLEAR!','モグラ大王 ドリモグを たおした！',300)}
     // 読み込み失敗時や再生停止時にも進行を止めない（最大8秒）。
-    if(b.t>210&&(bossClearDone||b.t>690)){stopJingle(bossClearAudio);state='ending';bonusUsed={};roomT=0;endT=0;parts=[];addTimeBonus();score+=lives*1000;{const r=Math.random();endingRare=r<.1;endingPair=!endingRare&&r<.55;endP=null;if(endingRare)score+=5000;}/* レア10%・2人45%・1人45% */}return}
+    if(b.t>210&&(bossClearDone||b.t>690)){stopJingle(bossClearAudio);state='ending';bonusUsed={};roomT=0;endT=0;parts=[];addTimeBonus();score+=lives*1000;endingRare=b.endingSong==='rare';endingPair=b.endingSong==='wedding';endP=null;if(endingRare)score+=5000;}return}
   b.x=Math.max(L,Math.min(R,b.x));
   // 完成した穴の上を歩く・突進すると落ちる
   if(b.st==='walk'||b.st==='charge'){const cx=b.x+b.w/2,h=holes.find(h=>h.stage===3&&Math.abs(h.x+h.w/2-cx)<Math.max(12,h.w/2-28)&&!enemies.some(e=>e.alive&&e.trapHole===h));
