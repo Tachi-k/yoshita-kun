@@ -353,7 +353,7 @@ SONGS.basement={len:32,dur:()=>60/128/2/hurryMul(),step(i,t,sd){const bar=i>>3,b
   if(i%8===7)bell(m?m+12:88,t,.015);}};
 SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];if(m){bnote(mf(m+5),t,sd*.7,'square',.04);bnote(mf(m+17),t,sd*.3,'sine',.04);}bnote(mf(BS_ROOT[bar]+5+(b%2?12:0)),t,sd*.7,'triangle',.11);if(b%2===0)bnote(150,t,.1,'sine',.18,50);hat(t,.025);if(b===4)hat(t,.06,.1);}};
 function currentSong(){if(mode==='title')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
-// ===== MP3のBGM（エンディングはアレンジ曲の読み込みを待つ） =====
+// ===== MP3のBGM =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
 // 未登録の場面ではオリジナルBGMを再生。ループ区間未指定なら曲全体を繰り返す。
 const MP3_BGM={
@@ -416,10 +416,26 @@ function mp3Tick(){   // MP3の再生開始を確認してから通常BGMを止�
   return false;   // 読み込み中も通常BGMを継続する。
 }
 function bgmTick(){
+  const s=currentSong();
+  if(mp3Enabled&&mode==='game'&&musicOn&&!paused&&!document.hidden){
+    // クリア画面とボス登場演出の間に、次の場面のアレンジ曲を先読みする。
+    const upcoming=state==='clear'?'field2':bossIntroLong()?'boss':null;
+    if(upcoming)mp3Load(mp3Get(upcoming));
+  }
   const playingArrangement=mp3Tick();
-  // エンディングでは、アレンジ曲の準備中にファミコン風BGMを流さない。
-  if(playingArrangement||(mp3Enabled&&state==='ending')){curSong=currentSong();bgmNext=0;return}
-  if(!audioCtx||audioCtx.state!=='running')return;if(paused){bgmNext=0;return}const s=currentSong();if(s!==curSong){curSong=s;bgmStep=0;bgmNext=0}if(!s||!musicOn||document.hidden){bgmNext=0;return}const song=SONGS[s],now=audioCtx.currentTime;if(!bgmNext||bgmNext<now)bgmNext=now+.06;while(bgmNext<now+.15){song.step(bgmStep,bgmNext,song.dur());bgmNext+=song.dur();bgmStep=(bgmStep+1)%song.len}}
+  const waitForArrangement=mp3Enabled&&(s==='field2'||s==='boss'||state==='ending');
+  if(playingArrangement||waitForArrangement){curSong=s;bgmNext=0;return}
+  if(!audioCtx||audioCtx.state!=='running')return;
+  if(paused){bgmNext=0;return}
+  if(s!==curSong){curSong=s;bgmStep=0;bgmNext=0}
+  if(!s||!musicOn||document.hidden){bgmNext=0;return}
+  const song=SONGS[s],now=audioCtx.currentTime;
+  if(!bgmNext||bgmNext<now)bgmNext=now+.06;
+  while(bgmNext<now+.15){
+    song.step(bgmStep,bgmNext,song.dur());
+    bgmNext+=song.dur();bgmStep=(bgmStep+1)%song.len;
+  }
+}
 // 1面の音源はタイトル表示中から先読みする（自動再生はしない）。
 mp3Get('field1');
 setInterval(bgmTick,25);
