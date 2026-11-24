@@ -446,7 +446,15 @@ function gameOverMusic(){if(mode==='title')return;unlockAudio();if(!audioCtx)ret
 function boom(x0,y0,n,cols,spd=6){for(let i=0;i<n;i++)parts.push({x:x0,y:y0,vx:(Math.random()-.5)*spd,vy:-Math.random()*spd*.8,life:30+Math.random()*20,max:50,col:cols[i%cols.length],s:3+Math.random()*4,g:.2})}
 function firework(){const cx=120+Math.random()*720,cy=70+Math.random()*190,hue=Math.floor(Math.random()*360);for(let i=0;i<46;i++){const a=i/46*Math.PI*2,v=2+Math.random()*2.2;parts.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:60+Math.random()*25,max:85,col:`hsl(${hue+Math.random()*40},100%,65%)`,s:3,g:.035})}}
 function updateParts(){for(const q of parts){if(q.petal)q.vx=Math.sin(q.y*.025+q.x*.01)*.9;q.vy+=q.g;q.x+=q.vx;q.y+=q.vy;q.vx*=.99;q.life--}parts=parts.filter(q=>q.life>0)}
-function drawParts(){for(const q of parts){x.globalAlpha=Math.max(0,Math.min(1,q.life/q.max*1.5));x.fillStyle=q.col;x.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s)}x.globalAlpha=1}
+function drawParts(hearts=false){
+  for(const q of parts){
+    if(Boolean(q.heart)!==hearts)continue;
+    x.globalAlpha=Math.max(0,Math.min(1,q.life/q.max*1.5));
+    if(hearts)drawHeart(q.x,q.y,q.s,q.col);
+    else{x.fillStyle=q.col;x.fillRect(q.x-q.s/2,q.y-q.s/2,q.s,q.s);}
+  }
+  x.globalAlpha=1;
+}
 
 // ===== 操作 =====
 // ボス戦では穴が大きくなる（幅100・深さ60）
@@ -627,6 +635,19 @@ let roomKind='basement',roomT=0,bonusUsed={},crossed1=false,leftHold=0;   // roo
 function inBonus(){return inBasement&&roomKind!=='basement'}   // 最後に安全な地面に立っていた位置（ミスした時の再開地点）
 // ===== エンディングでも主人公を動かせる =====
 let endP=null;
+function endingPrincessPosition(){
+  if(endingRare)return {x:W/2-14,y:ground-46-Math.abs(Math.sin(endT*.13+1))*18};
+  if(endingPair)return {x:W/2+14,y:ground-46-Math.abs(Math.sin(endT*.06+.5))*8};
+  return null;
+}
+function launchEndingHearts(cx,cy){
+  const colors=['#ff4d78','#ff85b2','#ffc2db'];
+  for(let i=0;i<7;i++){
+    parts.push({x:cx,y:cy,vx:(i-3)*.9,vy:-2.5-(3-Math.abs(i-3))*.65,
+      g:-.012,s:5+i%3*2,life:58+i*4,max:58+i*4,col:colors[i%3],heart:true});
+  }
+  sound('coin');
+}
 function updateEndPlayer(){
   if(!endP)endP={x:endingRare?W/2-60:endingPair?W/2-48:W/2-17,y:ground-42,vy:0,on:true,f:1,cool:0};
   const q=endP,vx=(keys.right?4:0)-(keys.left?4:0),oldX=q.x;
@@ -637,9 +658,14 @@ function updateEndPlayer(){
   q.vy=Math.min(16,q.vy+.65);q.y+=q.vy;if(q.y>=ground-42){q.y=ground-42;q.vy=0;q.on=true;}
   if(q.cool>0)q.cool--;
   const near=(tx,w)=>q.x+34>tx&&q.x<tx+w;
-  if(endingPair&&near(W/2+14,34)&&!q.cool){q.cool=40;popup(W/2+10,ground-80,'♥','#ff4d6d',30,60);sound('coin');}
+  const princess=endingPrincessPosition();
+  const overlaps=princess!==null&&near(princess.x,34)&&q.y+42>princess.y&&q.y<princess.y+46;
+  if(overlaps&&!q.overlapsPrincess&&q.walking&&q.on){
+    launchEndingHearts((q.x+princess.x)/2+17,(q.y+princess.y)/2+20);
+  }
+  q.overlapsPrincess=overlaps;
   if(endingRare&&near(W/2+50,80)&&!q.cool){q.cool=60;popup(W/2+90,ground-110,'なかよし！','#ffdf50',24,60);sound('coin');}
-  if(endingRare&&near(W/2-14,34)&&!q.cool){q.cool=40;popup(W/2,ground-80,'♥','#ff4d6d',30,60);sound('coin');}}
+}
 function drawEndPlayer(){if(!endP)return;drawPlayerAt(endP.x,endP.y,endP.f,!endP.on?'jump':endP.walking?'walk':'front',endP.stride);
   if(endT<360&&Math.floor(endT/30)%2){x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#ffffffcc';x.fillText('← → で うごける・ジャンプもできる',W/2,H-14);x.textAlign='left';}}
 // ===== 大砲の弾：ときどき画面の右から飛んでくる =====
@@ -1128,18 +1154,18 @@ function drawEnding(){
   for(const s of STARS){x.globalAlpha=.35+.65*Math.abs(Math.sin(endT*.03+s.p));x.fillStyle='#fff';x.fillRect(s.x,s.y,s.s,s.s)}x.globalAlpha=1;
   drawParts();
   x.fillStyle='#2d5a3a';x.fillRect(0,ground,W,H-ground);x.fillStyle='#3f7a4f';x.fillRect(0,ground,W,10);
-  const px=W/2-17,py=ground-42-Math.abs(Math.sin(endT*.07))*16;
+  const princess=endingPrincessPosition();
   if(endingRare){drawRainbow();const jump=k=>Math.abs(Math.sin(endT*.13+k))*18;
     drawEndPlayer();
-    drawPartner(W/2-14,ground-46-jump(1),endP&&endP.x+17<W/2+3?-1:1);
+    drawPartner(princess.x,princess.y,endP&&endP.x<princess.x?-1:1);
     drawMoleFriend(W/2+90,ground-88*.75-jump(2),.75,endT);
     x.textAlign='center';const on=Math.floor(endT/20)%2;x.font='900 30px system-ui';x.lineWidth=6;x.strokeStyle='#7a4a00';x.fillStyle=on?'#ffe14d':'#fff6a8';x.strokeText('★ RARE ENDING ★',W/2,48);x.fillText('★ RARE ENDING ★',W/2,48);x.textAlign='left';
-  }else if(endingPair){const bx=W/2-48,by=ground-42-Math.abs(Math.sin(endT*.06))*8,py2=ground-46-Math.abs(Math.sin(endT*.06+.5))*8;
+  }else if(endingPair){
     // 花のアーチ
     x.strokeStyle='#fff8';x.lineWidth=6;x.beginPath();x.arc(W/2,ground,120,Math.PI,0);x.stroke();for(let k=0;k<=12;k++){const a=Math.PI+k*Math.PI/12;x.fillStyle=['#ff9ad5','#fff','#ffd84d'][k%3];x.beginPath();x.arc(W/2+Math.cos(a)*120,ground+Math.sin(a)*120,6,0,7);x.fill();}
-    drawEndPlayer();drawPartner(W/2+14,py2,endP&&endP.x+17>W/2+31?1:-1);
-    const hb=1+Math.sin(endT*.12)*.15;drawHeart(W/2,ground-100-Math.sin(endT*.05)*6,13*hb,'#ff4d6d');
+    drawEndPlayer();drawPartner(princess.x,princess.y,endP&&endP.x>princess.x?1:-1);
   }else{drawEndPlayer();}
+  drawParts(true);
   x.textAlign='center';x.fillStyle='#fff';x.shadowColor='#000';x.shadowBlur=6;
   const sy=creditsY();
   credits().forEach((l,i)=>{const y=sy+i*46;if(y>-40&&y<ground-60){x.font=(i===0||l.startsWith('—'))?'bold 34px system-ui':'26px system-ui';x.fillText(l,W/2,y)}});
