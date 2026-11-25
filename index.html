@@ -86,7 +86,7 @@ canvas{display:block;background:#17283c}
 @media (orientation:portrait){
   #mazeControls{justify-self:start;grid-template-columns:auto auto;align-items:center;gap:3px 14px}
   #mazeDirections{grid-row:1/3;grid-column:1}
-  #mazeStatus,#mazeRetry{grid-column:2}
+  #mazeStatus{grid-column:2}
 }
 #slotBoard{width:min(330px,100%)}
 #slotPayout{margin:8px auto;width:min(310px,100%);color:#ffe384;font:800 18px system-ui}
@@ -129,7 +129,6 @@ canvas{display:block;background:#17283c}
           <button type="button" data-dir="down" aria-label="下">↓</button>
         </div>
         <p id="mazeStatus" class="arcadeStatus" role="status"></p>
-        <button id="mazeRetry" type="button">やり直す</button>
       </div>
     </div>
   </section>
@@ -944,13 +943,17 @@ const MAZE=[
 ];
 const MAZE_MOVES={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const MAZE_START=[1,1],MAZE_ENEMY_STARTS=[[11,1],[11,7]];
+const MAZE_STAR_POINTS=10;
+const SLOT_SPIN_MELODY=[523,659,784,659,587,698,880,698,659,784,988,784,698,880,1047,988];
 const SLOT_SYMBOLS=['よし太くん','さくらんぼ','ダイヤ','ベル','錦鯉'];
 const SLOT_ICONS=['','🍒','💎','🔔'];
 const SLOT_STOPS=[0,0,0,1,2,3,4];
 let arcadeHole=null,arcadeGame=null,maze=null,slotTimer=null,mazeHold=null;
+let slotPlayed=false,arcadeReturnFrames=0,arcadeSummary='';
 
 function enterArcade(h){
   state='arcade';arcadeHole=h;
+  slotPlayed=false;arcadeReturnFrames=0;arcadeSummary='';
   selectArcadeGame(h.arcade);
   clearInput();arcade.showModal();
 }
@@ -958,6 +961,10 @@ function exitArcade(){
   if(state!=='arcade')return;
   stopSlotSpin();
   stopMazeHold();
+  if(arcadeGame==='maze'){
+    score+=maze.points;
+    arcadeSummary='きらきら迷路　+'+maze.points+'点';
+  }
   const h=arcadeHole;
   holes=holes.filter(other=>other!==h);
   player.x=h.x+h.w+6;player.y=ground-player.h;
@@ -965,6 +972,8 @@ function exitArcade(){
   player.inv=Math.max(player.inv,90);lastSafeX=player.x;
   camera=followCamera(player.x);arcadeHole=null;arcadeGame=null;
   clearInput();state='play';arcade.close();
+  if(arcadeSummary)popup(player.x+17,player.y-25,arcadeSummary,'#ffdf50',23,150);
+  arcadeReturnFrames=0;arcadeSummary='';
 }
 function selectArcadeGame(game){
   stopSlotSpin();
@@ -980,7 +989,7 @@ function resetMaze(){
   MAZE.forEach((row,y)=>Array.from(row).forEach((cell,x)=>{
     if(cell==='.'&&(x!==MAZE_START[0]||y!==MAZE_START[1]))stars.add(x+','+y);
   }));
-  maze={hero:MAZE_START,foes:MAZE_ENEMY_STARTS.slice(),stars,lives:3,turn:0,facing:1,done:false,foeMotion:[null,null]};
+  maze={hero:MAZE_START,foes:MAZE_ENEMY_STARTS.slice(),stars,points:0,turn:0,facing:1,result:null,foeMotion:[null,null]};
   drawMaze();
 }
 function mazeWalk(pos,move){
@@ -1017,7 +1026,7 @@ function updateMazeMotion(){
   drawMaze();
 }
 function mazeMove(dir){
-  if(arcadeGame!=='maze'||maze.done)return;
+  if(arcadeGame!=='maze'||maze.result)return;
   const next=mazeWalk(maze.hero,MAZE_MOVES[dir]);
   if(!next)return;
   const fromHero=mazeVisualPosition(maze.hero,maze.motion);
@@ -1039,13 +1048,13 @@ function mazeMove(dir){
   }
   if(collided){
     maze.motion=null;maze.foeMotion=[null,null];
-    maze.lives--;maze.hero=MAZE_START;maze.foes=MAZE_ENEMY_STARTS.slice();maze.turn=0;
-    maze.done=maze.lives===0;sound('hurt');
+    maze.result='ミス！';stopMazeHold();arcadeReturnFrames=105;sound('hurt');
   }else{
     maze.motion={from:fromHero,frame:0,duration:MAZE_GLIDE_FRAMES};
-    if(maze.stars.delete(next.join(',')))sound('coin');
-    maze.done=maze.stars.size===0;
-    if(maze.done)sound('oneup');
+    if(maze.stars.delete(next.join(','))){maze.points+=MAZE_STAR_POINTS;sound('coin');}
+    if(maze.stars.size===0){
+      maze.result='クリア！';stopMazeHold();arcadeReturnFrames=105;sound('oneup');
+    }
   }
   drawMaze();
 }
@@ -1072,8 +1081,8 @@ function drawMaze(){
   mazeCtx.save();mazeCtx.translate(heroX*size+16,heroY*size+31);mazeCtx.scale(.68,secondRound?.49:.61);
   const walking=maze.motion&&heroX!==maze.hero[0];
   drawPlayerAt(-17,-42,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
-  const status=maze.done?(maze.lives?'クリア！ 星を全部集めた！':'ミス！ やり直すと再挑戦できます。'):
-    '残りの星 '+maze.stars.size+'　ライフ '+maze.lives;
+  const status=maze.result?maze.result+' 獲得 '+maze.points+'点':
+    '得点 '+maze.points+'点　残りの星 '+maze.stars.size;
   if(mazeStatus.textContent!==status)mazeStatus.textContent=status;
 }
 function drawMazeCritter(cx,cy,i,look){
@@ -1125,7 +1134,7 @@ function drawSlotKoi(cx,cy){
 }
 function stopSlotSpin(){
   if(slotTimer!==null){clearInterval(slotTimer);slotTimer=null;}
-  slotSpin.disabled=false;
+  slotSpin.disabled=slotPlayed;
 }
 function slotPrize(reels){
   if(reels.every(symbol=>symbol===0))return {rank:1,coins:50};
@@ -1152,31 +1161,39 @@ function playSlotPayout(prize){
     const pitch=1120+(tick%4)*120;
     tone(pitch,.09,'triangle',.045,0,pitch*1.2);
     tone(pitch*1.47,.065,'sine',.035,.026);
-    if(tick>=duration)stopSlotSpin();
+    if(tick>=duration){stopSlotSpin();arcadeReturnFrames=105;}
   },75);
 }
 function startSlotSpin(){
-  if(arcadeGame!=='slots'||slotTimer!==null)return;
+  if(arcadeGame!=='slots'||slotPlayed)return;
+  slotPlayed=true;
   const result=Array.from({length:3},randomSlotSymbol);
   let tick=0;
   slotPayout.hidden=true;slotSpin.disabled=true;slotStatus.textContent='回転中…';
   slotTimer=setInterval(()=>{
-    tick++;
+    const note=SLOT_SPIN_MELODY[tick++];
+    tone(note,.07,'triangle',.065);
+    if(tick===8||tick===12||tick===16)tone(160,.1,'triangle',.09);
     drawSlots(result.map((symbol,i)=>tick>=8+i*4?symbol:randomSlotSymbol()));
     if(tick<16)return;
     stopSlotSpin();
     const prize=slotPrize(result);
-    if(!prize){slotStatus.textContent='はずれ。もう一度まわせます。';return;}
+    if(!prize){
+      arcadeSummary='スロット　はずれ';
+      slotStatus.textContent='はずれ。地上へ戻ります。';
+      arcadeReturnFrames=105;
+      return;
+    }
     const oldLives=lives;
     const heading=prize.rank===1?'1等 大当たり！':prize.rank+'等 当たり！';
     collectCoins(prize.coins,player.x+17,player.y-20);
     slotStatus.textContent=heading+' コイン '+prize.coins+'枚（+'+
       prize.coins*COIN_POINTS+'点）'+(lives>oldLives?' 1UP！':'');
+    arcadeSummary='スロット '+prize.rank+'等　+'+prize.coins*COIN_POINTS+'点';
     playSlotPayout(prize);
   },80);
 }
 document.getElementById('arcadeExit').addEventListener('click',exitArcade);
-document.getElementById('mazeRetry').addEventListener('click',resetMaze);
 const mazeDirections=document.getElementById('mazeDirections');
 const MAZE_KEYS={arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'up',w:'up',arrowdown:'down',s:'down'};
 function stopMazeHold(){
@@ -1190,7 +1207,7 @@ function beginMazeHold(dir,source,button=null){
   mazeMove(dir);
 }
 function updateMazeHold(){
-  if(!mazeHold||maze.done)return;
+  if(!mazeHold||maze.result)return;
   if(--mazeHold.wait<=0){
     mazeHold.wait=8;
     mazeMove(mazeHold.dir);
@@ -1419,7 +1436,11 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
-if(state==='arcade'){if(arcadeGame==='maze'){updateMazeMotion();updateMazeHold();}return;}
+if(state==='arcade'){
+  if(arcadeGame==='maze'){updateMazeMotion();updateMazeHold();}
+  if(arcadeReturnFrames>0&&--arcadeReturnFrames===0)exitArcade();
+  return;
+}
 if(mode==='title'){
   demoT++;
   if(demoBossShownAt){
