@@ -296,16 +296,20 @@ const ITEM_INFO={coin:{pts:10},gem:{pts:300},chest:{pts:1000},heart:{pts:0}};
 function spawnItem(type,x0){items.push({type,x:x0,y:ground-14,vx:(Math.random()<.5?-1:1)*(1.5+Math.random()*2),vy:-9-Math.random()*2.5,t:720})}
 function revealTreasure(h){
   const sp=spots.find(s=>!s.found&&s.x>=h.x-6&&s.x<=h.x+h.w+6);
-  if(sp){sp.found=true;sparkleFx(h.x+h.w/2);if(sp.type==='coins')for(let i=0;i<5;i++)spawnItem('coin',h.x+h.w/2);else spawnItem(sp.type,h.x+h.w/2);popup(h.x+h.w/2,ground-50,'お宝発見！','#7fe3ff',26);sound('treasure');}
-  else if(arenaOn){if(Math.random()<.08)spawnItem('heart',h.x+h.w/2)}
+  if(sp){sp.found=true;sparkleFx(h.x+h.w/2);if(sp.type==='coins')for(let i=0;i<5;i++)spawnItem('coin',h.x+h.w/2);else spawnItem(sp.type==='heart'?heartType():sp.type,h.x+h.w/2);popup(h.x+h.w/2,ground-50,'お宝発見！','#7fe3ff',26);sound('treasure');}
+  else if(arenaOn){if(Math.random()<.08)spawnItem(heartType(),h.x+h.w/2)}
   else if(Math.random()<.18)spawnItem('coin',h.x+h.w/2)}
 function sparkleFx(x0){boom(x0,ground,16,['#fff','#7fe3ff','#ffdf50'],5)}
-function addLife(cx,cy){
-  if(lives>=9)return;
-  lives++;
-  popup(cx,cy,'1UP！','#ff6b8a',30,100);
+function addLife(cx,cy,n=1){
+  const gained=Math.min(n,9-lives);
+  if(gained<=0)return;
+  lives+=gained;
+  popup(cx,cy,gained+'UP！',n>1?'#ffd24a':'#ff6b8a',n>1?38:30,100);
   sound('oneup');
 }
+// ハートは ときどき 金のハート（ライフ5人分）になる
+const GOLD_HEART_CHANCE=.25,GOLD_HEART_LIVES=5;
+function heartType(){return Math.random()<GOLD_HEART_CHANCE?'goldHeart':'heart'}
 function collectCoins(count,cx,cy){
   if(bonusLoot&&count===1)bonusLoot.coins++;
   score+=count*COIN_POINTS;
@@ -325,6 +329,7 @@ function collectItem(it){const cx=it.x;
     sound('treasure');boom(cx,it.y,30,['#ffdf50','#fff','#ff9a3c']);
   }
   else if(it.type==='heart'){addLife(cx,it.y-20);}
+  else if(it.type==='goldHeart'){addLife(cx,it.y-30,GOLD_HEART_LIVES);sound('treasure');boom(cx,it.y,28,['#ffd24a','#fff','#ff9ad5']);popup(cx,it.y-70,'金のハート！ ライフ5人分','#ffd24a',24,110);}
 }
 function updateItems(p){for(const it of items){it.t--;it.vy=Math.min(14,it.vy+.45);it.x+=it.vx;it.y+=it.vy;
     // 完成した穴の上なら穴の底まで落ちる（穴の中からでも拾える）。穴が閉じたら地面の上に戻る
@@ -1726,7 +1731,7 @@ if(state==='victoryFlight')return;
 
 if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'){exitBasement();return;}
 if(inBonus()&&state==='play'){roomT--;
-  if(roomKind==='rain'&&roomT>20&&roomT%7===0){const r=Math.random();items.push({type:r<.03?'heart':r<.12?'gem':'coin',x:40+Math.random()*(W-80),y:-20,vx:(Math.random()-.5)*1.2,vy:1,t:300});}
+  if(roomKind==='rain'&&roomT>20&&roomT%7===0){const r=Math.random();items.push({type:r<.03?heartType():r<.12?'gem':'coin',x:40+Math.random()*(W-80),y:-20,vx:(Math.random()-.5)*1.2,vy:1,t:300});}
   if(roomT<=0){exitBasement();return;}}
 // 崖の底で横位置を判定すると、落ちながら移動したときに入口を通り過ぎてしまう。
 const fallX=p.x+p.w/2;
@@ -1943,14 +1948,36 @@ function drawChest(cx,by,w){
   x.fillStyle='#3d220e';x.beginPath();x.arc(cx,top+lid+h*.02,1.8,0,7);x.fill();x.fillRect(cx-.8,top+lid+h*.02,1.6,h*.09);
   x.globalAlpha=.35;x.fillStyle='#fff';x.fillRect(left+3,top+lid*.35,w*.35,2);x.globalAlpha=1;
 }
+// ライフのハート：つやのある立体的なハート。gold=true で金のハート（キラキラと「×5」つき）
+function heartPath(cx,cy,w){const h=w*.9,top=cy-h*.42;
+  x.beginPath();x.moveTo(cx,cy+h*.5);
+  x.bezierCurveTo(cx-w*.62,cy+h*.05,cx-w*.6,top-h*.32,cx-w*.25,top-h*.12);
+  x.bezierCurveTo(cx-w*.08,top-h*.04,cx,top+h*.06,cx,top+h*.14);
+  x.bezierCurveTo(cx,top+h*.06,cx+w*.08,top-h*.04,cx+w*.25,top-h*.12);
+  x.bezierCurveTo(cx+w*.6,top-h*.32,cx+w*.62,cy+h*.05,cx,cy+h*.5);x.closePath();}
+function drawLifeHeart(cx,cy,w,gold){
+  x.save();
+  if(gold){const pulse=.35+.2*Math.sin(Date.now()*.008);x.globalAlpha=pulse;ell(cx,cy,w*.95,w*.85,'#ffe680');x.globalAlpha=1;}
+  const g=x.createLinearGradient(cx-w/2,cy-w/2,cx+w/2,cy+w/2);
+  if(gold){g.addColorStop(0,'#fff6b0');g.addColorStop(.45,'#ffc928');g.addColorStop(1,'#b87800');}
+  else{g.addColorStop(0,'#ff8fa6');g.addColorStop(.5,'#ff3d63');g.addColorStop(1,'#b8173c');}
+  heartPath(cx,cy,w);x.fillStyle=g;x.fill();
+  x.lineWidth=Math.max(1.5,w*.06);x.strokeStyle=gold?'#8a5a00':'#8a1030';x.stroke();
+  x.globalAlpha=.8;ell(cx-w*.2,cy-w*.22,w*.12,w*.08,'#fff');ell(cx-w*.28,cy-w*.08,w*.05,w*.05,'#fff');x.globalAlpha=1;   // つや
+  if(gold){
+    x.font='900 '+Math.round(w*.38)+'px system-ui';x.textAlign='center';x.lineWidth=3;x.strokeStyle='#8a5a00';x.strokeText('×5',cx,cy+w*.2);x.fillStyle='#fff';x.fillText('×5',cx,cy+w*.2);x.textAlign='left';
+    const tw=Date.now()*.006+cx;for(let k=0;k<3;k++){const a=tw+k*2.1,sx=cx+Math.cos(a)*w*.7,sy=cy+Math.sin(a)*w*.6,len=2+Math.abs(Math.sin(a*1.7))*4;x.fillStyle='#fff';x.fillRect(sx-.8,sy-len,1.6,len*2);x.fillRect(sx-len,sy-.8,len*2,1.6);}
+  }
+  x.restore();
+}
 function drawItem(it){const ix=it.x,iy=it.y,foot=iy+10;   // 置いてある位置の足もと
   if(it.type==='coin')drawCoin(ix,foot-15,15,Date.now()*.006+ix*.05);
   else if(it.type==='gem')drawGem(ix,foot,34);
-  else if(it.type==='heart'){x.fillStyle='#ff4d6d';x.beginPath();x.arc(ix-5,iy-3,6,0,7);x.arc(ix+5,iy-3,6,0,7);x.fill();x.beginPath();x.moveTo(ix-11,iy-1);x.lineTo(ix,iy+11);x.lineTo(ix+11,iy-1);x.closePath();x.fill();}
+  else if(it.type==='heart'||it.type==='goldHeart'){const bob=Math.sin(Date.now()*.006+ix)*2;{const gold=it.type==='goldHeart',w=gold?46:40;drawLifeHeart(ix,foot-w*.47+bob,w,gold);}}
   else if(it.type==='chest'){
     const glow=.25+.15*Math.sin(Date.now()*.005);x.globalAlpha=glow;ell(ix,foot-18,38,26,'#ffe680');x.globalAlpha=1;   // ほんのり光る
     drawChest(ix,foot,56);}
-  if(it.type==='heart'&&Math.floor(Date.now()/150)%2){x.fillStyle='#fff';x.fillRect(ix+8,iy-14,3,3);}}
+}
 function drawPopups(){x.textAlign='center';for(const q of popups){x.globalAlpha=Math.min(1,q.t/20);x.font='bold '+q.size+'px system-ui';x.lineWidth=5;x.strokeStyle='#20304a';x.strokeText(q.text,q.x,q.y);x.fillStyle=q.col;x.fillText(q.text,q.x,q.y);}x.globalAlpha=1;x.textAlign='left'}
 // 1面ゴールの熱気球（ロープで地面につながれている）
 function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=Math.sin(Date.now()*.0015)*3;
@@ -2291,7 +2318,7 @@ function draw(){
   if(arenaOn){x.fillStyle='#2a1d36';x.fillRect(AX-24,140,28,ground-140);}
   x.restore();
   // HUD
-  x.fillStyle=inBasement||stage===2?'#fff':'#20304a';if(stage===2&&!inBasement){x.shadowColor='#0008';x.shadowBlur=4;}x.font='bold 24px system-ui';x.fillText('SCORE '+score,22,38);x.fillText('♥ × '+lives,220,38);x.fillText('STAGE '+stage,300,38);if(!arenaOn)x.fillText('💎 '+diamonds,510,38);
+  x.fillStyle=inBasement||stage===2?'#fff':'#20304a';if(stage===2&&!inBasement){x.shadowColor='#0008';x.shadowBlur=4;}x.font='bold 24px system-ui';x.fillText('SCORE '+score,22,38);drawLifeHeart(234,29,26,false);x.fillText('× '+lives,252,38);x.fillText('STAGE '+stage,300,38);if(!arenaOn)x.fillText('💎 '+diamonds,510,38);
   if(mode==='game'){x.font='bold 14px system-ui';x.fillText('コイン '+coinProgress+'/'+COINS_PER_LIFE,400,38);const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
     const bx0=arenaOn?480:600,by0=6,bw=arenaOn?100:170,bh=46;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
