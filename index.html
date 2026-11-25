@@ -2638,18 +2638,20 @@ function draw(){
   // HUD
   x.fillStyle='#fff';x.strokeStyle='#0d1830';x.lineJoin='round';x.lineWidth=4.5;const hudT=(t,tx,ty)=>{x.strokeText(t,tx,ty);x.fillText(t,tx,ty);};x.font='800 30px system-ui';
   // 左から順に並べる（数字がふえても重ならない）
-  {let hx=22;const put=t=>{hudT(t,hx,42);hx+=x.measureText(t).width+20;};
-    put('SCORE '+score);drawLifeHeart(hx+16,31,32,false);hx+=38;put('× '+lives);put('STAGE '+stage);if(!arenaOn)put('💎 '+diamonds);}
-  if(mode==='game'){x.font='800 20px system-ui';x.lineWidth=4;hudT('コイン '+coinProgress+'/'+COINS_PER_LIFE,22,72);const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+  // 見出しは小さな金色、数字は大きな白で、どちらもふちどり＋奥行きのある文字
+  {let hx=22;const w=(t,size)=>{x.font='900 '+size+'px system-ui';return x.measureText(t).width;};
+    const put=(label,value)=>{if(label){fancyText(label,hx,42,19,'gold');hx+=w(label,19)+6;}fancyText(String(value),hx,42,30,'white');hx+=w(String(value),30)+20;};
+    put('SCORE',score);drawLifeHeart(hx+16,31,32,false);hx+=36;put('×',lives);put('STAGE',stage);if(!arenaOn)put('💎',diamonds);}
+  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';fancyText(coinProgress+' / '+COINS_PER_LIFE,22+x.measureText('コイン').width+6,72,20,'white');const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
-    const bx0=arenaOn?445:610,by0=6,bw=arenaOn?140:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
+    const bx0=arenaOn?420:610,by0=6,bw=arenaOn?165:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
     x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
-    x.fillStyle='#fff';x.font='900 38px system-ui';x.textAlign='right';x.fillText(String(sec),bx0+bw-12,by0+43);x.textAlign='left';x.restore();}
-  if(!arenaOn&&!inBasement&&!(westSide&&!westVisited)){x.font='900 26px system-ui';x.lineWidth=6;hudT(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42);}   // 西の道は、看板を通るまでゴール表示もかくす
+    x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
+  if(!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
   const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':'ボーナス！ 時間内に たくさん集めよう'):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:72);
-  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){x.font='900 20px system-ui';x.lineWidth=5;hudT('モグラ大王 ドリモグ',595,28);x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
+  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText('モグラ大王 ドリモグ',595,28,20,'red');x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
   // ボス登場の演出（映画のような黒帯と名前のカットイン）
   if(bossIntroLong()){const T=boss.t,bar=Math.min(1,T/25)*46;x.fillStyle='#000';x.fillRect(0,0,W,bar);x.fillRect(0,H-bar,W,bar);
