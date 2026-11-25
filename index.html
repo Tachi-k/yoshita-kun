@@ -85,10 +85,10 @@ function credits(){return endingRare?CREDITS_RARE:endingPair?CREDITS_PAIR:CREDIT
 // ===== ステージ =====
 function newPlayer(inv){return {x:60,y:300,w:34,h:42,vx:0,vy:0,on:false,inv:inv,facing:1,hole:null}}
 // perch を渡すと空の踏み台の上から始まり、しばらく踏み台を往復してから地面へ降りる
-function makeEnemy(x0,hop,i,perch){return {x:x0,y:perch?perch.y-32:ground-32,w:32,h:32,alive:true,dir:i%2?1:-1,vy:0,spawnX:x0,respawns:0,type:hop?'hop':'walk',speed:hop?1.3:.7,hopT:40+i*7,grounded:true,home:perch?null:x0,range:240,perchT:perch?240+Math.floor(Math.random()*240):0}}
+function makeEnemy(x0,type,i,perch){return {x:x0,y:perch?perch.y-32:ground-32,w:32,h:32,alive:true,dir:i%2?1:-1,vy:0,spawnX:x0,respawns:0,type,speed:type==='hop'?1.3:type==='boar'?.9:.7,hopT:40+i*7,grounded:true,home:perch?null:x0,range:240,perchT:perch?240+Math.floor(Math.random()*240):0}}
 function onSurface(px,y){return platforms.some(b=>Math.abs(b.y-y)<2&&px>=b.x&&px<=b.x+b.w)}
 function groundAt(px){return platforms.some(b=>b.y===ground&&px>=b.x&&px<=b.x+b.w)}
-function addPerchEnemies(idx){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));idx.forEach((k,i)=>{const f=floats[k];if(f)enemies.push(makeEnemy(f.x+f.w/2-16,i%2===1,i+20,f))})}
+function addPerchEnemies(idx){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));idx.forEach((k,i)=>{const f=floats[k];if(f)enemies.push(makeEnemy(f.x+f.w/2-16,i%2===1?'hop':'walk',i+20,f))})}
 function banner(t,s,d=150){bannerText=t;bannerSub=s;bannerT=d}
 const COINS_PER_LIFE=100,COIN_POINTS=10;
 let coinProgress=0,stageStartCoinProgress=0;
@@ -102,7 +102,7 @@ function loadStage(n){
     for(let i=0;i<world/240;i++){if(i!==5&&i!==11&&i!==15)platforms.push({x:i*240,y:ground,w:240,h:75});}
     for(let i=0;i<13;i++)platforms.push({x:320+i*285,y:325-(i%3)*40,w:115,h:18});
     for(let i=0;i<30;i++)coins.push({x:180+i*130,y:260+(i%4)*34,taken:false});
-    for(let i=0;i<11;i++)enemies.push(makeEnemy(450+i*330,i%3===2,i));
+    for(let i=0;i<11;i++)enemies.push(makeEnemy(450+i*330,i%3===2?'hop':'walk',i));
     addPerchEnemies([1,4,7,10]);
     [[2,'gem'],[4,'coins'],[7,'heart'],[9,'gem'],[13,'chest'],[16,'gem']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
     banner('STAGE 1','そよかぜの丘');
@@ -113,7 +113,7 @@ function loadStage(n){
     for(let i=0;i<8;i++)platforms.push({x:330+i*270,y:330-(i%3)*45,w:110,h:18});
     platforms.push({x:AX+170,y:320,w:110,h:18},{x:AX+680,y:320,w:110,h:18});
     for(let i=0;i<18;i++)coins.push({x:200+i*120,y:270+(i%4)*30,taken:false});
-    [520,760,1320,1500,1700,1850,2250,2450].forEach((ex,i)=>enemies.push(makeEnemy(ex,i%2===1,i)));
+    [520,760,1320,1500,1700,1850,2250,2450].forEach((ex,i)=>enemies.push(makeEnemy(ex,i===2||i===6?'boar':i%2===1?'hop':'walk',i)));
     addPerchEnemies([1,3,6]);
     [[2,'gem'],[5,'heart'],[7,'coins'],[9,'chest']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
     banner('STAGE 2','大王の谷');
@@ -392,7 +392,7 @@ function mp3StartBuf(m,rate){mp3StopBuf(m);const c=m.cfg,src=audioCtx.createBuff
 function mp3Halt(key){const m=mp3[key];if(!m)return;if(m.src&&audioCtx)m.pos=mp3Wrap(m,m.pos+(audioCtx.currentTime-m.lastCtxT)*m.src.playbackRate.value);if(m.el&&!m.el.paused){try{m.el.pause()}catch(_){}}if(m.engine==='el'&&m.el)m.pos=m.el.currentTime;mp3StopBuf(m);}
 function mp3Restart(key){const m=mp3[key];if(!m)return;m.pos=0;try{if(m.el)m.el.currentTime=0}catch(_){}if(m.src&&audioCtx){mp3StopBuf(m);}}
 function mp3PlayEl(m){if(!m.el||m.elBad)return;try{m.el.currentTime=mp3Wrap(m,m.pos)}catch(_){}m.reqT=Date.now();m.elT0=m.el.currentTime;m.elOK=false;const pr=m.el.play();if(pr&&pr.catch)pr.catch(()=>{m.elBad=true});}
-const BASE_DUR={field:60/140/2};
+const BASE_DUR={field:60/140/2,field2:60/118/2};
 function mp3LoopCheck(){const m=mp3Cur&&mp3[mp3Cur];if(!m||m.engine!=='el'||!m.el||m.el.paused)return;const c=m.cfg;if(c.loopEnd&&m.el.currentTime>=c.loopEnd){try{m.el.currentTime-= (c.loopEnd-c.loopStart)}catch(_){}}}
 function mp3Tick(){   // MP3の再生開始を確認してから通常BGMを止める。読み込み中は通常BGMを継続。
   const s=currentSong(),want=(!paused&&musicOn&&!document.hidden&&mode==='game'&&audioCtx)?mp3Key(s):null;
@@ -930,7 +930,7 @@ for(const e of enemies){if(!e.alive)continue;
   else e.chasing=false;
   if(e.type==='hop'&&e.grounded&&!(perched&&e.perchT>0)&&--e.hopT<=0){e.vy=-10.5;e.grounded=false;e.hopT=55+Math.floor(Math.random()*50);}
   if(e.safe>0)e.safe--;
-  e.x+=e.dir*(e.kick>0?3.2:e.speed*(e.chasing?1.45:1));if(e.kick>0)e.kick--;
+  e.x+=e.dir*(e.kick>0?3.2:e.speed*(e.chasing?(e.type==='boar'?2.8:1.45):1));if(e.kick>0)e.kick--;
   if(e.x<0||e.x>world-e.w){e.dir*=-1;e.x=Math.max(0,Math.min(world-e.w,e.x));}
   const ecx=e.x+e.w/2;
   const trap=e.vy>=0?holes.find(h=>h.stage===3&&ecx>h.x+3&&ecx<h.x+h.w-3&&e.y+e.h>=ground-12&&e.y+e.h<=ground+18&&!(boss&&boss.hole===h)&&inHole(h).length<HOLE_MAX):null;
@@ -942,7 +942,7 @@ for(const e of enemies){if(!e.alive)continue;
   if(e.y>H+100){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));
     const pl=floats.reduce((best,b)=>!best||Math.abs(b.x+b.w/2-e.spawnX)<Math.abs(best.x+best.w/2-e.spawnX)?b:best,null);
     e.x=pl.x+pl.w/2-e.w/2;e.y=pl.y-e.h-140;e.vy=0;e.respawns++;e.grounded=false;e.dir=e.respawns%2?1:-1;e.home=null;e.perchT=240+Math.floor(Math.random()*180);continue;}
-  if(rect(p,e)){if(oldY+p.h<=e.y+14&&p.vy>0){e.alive=false;p.vy=-9;score+=e.type==='hop'?80:50;sound('stomp');}
+  if(rect(p,e)){if(oldY+p.h<=e.y+14&&p.vy>0){e.alive=false;p.vy=-9;score+=e.type==='boar'?100:e.type==='hop'?80:50;sound('stomp');}
     // 上から降ってきた敵が頭に当たっても、ミスにせず跳ね返す
     else if(e.vy>1&&e.y+e.h-e.vy<=p.y+12){e.vy=-7;e.dir=(e.x+16<p.x+p.w/2)?-1:1;e.kick=30;e.safe=50;e.grounded=false;sound('bounce');popup(e.x+16,e.y-6,'ポン！','#fff',18,40);}
     else if(p.inv<=0&&!(e.safe>0)&&rect(hitBox(p),e)){die('敵にぶつかった！');}}
@@ -1075,7 +1075,21 @@ function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clea
     x.fillStyle='#5a3a1a';x.fillRect(bx-32,top-3,64,6);
   }}
 function drawEnemy(e){
-  if(e.type==='hop'){
+  if(e.type==='boar'){
+    const cx=e.x+16,cy=e.y+20;
+    const stride=e.grounded?Math.sin(e.x*.3)*3:0;
+    x.save();x.translate(cx,cy);x.scale(e.dir,1);
+    ell(-7-stride,9,3,3,'#59352d');
+    ell(8+stride,9,3,3,'#59352d');
+    ell(-2,0,14,9,e.chasing?'#a84b28':'#bd7444');
+    ell(4,-9,4,5,'#713c31');
+    ell(11,2,5,4,'#eeb887');
+    ell(13,1,1.5,1.5,'#683929');
+    ell(6,-3,3,3,'#fff4dd');
+    ell(7,-3,1.5,1.5,'#262029');
+    x.fillStyle='#fff4dd';x.beginPath();x.moveTo(9,5);x.lineTo(14,5);x.lineTo(13,0);x.closePath();x.fill();
+    x.restore();
+  }else if(e.type==='hop'){
     x.strokeStyle='#245f30';x.lineWidth=3;const legY=e.grounded?e.y+e.h:e.y+e.h+5;
     x.beginPath();x.moveTo(e.x+9,e.y+22);x.lineTo(e.x+5,e.y+27);x.lineTo(e.x+10,legY);x.moveTo(e.x+23,e.y+22);x.lineTo(e.x+27,e.y+27);x.lineTo(e.x+22,legY);x.stroke();
     ell(e.x+e.w/2,e.y+13,e.w/2,13,'#3e9e52');
