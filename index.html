@@ -1847,7 +1847,7 @@ function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clea
     x.fillStyle='#5a3a1a';x.fillRect(bx-32,top-3,64,6);
   }}
 // キャラクターの見た目の大きさ（当たり判定は変えず、足もとを中心に絵だけ大きくする）
-const CHAR_SCALE=1.25;
+const CHAR_SCALE=1.4;
 function drawScaled(cx,footY,fn){x.save();x.translate(cx,footY);x.scale(CHAR_SCALE,CHAR_SCALE);x.translate(-cx,-footY);fn();x.restore();}
 function drawEnemy(e){
   if(e.type==='boar'){
