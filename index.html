@@ -86,13 +86,22 @@ canvas{display:block;background:#17283c}
 @media (orientation:portrait){
   #mazeControls{justify-self:start;grid-template-columns:auto auto;align-items:center;gap:3px 14px}
   #mazeDirections{grid-row:1/3;grid-column:1}
-  #mazeStatus,#mazeRetry{grid-column:2}
+  #mazeStatus{grid-column:2}
 }
 #slotBoard{width:min(330px,100%)}
 #slotPayout{margin:8px auto;width:min(310px,100%);color:#ffe384;font:800 18px system-ui}
 #slotPayout progress{display:block;width:100%;height:12px;margin-top:5px;accent-color:#ffd74b}
 #slotPayoutCount{font-variant-numeric:tabular-nums}
 .arcadeStatus{min-height:1.5em;color:#ffdf70}
+#slotRank{margin:6px auto;min-height:1.3em;font:900 clamp(28px,7vw,40px)/1.3 system-ui;letter-spacing:.04em}
+#slotRank.rank1{color:#ffd84a;text-shadow:0 0 12px #ffae00}
+#slotRank.rank2{color:#ff9fd0}
+#slotRank.rank3{color:#8fe8ff}
+#slotRank.rank4{color:#b6f29a}
+#slotRank.miss{color:#9fb3c8}
+#slotPrizes{margin:6px auto;border-collapse:collapse;font-size:14px}
+#slotPrizes td{padding:2px 8px;border-radius:6px}
+#slotPrizes tr.hit td{background:#ffd84a;color:#17283c;font-weight:900}
 @media (max-height:450px) and (orientation:landscape){
   #arcade{padding:8px}
   #arcade h2,#arcade h3{font-size:16px;margin:0}
@@ -129,15 +138,21 @@ canvas{display:block;background:#17283c}
           <button type="button" data-dir="down" aria-label="下">↓</button>
         </div>
         <p id="mazeStatus" class="arcadeStatus" role="status"></p>
-        <button id="mazeRetry" type="button">やり直す</button>
       </div>
     </div>
   </section>
   <section id="slotsPanel" hidden>
     <h3>よし太くんスロット</h3>
-    <p>1等 よし太くん3つ 50枚 ／ 2等 ほかの絵柄3つ 25枚<br>3等 よし太くん2つ 10枚 ／ 4等 ほかの絵柄2つ 5枚</p>
+    <table id="slotPrizes">
+      <tr data-rank="1"><td>1等</td><td>よし太くん 3つ</td><td>50枚</td></tr>
+      <tr data-rank="2"><td>2等</td><td>ほかの絵柄 3つ</td><td>25枚</td></tr>
+      <tr data-rank="3"><td>3等</td><td>よし太くん 2つ</td><td>10枚</td></tr>
+      <tr data-rank="4"><td>4等</td><td>ほかの絵柄 2つ</td><td>5枚</td></tr>
+    </table>
+    <p>まわせるのは1回だけ！</p>
     <canvas id="slotBoard" width="330" height="104" aria-label="スロットの絵柄"></canvas>
     <button id="slotSpin" type="button">まわす</button>
+    <p id="slotRank" aria-live="polite"></p>
     <p id="slotStatus" class="arcadeStatus" role="status"></p>
     <div id="slotPayout" hidden aria-hidden="true">
       <span id="slotPayoutCount"></span>
@@ -947,7 +962,12 @@ const MAZE_START=[1,1],MAZE_ENEMY_STARTS=[[11,1],[11,7]];
 const SLOT_SYMBOLS=['よし太くん','さくらんぼ','ダイヤ','ベル','錦鯉'];
 const SLOT_ICONS=['','🍒','💎','🔔'];
 const SLOT_STOPS=[0,0,0,1,2,3,4];
-let arcadeHole=null,arcadeGame=null,maze=null,slotTimer=null,mazeHold=null;
+let arcadeHole=null,arcadeGame=null,maze=null,slotTimer=null,mazeHold=null,arcadeLeaveTimer=null,slotSpun=false;
+// 遊び終わったら少し結果を見せてから自動で地上へ戻る
+function leaveArcadeSoon(ms){
+  clearTimeout(arcadeLeaveTimer);
+  arcadeLeaveTimer=setTimeout(()=>{arcadeLeaveTimer=null;exitArcade();},ms);
+}
 
 function enterArcade(h){
   state='arcade';arcadeHole=h;
@@ -956,6 +976,7 @@ function enterArcade(h){
 }
 function exitArcade(){
   if(state!=='arcade')return;
+  clearTimeout(arcadeLeaveTimer);arcadeLeaveTimer=null;
   stopSlotSpin();
   stopMazeHold();
   const h=arcadeHole;
@@ -971,7 +992,7 @@ function selectArcadeGame(game){
   arcadeGame=game;arcade.classList.toggle('maze-open',game==='maze');mazePanel.hidden=game!=='maze';slotsPanel.hidden=game!=='slots';
   document.getElementById('arcadeTitle').textContent=game==='maze'?'きらきら迷路':'はしごの先のあそび場';
   if(game==='maze')resetMaze();
-  else{drawSlots([1,0,3]);slotPayout.hidden=true;slotStatus.textContent='まわすを押してスタート';}
+  else{drawSlots([1,0,3]);slotPayout.hidden=true;slotSpun=false;showSlotRank(null,false);slotStatus.textContent='まわすを押してスタート';}
 }
 
 function resetMaze(){
@@ -980,7 +1001,7 @@ function resetMaze(){
   MAZE.forEach((row,y)=>Array.from(row).forEach((cell,x)=>{
     if(cell==='.'&&(x!==MAZE_START[0]||y!==MAZE_START[1]))stars.add(x+','+y);
   }));
-  maze={hero:MAZE_START,stars,lives:3,facing:1,done:false};
+  maze={hero:MAZE_START,stars,missed:false,facing:1,done:false};
   spawnMazeFoes();
   drawMaze();
 }
@@ -1041,8 +1062,8 @@ function updateMazeMotion(){
 }
 function mazeHit(){
   maze.motion=null;stopMazeHold();
-  maze.lives--;maze.hero=MAZE_START;maze.facing=1;spawnMazeFoes();
-  maze.done=maze.lives===0;sound('hurt');
+  maze.missed=true;maze.done=true;sound('hurt');
+  leaveArcadeSoon(1800);
 }
 function mazeMove(dir){
   if(arcadeGame!=='maze'||maze.done)return;
@@ -1054,7 +1075,7 @@ function mazeMove(dir){
   maze.motion={from:fromHero,frame:0,duration:MAZE_GLIDE_FRAMES};
   if(maze.stars.delete(next.join(',')))sound('coin');
   maze.done=maze.stars.size===0;
-  if(maze.done)sound('oneup');
+  if(maze.done){sound('oneup');leaveArcadeSoon(2500);}
   drawMaze();
 }
 function drawMaze(){
@@ -1080,8 +1101,8 @@ function drawMaze(){
   mazeCtx.save();mazeCtx.translate(heroX*size+16,heroY*size+31);mazeCtx.scale(.68,secondRound?.49:.61);
   const walking=maze.motion&&heroX!==maze.hero[0];
   drawPlayerAt(-17,-42,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
-  const status=maze.done?(maze.lives?'クリア！ 星を全部集めた！':'ミス！ やり直すと再挑戦できます。'):
-    '残りの星 '+maze.stars.size+'　ライフ '+maze.lives;
+  const status=maze.done?(maze.missed?'ミス！ 地上へ戻ります…':'クリア！ 星を全部集めた！ 地上へ戻ります…'):
+    '残りの星 '+maze.stars.size+'　ミスしたら地上へ戻る！';
   if(mazeStatus.textContent!==status)mazeStatus.textContent=status;
 }
 function drawMazeCritter(cx,cy,i,look){
@@ -1133,7 +1154,13 @@ function drawSlotKoi(cx,cy){
 }
 function stopSlotSpin(){
   if(slotTimer!==null){clearInterval(slotTimer);slotTimer=null;}
-  slotSpin.disabled=false;
+  slotSpin.disabled=slotSpun;
+}
+function showSlotRank(prize,shown=true){
+  const rank=document.getElementById('slotRank');
+  rank.className=!shown?'':prize?'rank'+prize.rank:'miss';
+  rank.textContent=!shown?'':prize?(prize.rank===1?'🎉 1等 大当たり！':prize.rank+'等 当たり！'):'はずれ…';
+  document.querySelectorAll('#slotPrizes tr').forEach(row=>row.classList.toggle('hit',shown&&!!prize&&+row.dataset.rank===prize.rank));
 }
 function slotPrize(reels){
   if(reels.every(symbol=>symbol===0))return {rank:1,coins:50};
@@ -1164,7 +1191,8 @@ function playSlotPayout(prize){
   },75);
 }
 function startSlotSpin(){
-  if(arcadeGame!=='slots'||slotTimer!==null)return;
+  if(arcadeGame!=='slots'||slotTimer!==null||slotSpun)return;
+  slotSpun=true;
   const result=Array.from({length:3},randomSlotSymbol);
   let tick=0;
   slotPayout.hidden=true;slotSpin.disabled=true;slotStatus.textContent='回転中…';
@@ -1174,17 +1202,17 @@ function startSlotSpin(){
     if(tick<16)return;
     stopSlotSpin();
     const prize=slotPrize(result);
-    if(!prize){slotStatus.textContent='はずれ。もう一度まわせます。';return;}
+    showSlotRank(prize);
+    if(!prize){slotStatus.textContent='また挑戦してね。地上へ戻ります…';leaveArcadeSoon(2200);return;}
     const oldLives=lives;
-    const heading=prize.rank===1?'1等 大当たり！':prize.rank+'等 当たり！';
     collectCoins(prize.coins,player.x+17,player.y-20);
-    slotStatus.textContent=heading+' コイン '+prize.coins+'枚（+'+
+    slotStatus.textContent='コイン '+prize.coins+'枚（+'+
       prize.coins*COIN_POINTS+'点）'+(lives>oldLives?' 1UP！':'');
     playSlotPayout(prize);
+    leaveArcadeSoon(2600+[0,18,13,9,6][prize.rank]*75);
   },80);
 }
 document.getElementById('arcadeExit').addEventListener('click',exitArcade);
-document.getElementById('mazeRetry').addEventListener('click',resetMaze);
 const mazeDirections=document.getElementById('mazeDirections');
 const MAZE_KEYS={arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'up',w:'up',arrowdown:'down',s:'down'};
 function stopMazeHold(){
