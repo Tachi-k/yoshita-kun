@@ -1687,17 +1687,44 @@ function demoBossAI(p){const b=boss,pc=p.x+p.w/2,bc=b.x+b.w/2,dx=bc-pc,dist=Math
     if(Math.abs(lx-pc)<80&&t<70){keys.left=keys.right=false;digHold=false;const away=lx>pc?-1:1,room=away<0?pc-L:R-pc;move(room>90?away:-away);if(!keys.left&&!keys.right&&t<14&&p.on)keys.jump=true;break;}}
 }
 function drawTitle(){
-  x.fillStyle='#0007';x.fillRect(0,0,W,H);
+  const t=Date.now();
+  // まわりを暗くして、真ん中のロゴに目が行くように
+  const vg=x.createRadialGradient(W/2,H*.42,120,W/2,H*.5,620);vg.addColorStop(0,'#0003');vg.addColorStop(1,'#000a');x.fillStyle=vg;x.fillRect(0,0,W,H);
   x.textAlign='center';x.lineJoin='round';
-  const bob=Math.sin(Date.now()*.003)*6;
-  x.font='900 84px system-ui';x.lineWidth=14;x.strokeStyle='#20304a';x.strokeText('よし太くんの大冒険',W/2,175+bob);
-  const g=x.createLinearGradient(0,110,0,190);g.addColorStop(0,'#fff6a8');g.addColorStop(1,'#ffb43c');x.fillStyle=g;x.fillText('よし太くんの大冒険',W/2,175+bob);
+  const bob=Math.sin(t*.003)*6,ly=175+bob;
+  // ロゴの後ろの光の筋
+  x.save();x.translate(W/2,ly-30);x.rotate(t*.00015);for(let k=0;k<16;k++){x.rotate(Math.PI/8);x.fillStyle=k%2?'#fff4b012':'#ffd27a1c';x.beginPath();x.moveTo(0,0);x.lineTo(-40,-520);x.lineTo(40,-520);x.closePath();x.fill();}x.restore();
+  const glow=x.createRadialGradient(W/2,ly-30,10,W/2,ly-30,300);glow.addColorStop(0,'#ffe9a055');glow.addColorStop(1,'#ffe9a000');x.fillStyle=glow;x.fillRect(0,0,W,H);
+  // 立体的なロゴ：奥へ伸びる厚み → ふち → 金色のグラデーション → つや
+  const title='よし太くんの大冒険';x.font='900 84px system-ui';
+  for(let d=10;d>0;d--){x.fillStyle=d>7?'#3a1a08':`rgb(${140-d*8},${62-d*4},${18})`;x.fillText(title,W/2+d*.6,ly+d);}
+  x.lineWidth=14;x.strokeStyle='#1a2440';x.strokeText(title,W/2,ly);
+  x.lineWidth=5;x.strokeStyle='#fff3c0';x.strokeText(title,W/2,ly);
+  const g=x.createLinearGradient(0,ly-72,0,ly+8);g.addColorStop(0,'#fffbe0');g.addColorStop(.38,'#ffe066');g.addColorStop(.52,'#ffb32a');g.addColorStop(.8,'#ff8a1a');g.addColorStop(1,'#ffc94a');
+  x.fillStyle=g;x.fillText(title,W/2,ly);
+  // ロゴの上を光が流れる
+  x.save();const sweep=((t*.0004)%1.6-.3)*W;const sh=x.createLinearGradient(sweep-60,0,sweep+60,0);sh.addColorStop(0,'#fff0');sh.addColorStop(.5,'#ffffffaa');sh.addColorStop(1,'#fff0');
+  x.globalCompositeOperation='source-atop';x.restore();
+  x.save();x.beginPath();x.rect(sweep-60,ly-80,120,90);x.clip();x.fillStyle='#ffffff99';x.fillText(title,W/2,ly);x.restore();
+  // キラキラ
+  for(let k=0;k<7;k++){const a=t*.002+k*1.7,px=W/2+Math.cos(k*2.3)*330+Math.sin(a)*8,py=ly-50+Math.sin(k*1.9)*55,sz=4+Math.abs(Math.sin(a*1.3))*9;
+    x.fillStyle='#fffbe0';x.beginPath();x.moveTo(px,py-sz);x.lineTo(px+sz*.25,py-sz*.25);x.lineTo(px+sz,py);x.lineTo(px+sz*.25,py+sz*.25);x.lineTo(px,py+sz);x.lineTo(px-sz*.25,py+sz*.25);x.lineTo(px-sz,py);x.lineTo(px-sz*.25,py-sz*.25);x.closePath();x.fill();}
+  // サブタイトルのリボン
+  const ry=ly+48;
+  x.fillStyle='#8a1a2a';for(const sx of[-1,1]){x.beginPath();x.moveTo(W/2+sx*200,ry-16);x.lineTo(W/2+sx*240,ry-16);x.lineTo(W/2+sx*226,ry);x.lineTo(W/2+sx*240,ry+16);x.lineTo(W/2+sx*200,ry+16);x.closePath();x.fill();}
+  const rg=x.createLinearGradient(0,ry-20,0,ry+20);rg.addColorStop(0,'#ff6a6a');rg.addColorStop(.5,'#e23a4a');rg.addColorStop(1,'#a81e30');
+  x.fillStyle=rg;x.beginPath();if(x.roundRect)x.roundRect(W/2-210,ry-20,420,40,6);else x.rect(W/2-210,ry-20,420,40);x.fill();
+  x.fillStyle='#ffffff30';x.fillRect(W/2-206,ry-18,412,6);
+  x.font='900 22px system-ui';x.fillStyle='#fff';x.shadowColor='#0008';x.shadowBlur=4;x.fillText('モグラ大王をたおして 空の国をすくえ！',W/2,ry+8);x.shadowBlur=0;
   // 「デモ」表示：上部に大きなバッジ＋画面の四隅に枠
-  const on=Math.floor(Date.now()/500)%2;
-  x.fillStyle=on?'#e64040':'#b52f2f';x.beginPath();if(x.roundRect)x.roundRect(W/2-150,18,300,52,26);else x.rect(W/2-150,18,300,52);x.fill();
+  const on=Math.floor(t/500)%2;
+  const bg=x.createLinearGradient(0,18,0,70);bg.addColorStop(0,on?'#ff5a5a':'#d83a3a');bg.addColorStop(1,on?'#c02a2a':'#a02020');
+  x.fillStyle=bg;x.beginPath();if(x.roundRect)x.roundRect(W/2-150,18,300,52,26);else x.rect(W/2-150,18,300,52);x.fill();
+  x.strokeStyle='#ffffff55';x.lineWidth=2;x.stroke();
   x.fillStyle='#fff';x.font='900 30px system-ui';x.fillText((on?'● ':'　')+'デモプレイ中',W/2,55);
   x.strokeStyle='#e64040';x.lineWidth=8;x.strokeRect(4,4,W-8,H-8);
-  x.font='bold 20px system-ui';x.fillStyle='#fff';x.fillText('STARTボタンで ゲーム開始',W/2,H-24);
+  x.fillStyle='#0008';x.beginPath();if(x.roundRect)x.roundRect(W/2-170,H-52,340,38,19);else x.rect(W/2-170,H-52,340,38);x.fill();
+  x.font='bold 20px system-ui';x.fillStyle='#fff';x.fillText('STARTボタンで ゲーム開始',W/2,H-26);
   x.textAlign='left';
 }
 
@@ -2116,13 +2143,19 @@ function drawItem(it){const ix=it.x,iy=it.y,foot=iy+10;   // 置いてある位�
 }
 function drawPopups(){x.textAlign='center';for(const q of popups){x.globalAlpha=Math.min(1,q.t/20);x.font='bold '+q.size+'px system-ui';x.lineWidth=5;x.strokeStyle='#20304a';x.strokeText(q.text,q.x,q.y);x.fillStyle=q.col;x.fillText(q.text,q.x,q.y);}x.globalAlpha=1;x.textAlign='left'}
 // 1面ゴールの熱気球（ロープで地面につながれている）
-function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=Math.sin(Date.now()*.0015)*3;
+// 気球は主人公に合わせて大きく描く（かごの底を中心に拡大）
+const BALLOON_SCALE=1.3;
+function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clear'?balloonLift:0,bottom=ground-lift;
+  x.save();x.translate(bx,bottom);x.scale(BALLOON_SCALE,BALLOON_SCALE);x.translate(-bx,-bottom);drawBalloonRaw(part);x.restore();}
+function drawBalloonRaw(part){const bx=world-120,lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=Math.sin(Date.now()*.0015)*3;
   const firing=state==='goal'&&goalTick>28,flame=firing?(.8+Math.random()*.5):(Math.floor(Date.now()/900)%3===0?.35:0);
   if(part==='back'){
     // つなぎとめるロープと杭
     if(!(state==='goal'&&goalTick>45)&&state!=='clear'){x.strokeStyle='#8a6a4a';x.lineWidth=2;x.beginPath();x.moveTo(bx-30,top+30);x.lineTo(bx-70,ground);x.moveTo(bx+30,top+30);x.lineTo(bx+70,ground);x.stroke();x.fillStyle='#5a4030';x.fillRect(bx-74,ground-6,8,8);x.fillRect(bx+66,ground-6,8,8);}
     // 球皮とかごをつなぐロープ
-    x.strokeStyle='#5e4a3a';x.lineWidth=1.6;x.beginPath();for(const [ux,lx] of[[-24,-28],[-9,-10],[9,10],[24,28]]){x.moveTo(bx+ux+sway,cy+76);x.lineTo(bx+lx,top);}x.stroke();
+    const by=top-30;   // バーナーの位置：かごと球皮のあいだ
+    x.strokeStyle='#4a3a2e';x.lineWidth=1.4;x.beginPath();for(const [ux,fx] of[[-20,-12],[-7,-4],[7,4],[20,12]]){x.moveTo(bx+ux+sway,cy+82);x.lineTo(bx+fx,by);}x.stroke();   // 球皮からバーナー枠へのワイヤー
+    x.strokeStyle='#6b5a4a';x.lineWidth=2.6;x.beginPath();for(const sx of[-1,1]){x.moveTo(bx+sx*13,by+4);x.lineTo(bx+sx*28,top);}x.stroke();   // バーナー枠を支える柱
     // 球皮：上がまるく下がすぼまった形
     const ex=bx+sway,shape=()=>{x.beginPath();x.moveTo(ex-20,cy+70);x.bezierCurveTo(ex-58,cy+38,ex-78,cy-10,ex-62,cy-46);x.bezierCurveTo(ex-46,cy-82,ex+46,cy-82,ex+62,cy-46);x.bezierCurveTo(ex+78,cy-10,ex+58,cy+38,ex+20,cy+70);x.closePath();};
     x.save();shape();x.clip();
@@ -2133,20 +2166,26 @@ function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clea
       x.moveTo(ex+xa(a0)*.3,cy+78);x.quadraticCurveTo(ex+xa(a0)*1.25,cy-5,ex+xa(a0)*.1,cy-84);x.lineTo(ex+xa(a1)*.1,cy-84);x.quadraticCurveTo(ex+xa(a1)*1.25,cy-5,ex+xa(a1)*.3,cy+78);x.closePath();x.fill();}
     const shade=x.createRadialGradient(ex-26,cy-38,8,ex,cy,96);shade.addColorStop(0,'#ffffff66');shade.addColorStop(.45,'#ffffff00');shade.addColorStop(1,'#00000066');
     x.fillStyle=shade;x.fillRect(ex-90,cy-90,180,180);   // 光と影で丸く見せる
-    x.strokeStyle='#00000022';x.lineWidth=1;for(let k=-3;k<=3;k++){x.beginPath();x.ellipse(ex,cy-5,Math.abs(k)*20+.5,82,0,0,7);x.stroke();}   // 縫い目
+    x.strokeStyle='#00000022';x.lineWidth=1;for(let k=-3;k<=3;k++){x.beginPath();x.ellipse(ex,cy-5,Math.abs(k)*20+.5,82,0,0,7);x.stroke();}   // 縦の縫い目
+    for(const hy of[-50,-20,10,40]){x.beginPath();x.ellipse(ex,cy+hy,70-Math.abs(hy+5)*.35,9,0,0,Math.PI);x.stroke();}   // 横の縫い目
+    ell(ex,cy-76,14,4,'#00000022');   // てっぺんの弁
     x.restore();
     x.strokeStyle='#00000033';x.lineWidth=1.5;shape();x.stroke();
     // すそ（口金）
     const sk=x.createLinearGradient(ex-20,0,ex+20,0);sk.addColorStop(0,'#8a2a22');sk.addColorStop(.4,'#d94a4a');sk.addColorStop(1,'#7a2018');
     x.fillStyle=sk;x.beginPath();x.moveTo(ex-20,cy+68);x.lineTo(ex+20,cy+68);x.lineTo(ex+13,cy+84);x.lineTo(ex-13,cy+84);x.closePath();x.fill();
     // バーナーの炎
-    if(flame>0){x.globalAlpha=.6;ell(bx,top-14-20*flame,12*flame,26*flame,'#ff7a2a');x.globalAlpha=1;
-      x.fillStyle='#ff9a3c';x.beginPath();x.moveTo(bx-9,top-8);x.quadraticCurveTo(bx,top-8-52*flame,bx+9,top-8);x.fill();
-      x.fillStyle='#ffe27a';x.beginPath();x.moveTo(bx-4,top-8);x.quadraticCurveTo(bx,top-8-30*flame,bx+4,top-8);x.fill();
-      x.fillStyle='#bfe6ff';x.beginPath();x.moveTo(bx-2,top-8);x.quadraticCurveTo(bx,top-8-12*flame,bx+2,top-8);x.fill();}
-    // バーナー（金属の枠）
-    const mt=x.createLinearGradient(0,top-12,0,top-2);mt.addColorStop(0,'#d8dde6');mt.addColorStop(1,'#5a606c');
-    x.fillStyle=mt;x.fillRect(bx-9,top-12,18,8);x.fillStyle='#3a3e48';x.fillRect(bx-14,top-4,28,3);
+    // バーナーの炎：枠の上から球皮の口へ向かって吹き上がる
+    const fb=by-6;
+    if(flame>0){const fg=x.createRadialGradient(bx,fb-22*flame,2,bx,fb-22*flame,40*flame);fg.addColorStop(0,'#ffb04a99');fg.addColorStop(1,'#ffb04a00');x.fillStyle=fg;x.fillRect(bx-45,fb-70,90,80);
+      x.fillStyle='#ff7a2a';x.beginPath();x.moveTo(bx-8,fb);x.quadraticCurveTo(bx-10,fb-26*flame,bx,fb-48*flame);x.quadraticCurveTo(bx+10,fb-26*flame,bx+8,fb);x.closePath();x.fill();
+      x.fillStyle='#ffc24a';x.beginPath();x.moveTo(bx-5,fb);x.quadraticCurveTo(bx-6,fb-18*flame,bx,fb-32*flame);x.quadraticCurveTo(bx+6,fb-18*flame,bx+5,fb);x.closePath();x.fill();
+      x.fillStyle='#fff3c0';x.beginPath();x.moveTo(bx-2.5,fb);x.quadraticCurveTo(bx,fb-14*flame,bx+2.5,fb);x.fill();
+      x.fillStyle='#8fd0ff';x.fillRect(bx-3,fb-2,6,2);}
+    // バーナー（金属の枠とコイル）
+    const mt=x.createLinearGradient(0,by-8,0,by+4);mt.addColorStop(0,'#e4e8ef');mt.addColorStop(1,'#5a606c');
+    x.fillStyle=mt;x.fillRect(bx-9,by-8,18,10);x.strokeStyle='#8a909c';x.lineWidth=1.2;for(let k=0;k<3;k++){x.beginPath();x.ellipse(bx,by-6+k*3,9,1.6,0,0,7);x.stroke();}
+    x.fillStyle='#3a3e48';x.fillRect(bx-15,by+2,30,3);
   }else{
     // かご：編みこんだ籐のもようと、皮のふち
     const wk=x.createLinearGradient(0,top,0,top+38);wk.addColorStop(0,'#c99052');wk.addColorStop(1,'#8a5a2c');
