@@ -91,12 +91,19 @@ function groundAt(px){return platforms.some(b=>b.y===ground&&px>=b.x&&px<=b.x+b.
 function addPerchEnemies(idx){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));idx.forEach((k,i)=>{const f=floats[k];if(f)enemies.push(makeEnemy(f.x+f.w/2-16,i%2===1?'hop':'walk',i+20,f))})}
 function banner(t,s,d=150){bannerText=t;bannerSub=s;bannerT=d}
 const COINS_PER_LIFE=100,COIN_POINTS=10;
+const STAGE2_OFFSET=240,STAGE2_START=STAGE2_OFFSET+60,STAGE2_BONUS_X=38;
+function stageStartX(){return stage===2?STAGE2_START:60;}
+function followCamera(px){
+  if(arenaOn)return AX;
+  const anchor=stage===2&&!inBasement?120:240;
+  return Math.max(0,Math.min(world-W,px-anchor));
+}
 let coinProgress=0,stageStartCoinProgress=0;
 function loadStage(n){
   victoryFlight=null;
   stopStageClearAudio();
   stopBossSounds();
-  stage=n;stageStartScore=score;stageStartCoinProgress=coinProgress;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonT=60*8;lastSafeX=60;bonusUsed[n]=false;crossed1=false;leftHold=0;roomKind='basement';roomT=0;inBasement=false;surface=null;secret={x:n===1?2520:840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
+  stage=n;stageStartScore=score;stageStartCoinProgress=coinProgress;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonT=60*8;lastSafeX=stageStartX();bonusUsed[n]=false;crossed1=false;roomKind='basement';roomT=0;inBasement=false;surface=null;secret={x:n===1?2520:STAGE2_OFFSET+840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
   if(n===1){
     world=4300;
     for(let i=0;i<world/240;i++){if(i!==5&&i!==11&&i!==15)platforms.push({x:i*240,y:ground,w:240,h:75});}
@@ -107,18 +114,21 @@ function loadStage(n){
     [[2,'gem'],[4,'coins'],[7,'heart'],[9,'gem'],[13,'chest'],[16,'gem']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
     banner('STAGE 1','そよかぜの丘');
   }else{
-    AX=2640;world=AX+960;
-    for(let i=0;i<11;i++){if(i!==4&&i!==8)platforms.push({x:i*240,y:ground,w:240,h:75});}
+    AX=STAGE2_OFFSET+3120;world=AX+960;
+    platforms.push({x:0,y:ground,w:STAGE2_OFFSET,h:75});
+    for(let i=0;i<13;i++){
+      if(i!==4&&i!==8)platforms.push({x:STAGE2_OFFSET+i*240,y:ground,w:240,h:75});
+    }
     platforms.push({x:AX,y:ground,w:960,h:75});
-    for(let i=0;i<8;i++)platforms.push({x:330+i*270,y:330-(i%3)*45,w:110,h:18});
+    for(let i=0;i<10;i++)platforms.push({x:STAGE2_OFFSET+330+i*270,y:330-(i%3)*45,w:110,h:18});
     platforms.push({x:AX+170,y:320,w:110,h:18},{x:AX+680,y:320,w:110,h:18});
-    for(let i=0;i<18;i++)coins.push({x:200+i*120,y:270+(i%4)*30,taken:false});
-    [520,760,1320,1500,1700,1850,2250,2450].forEach((ex,i)=>enemies.push(makeEnemy(ex,i===2||i===6?'boar':i%2===1?'hop':'walk',i)));
+    for(let i=0;i<23;i++)coins.push({x:STAGE2_OFFSET+200+i*120,y:270+(i%4)*30,taken:false});
+    [520,760,1320,1500,1700,1850,2250,2450,2730,2960].forEach((ex,i)=>enemies.push(makeEnemy(STAGE2_OFFSET+ex,i===2||i===6||i===8?'boar':i%2===1?'hop':'walk',i)));
     addPerchEnemies([1,3,6]);
-    [[2,'gem'],[5,'heart'],[7,'coins'],[9,'chest']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
+    [[2,'gem'],[5,'heart'],[7,'coins'],[9,'chest'],[12,'gem']].forEach(([k,t])=>spots.push({x:STAGE2_OFFSET+k*240+120,type:t,found:false}));
     banner('STAGE 2','大王の谷');
   }
-  player=newPlayer(120);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
+  player=newPlayer(120);player.x=stageStartX();camera=followCamera(player.x);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
 }
 function reset(){score=0;coinProgress=0;lives=3;keys={};bonusUsed={};loadStage(1)}
 function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;lives=3;keys={};loadStage(2)}else reset()}
@@ -326,7 +336,7 @@ const F2_MEL=[64,0,0,0,0,0,65,64, 0,0,71,0,70,0,67,0, 65,0,0,69,0,0,72,71, 64,0,
 const F2_CH=[[59,64,67],[59,64,67],[60,65,69],[59,64,67],[57,60,64],[58,62,65],[59,63,66],[59,64,67]];
 const F2_ROOT=[40,40,41,40,45,46,47,40];
 function darkPad(ms,t,dur,vol){const f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();f.type='lowpass';f.frequency.value=700;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.4);g.gain.setValueAtTime(vol,t+Math.max(.41,dur-.3));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.3);f.connect(g);g.connect(bus());for(const m of ms)for(const d of[-10,10]){const o=audioCtx.createOscillator();o.type='sawtooth';o.frequency.value=mf(m-12);o.detune.value=d;o.connect(f);o.start(t);o.stop(t+dur+.35)}}
-SONGS.field2={len:64,dur:()=>60/(player&&player.hole?140:118)/2/hurryMul(),step(i,t,sd){const bar=i>>3,b=i%8,r=F2_ROOT[bar];
+SONGS.field2={len:64,dur:()=>60/(player&&player.hole?140:118)/2/stage2Rush(),step(i,t,sd){const bar=i>>3,b=i%8,r=F2_ROOT[bar];
   if(b===0)darkPad(F2_CH[bar],t,sd*8,.03);
   const os=[0,0,12,0,1,0,7,0][b];bnote(mf(r+os),t,sd*.8,'sawtooth',.035);bnote(mf(r+os),t,sd*.9,'triangle',.09);   // にじり寄るベース
   if(b===0||b===3)timp(t,b===0?.32:.18,72);if(b===6)timp(t,.12,96);                                          // ドン…ドン　低い太鼓
@@ -581,7 +591,7 @@ function enterBasement(h){const p=player;roomKind='basement';roomT=0;
 function exitBasement(){const p=player,sf=surface,h=sf.hole,wasBonus=inBonus();
   platforms=sf.platforms;coins=sf.coins;enemies=sf.enemies;items=sf.items;spots=sf.spots;world=sf.world;camera=sf.camera;
   holes=h?sf.holes.filter(x=>x!==h):sf.holes;inBasement=false;surface=null;parts=[];roomKind='basement';balls=[];cannonWarn=null;cannonT=Math.max(cannonT,240);
-  p.x=h?h.x+h.w+6:sf.returnX;p.y=ground-p.h;p.vy=-8;p.moveLock=300;p.on=false;p.hole=null;p.inv=Math.max(p.inv,90);p.facing=1;lastSafeX=p.x;
+  p.x=h?h.x+h.w+6:sf.returnX;p.y=ground-p.h;p.vy=-8;p.moveLock=300;p.on=false;p.hole=null;p.inv=Math.max(p.inv,90);p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);
   for(const e of enemies){if(e.alive&&!e.trapHole&&Math.abs(e.x+16-(p.x+17))<170){e.x+=(e.x+16>=p.x+17?1:-1)*170;e.safe=90;}}
   popup(p.x+17,ground-70,wasBonus?'ボーナス終了！':'地上にもどった！','#fff',24,90);sound('jump');}
 // ボーナス画面（1面：コインの雨）とボーナスステージ（2面：雲の上）
@@ -612,26 +622,33 @@ function drawBasementBg(){
   const lx=W-72;x.fillStyle='#ffdf5022';x.fillRect(lx-12,40,64,ground-40);x.strokeStyle='#c8913c';x.lineWidth=5;x.beginPath();x.moveTo(lx,40);x.lineTo(lx,ground);x.moveTo(lx+40,40);x.lineTo(lx+40,ground);for(let yy=60;yy<ground;yy+=28){x.moveTo(lx,yy);x.lineTo(lx+40,yy)}x.stroke();
   x.fillStyle='#ffdf50';x.font='bold 16px system-ui';x.textAlign='center';x.fillText('↑ 地上へ',lx+20,ground-150);x.textAlign='left';}
 // ===== 時間制限 =====
-const TIME_LIMIT={1:150,2:180},BOSS_TIME=180;   // 秒（ボス戦は時間切れなし・残り時間がボーナス）
+const TIME_LIMIT={1:150,2:195},BOSS_TIME=180;   // 秒（ボス戦は時間切れなし・残り時間がボーナス）
 let timeLeft=150*60,timeBonus=0,hurryShown=false;
 // ミスしたところから再開（タイムはそのまま）。時間切れの時だけステージの最初から＆タイム満タン
 function respawnHere(){const wasB=inBasement;if(inBasement)exitBasement();let rx=wasB?player.x:lastSafeX;
   player=newPlayer(150);rocks=[];waves=[];balls=[];cannonWarn=null;cannonT=Math.max(cannonT,180);
-  if(deathCause==='時間切れ！'&&!arenaOn){rx=60;resetTimer();banner('','時間切れ！ ステージの最初から',110);}   // 時間切れはステージの最初から・タイムも満タンに戻す
+  if(deathCause==='時間切れ！'&&!arenaOn){rx=stageStartX();resetTimer();banner('','時間切れ！ ステージの最初から',110);}   // 時間切れはステージの最初から・タイムも満タンに戻す
   if(arenaOn&&boss){const bc=boss.x+boss.w/2;if(Math.abs(rx+17-bc)<260)rx=bc>AX+480?AX+60:AX+860;rx=Math.max(AX+10,Math.min(AX+910,rx));}
   for(let k=0;k<6;k++){const h=holes.find(h=>rx+28>h.x&&rx+6<h.x+h.w);if(!h)break;rx=h.x+h.w+4;}    // 穴の上には出さない
   player.x=rx;player.y=ground-42-40;player.on=false;
   for(const e of enemies){if(e.alive&&!e.trapHole&&Math.abs(e.x+16-(rx+17))<170){e.x+=(e.x+16>=rx+17?1:-1)*170;e.safe=90;}}   // 近くの敵は少し離す
-  camera=arenaOn?AX:Math.max(0,Math.min(world-W,rx-240));keys.jump=false;state='play';}
+  camera=followCamera(rx);keys.jump=false;state='play';}
 function resetTimer(){timeLeft=TIME_LIMIT[stage]*60;hurryShown=false}
 function hurry(){return mode==='game'&&state==='play'&&!arenaOn&&timeLeft<=30*60}
 function stage1Rush(){return mode==='game'&&stage===1&&!inBasement?1+.3*(1-timeLeft/(TIME_LIMIT[1]*60)):1}   // 1面もだんだん速く（最後は1.3倍）
 // 残り30秒でグッと速く、残り10秒でさらに速く
 function hurryMul(){if(!hurry())return 1;return timeLeft<=10*60?1.6:1.4}
+function stage2Rush(){
+  if(mode!=='game'||arenaOn)return 1;
+  const seconds=Math.max(0,timeLeft/60);
+  if(seconds>=90)return 1;
+  if(seconds>=30)return 1+(90-seconds)/150;
+  return 1.4+(30-seconds)/100;
+}
 function bossRush(){return arenaOn?1+.35*(1-timeLeft/(BOSS_TIME*60)):1}   // ボス戦はだんだん速く
 function addTimeBonus(){timeBonus=Math.ceil(timeLeft/60)*10;score+=timeBonus}
 let lastSafeX=60;
-let roomKind='basement',roomT=0,bonusUsed={},crossed1=false,leftHold=0;   // roomKind: basement=隠し地下室 / rain=ボーナス画面 / sky=ボーナスステージ
+let roomKind='basement',roomT=0,bonusUsed={},crossed1=false;   // roomKind: basement=隠し地下室 / rain=ボーナス画面 / sky=ボーナスステージ
 function inBonus(){return inBasement&&roomKind!=='basement'}   // 最後に安全な地面に立っていた位置（ミスした時の再開地点）
 // ===== エンディングでも主人公を動かせる =====
 let endP=null;
@@ -717,7 +734,7 @@ function startDemo(){
     player.y=ground-player.h;
     player.on=true;
     lastSafeX=player.x;
-    camera=demoScene==='boss'?AX:Math.max(0,player.x-240);
+    camera=demoScene==='boss'?AX:followCamera(player.x);
   }
   if(demoScene!=='stage2')bannerT=0;
 }
@@ -897,7 +914,9 @@ if(p.moveLock>0){if(!keys.left&&!keys.right)p.moveLock=0;else{p.moveLock--;p.vx=
 if(bossIntroLong()){p.vx=0;}else if((keys.jump||padJump)&&p.on){p.vy=-16.5;p.on=false;p.jumping=true;sound('jump');}
 p.vy=Math.min(16,p.vy+.65);
 p.x=Math.max(arenaOn?AX:0,Math.min(world-p.w,p.x+p.vx));
-if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!bonusUsed[2]){if(p.x<=0&&keys.left&&p.on){leftHold++;if(leftHold===20)popup(30,ground-70,'…？','#fff',22,40);if(leftHold>45){leftHold=0;enterBonus('sky',60);return;}}else leftHold=0;}
+if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!bonusUsed[2]&&p.x<=STAGE2_BONUS_X&&keys.left&&p.on){
+  enterBonus('sky',STAGE2_START);return;
+}
 if(p.hole&&p.y+p.h>ground-2)clampToHole(p,p.hole);
 p.y+=p.vy;p.on=false;
 if(p.hole&&p.y+p.h<=ground-2)p.hole=null;
@@ -962,7 +981,7 @@ if((mode==='game'||demoScene==='rain')&&stage===1&&!inBasement&&crossed1&&!bonus
 updateCannon(p,oldY);if(state!=='play')return;
 if(p.y>H+80)die('落ちてしまった！');
 if(stage===1&&!inBasement&&state==='play'&&p.x+p.w>world-158){state='goal';goalTick=0;goalSX=p.x;goalSY=p.y;balloonLift=0;balloonVy=0;p.vy=0;p.hole=null;p.facing=1;sound('jump');}
-camera=arenaOn?AX:Math.max(0,Math.min(world-W,p.x-240));}
+camera=followCamera(p.x);}
 
 // ===== 描画 =====
 function ell(cx,cy,rx,ry,col){x.fillStyle=col;x.beginPath();x.ellipse(cx,cy,rx,ry,0,0,7);x.fill()}
