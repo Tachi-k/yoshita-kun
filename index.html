@@ -868,7 +868,7 @@ function updateEndPlayer(){
   if(q.walking){q.f=Math.sign(vx);q.stride=(q.stride||0)+Math.abs(q.x-oldX);}
   if((keys.jump||padJump)&&q.on){q.vy=-14;q.on=false;sound('jump');}
   q.vy=Math.min(16,q.vy+.65);q.y+=q.vy;if(q.y>=ground-42){q.y=ground-42;q.vy=0;q.on=true;}
-  if(q.walking&&q.on&&Math.abs(q.x+17-QUEST_DOOR_X)<=48){
+  if(endingDone()&&q.walking&&q.on&&Math.abs(q.x+17-QUEST_DOOR_X)<=48){
     q.doorFrame=1;q.walking=false;sound('treasure');
     return;
   }
@@ -1843,7 +1843,7 @@ function drawEnding(){
   for(const s of STARS){x.globalAlpha=.35+.65*Math.abs(Math.sin(endT*.03+s.p));x.fillStyle='#fff';x.fillRect(s.x,s.y,s.s,s.s)}x.globalAlpha=1;
   drawParts();
   x.fillStyle='#2d5a3a';x.fillRect(0,ground,W,H-ground);x.fillStyle='#3f7a4f';x.fillRect(0,ground,W,10);
-  drawQuestDoor();
+  if(endingDone())drawQuestDoor();
   const princess=endingPrincessPosition();
   if(endingRare){drawRainbow();const jump=k=>Math.abs(Math.sin(endT*.13+k))*18;
     drawEndPlayer();
