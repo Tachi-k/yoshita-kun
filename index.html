@@ -2136,20 +2136,83 @@ function drawBossCrown(cx,y,s,fl){
   for(const [gx,col] of[[-11,'#2fa0ff'],[0,'#e8203a'],[11,'#2fd17a']]){ell(cx+gx*s,y-8*s,2.6*s,2.6*s,fl?'#fff':col);ell(cx+gx*s-.8*s,y-8.8*s,.8*s,.8*s,'#fff');}
   for(const tx of[-22,0,22])ell(cx+tx*s,y-(tx?15:20)*s,2*s,2*s,fl?'#fff':'#fff3a0');
 }
+// ===== 空と遠くの景色（奥ほどゆっくり動く多重スクロール） =====
+// 山なみの形：決まった乱数で作り、横にくり返す
+function makeRidge(seed,span,step,base,amp){const r=seeded(seed),pts=[];let h=0;for(let x0=0;x0<=span;x0+=step){h=h*.55+(r()-.5)*amp;pts.push([x0,base+h-Math.sin(x0/span*Math.PI*2)*amp*.25]);}pts[pts.length-1][1]=pts[0][1];return {pts,span};}
+const RIDGE_FAR=makeRidge(11,1400,70,300,150),RIDGE_NEAR=makeRidge(23,1100,55,360,90);
+const CLOUD_SET=(()=>{const r=seeded(7),list=[];for(let i=0;i<16;i++)list.push({x:r()*1800,y:150+r()*120,s:.5+r()*.6,far:i%2===0});return list;})();
+function drawRidge(ridge,scroll,fill,snow){
+  const off=((scroll%ridge.span)+ridge.span)%ridge.span;
+  x.fillStyle=fill;x.beginPath();x.moveTo(-off-10,H);
+  for(let rep=0;rep*ridge.span-off<W+ridge.span;rep++)for(const [px,py] of ridge.pts)x.lineTo(rep*ridge.span+px-off,py);
+  x.lineTo(W+10,H);x.closePath();x.fill();
+  if(snow){x.fillStyle=snow;for(let rep=0;rep*ridge.span-off<W+ridge.span;rep++)ridge.pts.forEach(([px,py],i)=>{const prev=ridge.pts[i-1],next=ridge.pts[i+1];if(!prev||!next||py>prev[1]-18||py>next[1]-18||py>250)return;const sx=rep*ridge.span+px-off;
+      x.beginPath();x.moveTo(sx,py);x.lineTo(sx-14,py+16);x.lineTo(sx-6,py+13);x.lineTo(sx,py+18);x.lineTo(sx+7,py+12);x.lineTo(sx+14,py+16);x.closePath();x.fill();});}
+}
+// もくもくした雲：下側に影、上に光のあたる立体的な雲
+const CLOUD_PUFFS=[[-1,.15,.5],[-.55,-.2,.68],[0,-.42,.82],[.55,-.22,.7],[1,.12,.52],[.2,.18,.6],[-.3,.2,.6]];
+function drawCloud(cx,cy,sc,shade,body,light){
+  const R=34*sc;
+  x.fillStyle=shade;for(const [px,py,pr] of CLOUD_PUFFS){x.beginPath();x.arc(cx+px*R*1.3,cy+py*R+R*.16,pr*R,0,7);x.fill();}
+  x.fillStyle=body;for(const [px,py,pr] of CLOUD_PUFFS){x.beginPath();x.arc(cx+px*R*1.3,cy+py*R,pr*R*.94,0,7);x.fill();}
+  x.fillStyle=light;for(const [px,py,pr] of CLOUD_PUFFS.slice(1,4)){x.beginPath();x.arc(cx+px*R*1.3-R*.12,cy+py*R-R*.14,pr*R*.55,0,7);x.fill();}
+}
 function drawSky(){
-  let sky=x.createLinearGradient(0,0,0,H);
-  if(stage===2){sky.addColorStop(0,'#ff9f6b');sky.addColorStop(.55,'#c8709a');sky.addColorStop(1,'#5b3e7e');}
-  else{sky.addColorStop(0,'#71c7ff');sky.addColorStop(1,'#e1f8ff');}
+  const dusk=stage===2,t=Date.now()*.004;
+  const sky=x.createLinearGradient(0,0,0,H);
+  if(dusk){sky.addColorStop(0,'#2f2464');sky.addColorStop(.38,'#9b4f8e');sky.addColorStop(.62,'#f2836a');sky.addColorStop(.8,'#ffc27a');sky.addColorStop(1,'#ffe0a0');}
+  else{sky.addColorStop(0,'#4a9fe8');sky.addColorStop(.5,'#7cc2f5');sky.addColorStop(1,'#e8f7ff');}
   x.fillStyle=sky;x.fillRect(0,0,W,H);
-  x.fillStyle=stage===2?'#ffd6c4':'#fff';
-  for(let i=0;i<22;i++){let cx=(i*257-camera*.25)%(W+220);if(cx< -100)cx+=W+220;x.beginPath();x.ellipse(cx,85+(i%4)*48,55,18,0,0,7);x.fill();}
+  // 太陽（夕方は大きく低い夕日）
+  const sx=dusk?690:800,sy=dusk?318:92,sr=dusk?58:34;
+  const glow=x.createRadialGradient(sx,sy,sr*.6,sx,sy,sr*(dusk?4:4.5));glow.addColorStop(0,dusk?'#fff1b0cc':'#fffbe0cc');glow.addColorStop(1,'#fff0');
+  x.fillStyle=glow;x.fillRect(0,0,W,H);
+  ell(sx,sy,sr,sr,dusk?'#ffe08a':'#fffbe6');ell(sx,sy,sr*.82,sr*.82,dusk?'#fff1c0':'#ffffff');
+  // 遠くの雲（ゆっくり流れる）
+  const cloudCols=dusk?['#c0679a','#ffb89a','#ffe1c8']:['#c9dcef','#ffffff','#ffffff'];
+  for(const c of CLOUD_SET){if(!c.far)continue;const span=W+400,cx=((c.x-camera*.1+t*2)%span+span)%span-200;x.globalAlpha=.85;drawCloud(cx,c.y,c.s*.8,...cloudCols);x.globalAlpha=1;}
+  // 遠くの山（かすんだ色・雪をかぶった頂上）
+  drawRidge(RIDGE_FAR,camera*.08,dusk?'#6a3f7c':'#9fbcd8',dusk?null:'#f4f9ff');
+  const haze=x.createLinearGradient(0,220,0,420);haze.addColorStop(0,dusk?'#ff9f8000':'#e8f7ff00');haze.addColorStop(1,dusk?'#ffb08a88':'#e8f7ffaa');
+  x.fillStyle=haze;x.fillRect(0,220,W,200);
+  // 近くの山・森
+  drawRidge(RIDGE_NEAR,camera*.18,dusk?'#4a2d5c':'#6fa37e',null);
+  if(!dusk){x.fillStyle='#4f8a62';const off=((camera*.18)%46+46)%46;for(let tx=-off;tx<W+46;tx+=23){const base=RIDGE_NEAR.pts[Math.floor(((tx+camera*.18)%RIDGE_NEAR.span+RIDGE_NEAR.span)%RIDGE_NEAR.span/55)][1]+14;x.beginPath();x.moveTo(tx,base);x.lineTo(tx+8,base-20);x.lineTo(tx+16,base);x.closePath();x.fill();}}   // 木のシルエット
+  // 近くの雲
+  for(const c of CLOUD_SET){if(c.far)continue;const span=W+500,cx=((c.x-camera*.25+t*4)%span+span)%span-250;drawCloud(cx,c.y-10,c.s,...cloudCols);}
+}
+// 地面と足場：土の層・石・草のふさ（画面に見える部分だけ細かく描く）
+function drawTerrain(b){
+  if(b.x+b.w<camera-20||b.x>camera+W+20)return;
+  const dusk=stage===2,L=Math.max(b.x,camera-20),R=Math.min(b.x+b.w,camera+W+20);
+  const dirt=x.createLinearGradient(0,b.y,0,b.y+b.h);dirt.addColorStop(0,dusk?'#8a5a3c':'#a96d3d');dirt.addColorStop(1,dusk?'#3f2418':'#5e3719');
+  x.fillStyle=dirt;x.fillRect(b.x,b.y,b.w,b.h);
+  // 土の中の石（場所ごとに決まった並び）
+  for(let sx=Math.floor(L/26)*26;sx<R;sx+=26){const k=Math.abs(Math.sin(sx*12.9898)*43758.5)%1,yy=b.y+22+k*Math.max(4,b.h-34);if(yy>b.y+b.h-6||sx<b.x+4||sx>b.x+b.w-10)continue;
+    ell(sx+6,yy,4+k*4,2.6+k*2,dusk?'#5a3a2a':'#7b4e2a');ell(sx+5,yy-1,2+k*2,1.2+k,dusk?'#a07050':'#c48a56');}
+  x.fillStyle='#0003';x.fillRect(b.x,b.y+12,b.w,4);   // 草の下の影
+  const grass=x.createLinearGradient(0,b.y,0,b.y+13);grass.addColorStop(0,dusk?'#7fbf5a':'#74d86a');grass.addColorStop(1,dusk?'#3f7a3a':'#3d9a42');
+  x.fillStyle=grass;x.fillRect(b.x,b.y,b.w,13);
+  x.fillStyle=dusk?'#8fd06a':'#8ef07c';   // 草のふさ
+  x.beginPath();for(let gx=Math.max(b.x,Math.floor(L/7)*7);gx<R&&gx<b.x+b.w-3;gx+=7){const hgt=3+Math.abs(Math.sin(gx*.7))*4;x.moveTo(gx,b.y+2);x.lineTo(gx+2,b.y-hgt);x.lineTo(gx+4,b.y+2);}x.fill();
+  x.fillStyle='#ffffff22';x.fillRect(b.x,b.y,b.w,3);
 }
 function drawArenaBg(){
-  x.fillStyle='#3a2848';x.fillRect(AX,150,960,ground-150);
-  for(let xx=AX;xx<AX+960;xx+=80)x.fillRect(xx,118,44,34);
-  x.strokeStyle='#4f3a64';x.lineWidth=2;
-  for(let yy=150,r=0;yy<ground;yy+=30,r++)for(let xx=AX+(r%2?-30:0);xx<AX+960;xx+=60)x.strokeRect(Math.max(AX,xx),yy,Math.min(60,AX+960-Math.max(AX,xx)),30);
-  for(const tx of[AX+110,AX+850]){x.fillStyle='#5a4030';x.fillRect(tx-4,250,8,28);const f=Math.sin(Date.now()*.02+tx)*3;ell(tx,242+f*.3,9,14+f,'#ff9a3c');ell(tx,246,5,8,'#ffe27a');}
+  if(AX>camera+W||AX+960<camera)return;
+  const wall=x.createLinearGradient(0,118,0,ground);wall.addColorStop(0,'#4a3660');wall.addColorStop(1,'#2a1d38');
+  x.fillStyle=wall;x.fillRect(AX,150,960,ground-150);
+  for(let xx=AX;xx<AX+960;xx+=80){x.fillRect(xx,118,44,34);x.fillStyle='#ffffff14';x.fillRect(xx,118,44,4);x.fillStyle=wall;}   // 城壁のでこぼこ
+  // 石のブロック：1つずつ明るさを変えて、上に光・下に影
+  for(let yy=150,r=0;yy<ground;yy+=30,r++)for(let xx=AX+(r%2?-30:0);xx<AX+960;xx+=60){
+    const bx=Math.max(AX,xx),bw=Math.min(60,AX+960-bx,xx+60-bx),k=Math.abs(Math.sin(xx*3.1+yy*7.7))%1;
+    x.fillStyle=`rgba(255,255,255,${.02+k*.05})`;x.fillRect(bx+1,yy+1,bw-2,28);
+    x.fillStyle='#ffffff12';x.fillRect(bx+1,yy+1,bw-2,3);x.fillStyle='#0000002a';x.fillRect(bx+1,yy+25,bw-2,4);
+    x.fillStyle='#1c1228';x.fillRect(bx,yy,bw,1.5);x.fillRect(bx,yy,1.5,30);}
+  for(const tx of[AX+110,AX+850]){   // たいまつ：揺れる炎と壁を照らす光
+    const f=Math.sin(Date.now()*.02+tx)*3;
+    const light=x.createRadialGradient(tx,244,6,tx,244,130);light.addColorStop(0,'#ffb04a55');light.addColorStop(1,'#ffb04a00');x.fillStyle=light;x.fillRect(tx-130,114,260,260);
+    x.fillStyle='#5a4030';x.fillRect(tx-4,250,8,28);x.fillStyle='#8a6a4a';x.fillRect(tx-7,248,14,5);
+    ell(tx,242+f*.3,10,15+f,'#ff7a2a');ell(tx,244,7,10,'#ffb04a');ell(tx,247,4,6,'#fff0b0');}
 }
 function drawLadderCrack(sx){
   x.fillStyle=stage===2?'#879956':'#84c65e';x.fillRect(sx-17,ground,34,9);
@@ -2164,9 +2227,12 @@ function draw(){
   x.save();if(shake>0)x.translate((realRandom()-.5)*shake*.8,(realRandom()-.5)*shake*.8);
   if(inBasement){if(roomKind==='basement')drawBasementBg();else drawBonusBg();}else drawSky();
   x.save();x.translate(-camera,0);
-  if(!inBasement)for(let i=0;i<world/300;i++){x.fillStyle=stage===2?'#7a5f94':'#88c888';x.beginPath();x.arc(i*300+90,ground+50,115,Math.PI,0);x.fill();}
+  if(!inBasement){const hg=x.createLinearGradient(0,ground-70,0,ground);hg.addColorStop(0,stage===2?'#8a6aa4':'#9ad88f');hg.addColorStop(1,stage===2?'#5a3f74':'#5fa865');
+    for(let i=0;i<world/300;i++){const hx=i*300+90;if(hx+120<camera||hx-120>camera+W)continue;x.fillStyle=hg;x.beginPath();x.arc(hx,ground+50,115,Math.PI,0);x.fill();
+      x.fillStyle=stage===2?'#a88ac022':'#ffffff33';x.beginPath();x.arc(hx-20,ground+50,100,Math.PI*1.15,Math.PI*1.55);x.lineTo(hx-20,ground+50);x.closePath();x.fill();
+      if(stage===1)for(const bx of[-60,40]){ell(hx+bx,ground-4,16,10,'#4e9a52');ell(hx+bx+10,ground-8,12,9,'#5fb062');}}}   // 丘と茂み
   if(stage===2&&!inBasement)drawArenaBg();
-  for(const b of platforms){x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
+  for(const b of platforms){if(!inBasement){drawTerrain(b);continue;}x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
   if(vaultVisible()){
     const open=diamonds>=VAULT_DIAMONDS,dx=VAULT_X;
     x.fillStyle=open?'#3d627a':'#372b48';x.fillRect(dx-22,ground-59,44,59);
@@ -2225,7 +2291,7 @@ function draw(){
   if(arenaOn){x.fillStyle='#2a1d36';x.fillRect(AX-24,140,28,ground-140);}
   x.restore();
   // HUD
-  x.fillStyle=inBasement?'#fff':stage===2?'#2a1a30':'#20304a';x.font='bold 24px system-ui';x.fillText('SCORE '+score,22,38);x.fillText('♥ × '+lives,220,38);x.fillText('STAGE '+stage,300,38);if(!arenaOn)x.fillText('💎 '+diamonds,510,38);
+  x.fillStyle=inBasement||stage===2?'#fff':'#20304a';if(stage===2&&!inBasement){x.shadowColor='#0008';x.shadowBlur=4;}x.font='bold 24px system-ui';x.fillText('SCORE '+score,22,38);x.fillText('♥ × '+lives,220,38);x.fillText('STAGE '+stage,300,38);if(!arenaOn)x.fillText('💎 '+diamonds,510,38);
   if(mode==='game'){x.font='bold 14px system-ui';x.fillText('コイン '+coinProgress+'/'+COINS_PER_LIFE,400,38);const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
     const bx0=arenaOn?480:600,by0=6,bw=arenaOn?100:170,bh=46;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
