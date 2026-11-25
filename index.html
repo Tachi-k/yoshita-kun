@@ -1961,7 +1961,7 @@ function drawEndingCut(){const t=endCutT;
   const fade=(a,b)=>Math.max(0,Math.min(1,(t-a)/20,(b-t)/20));
   const heroName=princessRound?'ソラ姫':'よし太くん',partnerName=princessRound?'よし太くん':'ソラ姫';
   if(t<150){x.globalAlpha=fade(0,150);opBubble('やったー！',heroX+17,ground-150-hop);x.globalAlpha=1;}
-  if(t>=150&&t<260){x.globalAlpha=fade(150,260);opBubble(heroName+'！',partnerX+17,partnerY-30,'#ffe0ef');x.globalAlpha=1;}
+  if(t>=150&&t<260){x.globalAlpha=fade(150,260);opBubble(heroName+'！',partnerX+17,partnerY-75,'#ffe0ef');x.globalAlpha=1;}
   if(t>=200&&t<320){x.globalAlpha=fade(200,320);fancyText(partnerName+'を たすけだした！',W/2,ground-260,40,'gold');x.globalAlpha=1;}
   if(t>=330&&t<520){x.globalAlpha=fade(330,520);fancyText('ふたりで 空の国へ…',W/2,H-40,34,'white');x.globalAlpha=1;}
   x.textAlign='left';
