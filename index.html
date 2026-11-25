@@ -1775,6 +1775,11 @@ for(const h of holes){if(p.hole===h&&(p.y+p.h<ground-2||p.x+p.w<h.x||p.x>h.x+h.w
 updateItems(p);
 holes=holes.filter(h=>h.t>0);
 
+// 地下室の出口：はしごを一段ずつ登って地上へ（登っている間は操作できない）
+if(p.climb){const c=p.climb;c.t++;p.x+=(c.tx-p.x)*.25;p.y-=3;p.vx=0;p.vy=0;p.on=false;p.walking=false;p.jumping=false;p.hole=null;
+  if(c.t%14===0)tone(c.t%28?520:440,.05,'triangle',.05);
+  if(p.y+p.h<-6){p.climb=null;exitBasement();}
+  return;}
 const oldX=p.x,oldY=p.y;if(p.inv>0)p.inv--;
 if(p.kickT>0){p.kickT--;p.vx=p.kickVx;if(p.on&&p.kickT<20)p.kickT=0;}   // 弾き飛ばされ中は操作より優先
 else{p.vx=(keys.right?4.4:0)-(keys.left?4.4:0);if(p.vx)p.facing=Math.sign(p.vx);}
@@ -1847,7 +1852,7 @@ if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss();bann
 if(arenaOn&&boss)updateBoss(p,oldY);
 if(state==='victoryFlight')return;
 
-if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'){exitBasement();return;}
+if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'&&!p.climb){p.climb={t:0,tx:W-72+20-p.w/2};p.vx=p.vy=0;tone(660,.08,'square',.05);}   // はしごに着いたら登りはじめる
 if(inBonus()&&state==='play'){roomT--;
   if(roomKind==='rain'&&roomT>20&&roomT%7===0){const r=Math.random();items.push({type:r<.03?heartType():r<.12?'gem':'coin',x:40+Math.random()*(W-80),y:-20,vx:(Math.random()-.5)*1.2,vy:1,t:300});}
   if(roomT<=0){exitBasement();return;}}
@@ -2480,7 +2485,8 @@ function draw(){
   for(const w of waves)drawShockwave(w);
   for(const it of items){if(it.t<120&&Math.floor(it.t/6)%2)continue;drawItem(it)}
   const p=player;
-  const pose=state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
+  if(p.climb)p.facing=Math.floor(p.climb.t/14)%2?1:-1;   // 手足を交互に動かして登る
+  const pose=p.climb?'jump':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
   drawScaled(p.x+p.w/2,p.y+p.h,()=>drawPlayerAt(p.x,p.y,p.facing,pose,p.stride));
   x.globalAlpha=1;
