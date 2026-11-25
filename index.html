@@ -599,14 +599,40 @@ function enterBonus(kind,returnX){const p=player;
   surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX};inBasement=true;roomKind=kind;bonusUsed[stage]=true;
   world=W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;items=[];coins=[];
   if(kind==='rain'){platforms=[{x:0,y:ground,w:W,h:75}];roomT=25*60;banner('ボーナス画面！','降ってくるお宝を あつめよう',130);p.x=W/2-17;}
-  else{platforms=[{x:0,y:ground,w:W,h:75},{x:110,y:385,w:130,h:18},{x:300,y:315,w:130,h:18},{x:490,y:245,w:130,h:18},{x:690,y:175,w:170,h:18},{x:560,y:395,w:120,h:18}];
-    for(let cx=80;cx<=880;cx+=40)coins.push({x:cx,y:ground-30,taken:false});
-    for(const b of platforms.slice(1))for(let cx=b.x+18;cx<=b.x+b.w-18;cx+=32)coins.push({x:cx,y:b.y-30,taken:false});
-    for(let k=0;k<7;k++){const a=Math.PI*(k/6);coins.push({x:250+Math.cos(a)*-90+90,y:250-Math.sin(a)*70,taken:false});}
-    const put=(type,ix,surf)=>items.push({type,x:ix,y:surf-10,vx:0,vy:0,t:1e9});
-    put('chest',740,175);put('chest',810,175);put('gem',555,245);put('gem',365,315);put('chest',620,395);
-    roomT=35*60;banner('ボーナスステージ！','雲の上のお宝を あつめよう',130);p.x=40;}
+  else{
+    buildSkyBonus();
+    roomT=35*60;
+    banner('ボーナスステージ！','雲を渡って 宝箱やコインを あつめよう',130);
+    p.x=40;
+  }
   p.y=40;p.vy=2;p.vx=0;p.on=false;p.hole=null;p.kickT=0;sound('oneup');}
+function buildSkyBonus(){
+  world=5*W;
+  platforms=[{x:0,y:ground,w:world,h:75}];
+  for(let cx=100;cx<world-60;cx+=48)coins.push({x:cx,y:ground-30,taken:false});
+
+  // 低い雲を渡る道と、高い雲の宝箱をめざす道。
+  const routes=[
+    [[100,380,145],[285,300,125],[465,220,145],[650,135,132],[635,365,140]],
+    [[75,345,134],[250,250,145],[440,160,130],[610,85,165],[525,385,140]],
+    [[110,380,155],[305,295,125],[465,205,140],[645,105,128],[640,360,135]],
+    [[80,350,140],[265,245,140],[455,155,124],[640,110,130],[630,390,140]],
+    [[115,375,128],[285,280,155],[480,195,135],[655,95,120],[630,365,135]],
+    [[75,355,142],[255,265,150],[440,168,145],[620,80,155],[620,385,130]],
+  ];
+  for(const [section,route] of routes.entries()){
+    const offset=section*800;
+    for(const [left,y,w] of route){
+      const x=offset+left;
+      platforms.push({x,y,w,h:18});
+      for(let cx=x+16;cx<=x+w-16;cx+=28)coins.push({x:cx,y:y-30,taken:false});
+    }
+    const [upperX,upperY,upperW]=route[3];
+    items.push({type:'chest',x:offset+upperX+upperW-22,y:upperY-10,vx:0,vy:0,t:1e9});
+    const [lowX,lowY,lowW]=route[4];
+    items.push({type:'gem',x:offset+lowX+lowW/2,y:lowY-10,vx:0,vy:0,t:1e9});
+  }
+}
 function drawBonusBg(){const g=x.createLinearGradient(0,0,0,H);
   if(roomKind==='rain'){g.addColorStop(0,'#2b1b5a');g.addColorStop(1,'#7a4fb0');}else{g.addColorStop(0,'#5fc3ff');g.addColorStop(1,'#fff3c9');}
   x.fillStyle=g;x.fillRect(0,0,W,H);
