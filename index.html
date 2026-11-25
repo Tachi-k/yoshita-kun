@@ -106,7 +106,7 @@ canvas{display:block;background:#17283c}
   </section>
   <section id="slotsPanel" hidden>
     <h3>よし太くんスロット</h3>
-    <p>よし太くんが3つそろうと大当たり！</p>
+    <p>1等 よし太くん3つ 50枚 ／ 2等 ほかの絵柄3つ 25枚<br>3等 よし太くん2つ 10枚 ／ 4等 ほかの絵柄2つ 5枚</p>
     <canvas id="slotBoard" width="330" height="104" aria-label="スロットの絵柄"></canvas>
     <button id="slotSpin" type="button">まわす</button>
     <p id="slotStatus" class="arcadeStatus" role="status"></p>
@@ -870,7 +870,7 @@ const MAZE_MOVES={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const MAZE_START=[1,1],MAZE_ENEMY_STARTS=[[11,1],[11,7]];
 const SLOT_SYMBOLS=['よし太くん','さくらんぼ','ダイヤ','ベル','錦鯉'];
 const SLOT_ICONS=['','🍒','💎','🔔'];
-const SLOT_STOPS=[0,0,1,2,3,4];
+const SLOT_STOPS=[0,0,0,1,2,3,4];
 let arcadeHole=null,arcadeGame=null,maze=null,slotTimer=null;
 
 function enterArcade(h){
@@ -1005,6 +1005,13 @@ function stopSlotSpin(){
   if(slotTimer!==null){clearInterval(slotTimer);slotTimer=null;}
   slotSpin.disabled=false;
 }
+function slotPrize(reels){
+  if(reels.every(symbol=>symbol===0))return {rank:1,coins:50};
+  if(reels.every(symbol=>symbol===reels[0]))return {rank:2,coins:25};
+  if(reels.filter(symbol=>symbol===0).length===2)return {rank:3,coins:10};
+  if(new Set(reels).size===2)return {rank:4,coins:5};
+  return null;
+}
 function startSlotSpin(){
   if(arcadeGame!=='slots'||slotTimer!==null)return;
   const result=Array.from({length:3},randomSlotSymbol);
@@ -1015,9 +1022,14 @@ function startSlotSpin(){
     drawSlots(result.map((symbol,i)=>tick>=8+i*4?symbol:randomSlotSymbol()));
     if(tick<16)return;
     stopSlotSpin();
-    const won=result.every(symbol=>symbol===0);
-    slotStatus.textContent=won?'大当たり！ よし太くんが3つ！':'はずれ。もう一度まわせます。';
-    if(won)sound('oneup');
+    const prize=slotPrize(result);
+    if(!prize){slotStatus.textContent='はずれ。もう一度まわせます。';return;}
+    const oldLives=lives;
+    const heading=prize.rank===1?'1等 大当たり！':prize.rank+'等 当たり！';
+    collectCoins(prize.coins,player.x+17,player.y-20);
+    slotStatus.textContent=heading+' コイン '+prize.coins+'枚（+'+
+      prize.coins*COIN_POINTS+'点）'+(lives>oldLives?' 1UP！':'');
+    sound('treasure');
   },80);
 }
 document.getElementById('arcadeExit').addEventListener('click',exitArcade);
@@ -1593,10 +1605,12 @@ function drawArenaBg(){
   for(const tx of[AX+110,AX+850]){x.fillStyle='#5a4030';x.fillRect(tx-4,250,8,28);const f=Math.sin(Date.now()*.02+tx)*3;ell(tx,242+f*.3,9,14+f,'#ff9a3c');ell(tx,246,5,8,'#ffe27a');}
 }
 function drawLadderCrack(sx){
-  x.fillStyle=stage===2?'#71924d':'#59b65d';x.fillRect(sx-12,ground,24,7);
-  x.strokeStyle=stage===2?'#794c38':'#805039';x.lineWidth=1.3;
-  x.beginPath();x.moveTo(sx-8,ground+14);x.lineTo(sx-1,ground+20);
-  x.lineTo(sx-4,ground+26);x.moveTo(sx-1,ground+20);x.lineTo(sx+7,ground+17);x.stroke();
+  x.fillStyle=stage===2?'#879956':'#84c65e';x.fillRect(sx-17,ground,34,9);
+  x.fillStyle=stage===2?'#966950':'#b48351';x.fillRect(sx-15,ground+10,30,17);
+  x.strokeStyle=stage===2?'#543345':'#573923';x.lineWidth=2.2;
+  x.beginPath();x.moveTo(sx-13,ground+12);x.lineTo(sx-4,ground+17);
+  x.lineTo(sx-7,ground+25);x.moveTo(sx-4,ground+17);x.lineTo(sx+3,ground+20);
+  x.lineTo(sx+13,ground+12);x.moveTo(sx+3,ground+20);x.lineTo(sx+10,ground+25);x.stroke();
 }
 function draw(){
   if(state==='ending'){drawEnding();return}
