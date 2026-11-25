@@ -776,11 +776,20 @@ function updateEndPlayer(){
 function drawEndPlayer(){if(!endP)return;drawPlayerAt(endP.x,endP.y,endP.f,!endP.on?'jump':endP.walking?'walk':'front',endP.stride);
   if(endT<360&&Math.floor(endT/30)%2){x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#ffffffcc';x.fillText('← → で うごける・ジャンプもできる',W/2,H-14);x.textAlign='left';}}
 // ===== 大砲の弾：ときどき画面の右から飛んでくる =====
+const CANNON_HEIGHTS=[
+  {height:18,label:'足もと'},
+  {height:44,label:'顔の高さ'},
+  {height:68,label:'少し上'},
+  {height:95,label:'頭上'},
+];
 let balls=[],cannonWarn=null,cannonT=60*8;
 function cannonOn(){return (mode==='game'||demoScene==='cannon')&&state==='play'&&!inBasement&&!arenaOn&&!bossIntroLong()&&player.x>500}
 function updateCannon(p,oldY){
   if(cannonOn()){cannonT--;
-    if(cannonT===60){const low=Math.random()<.6;cannonWarn={y:low?ground-18:ground-95,t:60};sound('whistle');}
+    if(cannonT===60){
+      const shot=mode==='title'?CANNON_HEIGHTS[3]:CANNON_HEIGHTS[Math.floor(Math.random()*CANNON_HEIGHTS.length)];
+      cannonWarn={y:ground-shot.height,label:shot.label,t:60};sound('whistle');
+    }
     if(cannonT<=0){const w=cannonWarn||{y:ground-18};balls.push({x:camera+W+30,y:w.y,vx:-6.5,vy:0,r:14,dead:false});cannonWarn=null;sound('cannon');cannonT=60*(7+Math.floor(Math.random()*8));}}
   if(cannonWarn)cannonWarn.t--;
   const hb=hitBox(p);
@@ -796,7 +805,7 @@ function drawCannon(){if(inBasement)return;
   for(const b of balls){ell(b.x,b.y,b.r,b.r,'#2a2a33');ell(b.x-4,b.y-5,4,4,'#8a8aa0');x.fillStyle='#ffdf50';x.fillRect(b.x+b.r-2,b.y-2,5,4);}
   if(cannonWarn&&Math.floor(cannonWarn.t/6)%2===0){const wx=camera+W-40,wy=cannonWarn.y;x.fillStyle='#e64040';x.beginPath();x.arc(wx,wy,16,0,7);x.fill();x.fillStyle='#fff';x.font='900 22px system-ui';x.textAlign='center';x.fillText('!',wx,wy+8);x.font='bold 20px system-ui';x.fillStyle='#e64040';x.fillText('◀',wx-28,wy+7);
     // ボタンに隠れないよう、右上にも大きく予告
-    const low=cannonWarn.y>ground-50,bx=camera+W-150,by=150;x.fillStyle='#e64040e0';x.beginPath();if(x.roundRect)x.roundRect(bx-80,by-26,190,40,10);else x.rect(bx-80,by-26,190,40);x.fill();x.fillStyle='#fff';x.font='900 22px system-ui';x.fillText(low?'！足もと注意 ◀':'！頭上注意 ◀',bx+15,by+2);x.textAlign='left';}}
+    const bx=camera+W-150,by=150;x.fillStyle='#e64040e0';x.beginPath();if(x.roundRect)x.roundRect(bx-80,by-26,190,40,10);else x.rect(bx-80,by-26,190,40);x.fill();x.fillStyle='#fff';x.font='900 22px system-ui';x.fillText('！'+cannonWarn.label+' ◀',bx+15,by+2);x.textAlign='left';}}
 let goalSX=0,goalSY=0,balloonLift=0,balloonVy=0;
 let mode='title',demoT=0,demoIdx=0,demoScene='field',demoDodge=0,demoBossShownAt=0,demoLadderAt=0,demoCannonHitAt=0;
 const DEMO_SCENES=['field','miss','enemyMiss','rain','basement','cannon','goal','stage2','boss'];
