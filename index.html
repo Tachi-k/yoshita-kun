@@ -485,28 +485,33 @@ function victoryMusic(){
   if(mode==='title')return;
   stageClearFanfare();   // 1面クリアは、ドラムロールから始まるカッコいいファンファーレ（Web Audioで作曲）
 }
-// 1面クリアのファンファーレ（約3.6秒）：ドラムロール → ブラスの決め（C・C）→ A♭ → B♭ → 大きなCの和音でしめる
+// 1面クリアのファンファーレ（約3.7秒）：空へ飛び上がるような、はずむ楽しい曲
+// 「ヒューン」と上がる音 → 上へ上へとのぼるメロディ（ソドミソ・ラソミド・レミファラ・ソ〜シレ）→ 高いドでしめて、もう一度「ヒューン」
 function stageClearFanfare(){
   try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();bus();}catch(_){return}
-  const t0=audioCtx.currentTime+.05;
-  const crash=(t,v=.07)=>{for(let k=0;k<8;k++)hat(t+k*.045,v*(1-k/9),.11);};
-  const kick=(t,v=.3)=>bnote(150,t,.14,'sine',v,42);
-  const snare=(t,v=.07)=>{hat(t,v,.1);bnote(220,t,.08,'triangle',v*.8,120);};
-  const chord=(t,ms,dur,v=.05)=>ms.forEach(m=>brass(m,t,dur,v));
-  // ドラムロール（だんだん大きく）
-  for(let k=0;k<9;k++)hat(t0+k*.05,.02+k*.007,.06);
-  // 決め：C → C → A♭ → B♭ → C（ブラス＋ベース＋ドラム）
-  const hits=[[.45,[60,64,67,72],.16,36],[.70,[60,64,67,72],.16,36],[.95,[56,60,63,68],.36,32],[1.35,[58,62,65,70],.36,34]];
-  for(const [at,ms,dur,bass] of hits){const t=t0+at;chord(t,ms,dur);bnote(mf(bass),t,dur+.05,'sawtooth',.09);kick(t);}
-  snare(t0+1.15);snare(t0+1.25,.05);snare(t0+1.55);snare(t0+1.62,.05);snare(t0+1.68,.06);
-  crash(t0+.45);
-  // メロディ（明るい音色で上を走る）
-  [[.45,67,.11],[.57,72,.11],[.70,76,.22],[.95,75,.36],[1.35,77,.36],[1.75,79,1.45]].forEach(([at,m,d])=>{bnote(mf(m),t0+at,d,'square',.045);bnote(mf(m+12),t0+at,d*.8,'triangle',.03);});
-  // しめの大きなCの和音＋シャラーン
-  const end=t0+1.75;chord(end,[48,60,64,67,72,76],1.6,.045);bnote(mf(36),end,1.7,'sawtooth',.1);kick(end,.35);crash(end,.09);
-  [84,88,91,96,100].forEach((m,i)=>bnote(mf(m),end+.06+i*.06,.5,'triangle',.035));
-  for(let k=0;k<6;k++)snare(end+1.1+k*.04,.02+k*.008);kick(end+1.38,.32);crash(end+1.38,.06);   // 最後にもう一度「ジャン！」
-  chord(end+1.38,[60,64,67,72],.5,.05);
+  const t0=audioCtx.currentTime+.05,E=.15;   // 8分音符の長さ（テンポ速め）
+  const kick=(t,v=.26)=>bnote(150,t,.12,'sine',v,45);
+  const snare=(t,v=.06)=>{hat(t,v,.1);bnote(240,t,.07,'triangle',v*.7,130);};
+  const whoosh=(t,from,to,len,v=.05)=>{bnote(from,t,len,'sine',v,to);bnote(from*1.5,t,len,'triangle',v*.5,to*1.5);for(let k=0;k<6;k++)hat(t+k*len/6,.012+k*.004,.05);};
+  const bell=(t,m,v=.035)=>{bnote(mf(m),t,.45,'triangle',v);bnote(mf(m+12),t,.25,'sine',v*.6);};
+  whoosh(t0,300,1400,.45);
+  // メロディ（ピコピコの明るい音＋1オクターブ上を重ねて、きらきらに）
+  const mel=[[0,67,1],[1,72,1],[2,76,1],[3,79,1],[4,81,1],[5,79,1],[6,76,1],[7,72,1],[8,74,1],[9,76,1],[10,77,1],[11,81,1],[12,79,2],[14,83,1],[15,86,1],[16,84,6]];
+  for(const [i,m,len] of mel){const t=t0+.45+i*E,d=len*E*.92;bnote(mf(m),t,d,'square',.045);bnote(mf(m+12),t,d*.7,'triangle',.022);}
+  // 和音とはずむベース（ドン・パッ）
+  const prog=[[0,[60,64,67],48],[4,[60,64,69],45],[8,[65,69,72],41],[12,[67,71,74,77],43],[16,[72,76,79,84],48]];
+  for(const [at,ch,root] of prog){const len=at===16?6:4;
+    for(let k=0;k<len;k++){const t=t0+.45+(at+k)*E;bnote(mf(root+(k%2?7:0)),t,E*.85,'triangle',.11);if(k%2)ch.forEach(m=>bnote(mf(m),t,E*.7,'square',.016));}
+    ch.forEach(m=>brass(m,t0+.45+at*E,E*(at===16?5:1.2),.03));}
+  // ドラム：4つ打ち＋手拍子のようなスネア＋シャカシャカ
+  for(let k=0;k<20;k++){const t=t0+.45+k*E;if(k%2===0)kick(t);if(k%4===2)snare(t);hat(t+E/2,.018,.03);}
+  // 鈴のきらきら（のぼっていく）
+  [84,88,91,96].forEach((m,i)=>bell(t0+.45+12*E+i*E/2,m));
+  // しめ：高いドの和音にのぼっていく「シャラララ」と、もう一度「ヒューン」
+  const end=t0+.45+16*E;
+  [72,76,79,84,88,91,96].forEach((m,i)=>bell(end+i*.05,m,.03));
+  kick(end,.3);for(let k=0;k<6;k++)hat(end+k*.05,.05*(1-k/7),.11);
+  whoosh(end+.35,500,2600,.6,.04);
 }
 function originalVictoryMusic(){if(mode==='title')return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();const notes=[[523,0,.13],[659,.14,.13],[784,.28,.13],[1047,.43,.25],[784,.72,.12],[1047,.86,.4],[1175,1.32,.13],[1319,1.47,.13],[1568,1.63,.55]];const start=audioCtx.currentTime+.03;for(const [hz,at,dur] of notes){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.value=hz;g.gain.setValueAtTime(.0001,start+at);g.gain.exponentialRampToValueAtTime(.13,start+at+.015);g.gain.exponentialRampToValueAtTime(.0001,start+at+dur);o.connect(g);g.connect(audioCtx.destination);o.start(start+at);o.stop(start+at+dur+.02)}}catch(e){}}
 // iPhone対策：①消音スイッチでも鳴るよう再生モードに ②指を離した瞬間に音声を解放 ③停止(interrupted)からの復帰
