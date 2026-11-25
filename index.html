@@ -2272,13 +2272,35 @@ function draw(){
 }
 function creditsY(){return H+40-endT*.75}
 function endingDone(){return creditsY()+credits().length*46<110}
-function drawMoleFriend(cx,y,s,t){x.save();x.translate(cx,y);x.scale(s,s);
-  ell(-22,82,16,8,'#4a2f22');ell(22,82,16,8,'#4a2f22');ell(0,48,46,38,'#6b4430');ell(-4,58,27,24,'#c99a6e');
+// レアエンディングのドリモグ：ボスと同じよろい・マント・王冠で、なかよしの笑顔
+function drawMoleFriend(cx,y,s,t){const d=-1;
+  x.save();x.translate(cx,y);x.scale(s,s);
+  const flap=Math.sin(t*.08)*5;
+  x.fillStyle='#7a1023';x.beginPath();x.moveTo(-d*14,20);x.quadraticCurveTo(-d*62,40+flap,-d*58-flap,86);x.lineTo(-d*20,80);x.closePath();x.fill();   // マント
+  x.fillStyle='#b8243a';x.beginPath();x.moveTo(-d*14,20);x.quadraticCurveTo(-d*50,42+flap,-d*46-flap,82);x.lineTo(-d*22,78);x.closePath();x.fill();
+  for(const fx of[-24,24]){ell(fx,82,16,8,'#3a2418');for(let k=-1;k<=1;k++){x.fillStyle='#efe6d6';x.beginPath();x.moveTo(fx+d*11+k*5,79);x.lineTo(fx+d*18+k*5,86);x.lineTo(fx+d*9+k*5,86);x.closePath();x.fill();}}
+  const fur=x.createRadialGradient(-d*12,32,6,0,50,48);fur.addColorStop(0,'#8c5a3e');fur.addColorStop(.7,'#5c3826');fur.addColorStop(1,'#2e1a10');
+  x.fillStyle=fur;x.beginPath();x.ellipse(0,48,46,38,0,0,7);x.fill();
+  const belly=x.createRadialGradient(-4,56,4,-4,58,27);belly.addColorStop(0,'#f0c99a');belly.addColorStop(1,'#b8875a');
+  x.fillStyle=belly;x.beginPath();x.ellipse(-4,58,27,24,0,0,7);x.fill();
+  x.fillStyle='#2c1d14';x.fillRect(-38,66,76,7);
+  const buckle=x.createLinearGradient(0,62,0,78);buckle.addColorStop(0,'#fff0a0');buckle.addColorStop(1,'#c98a00');
+  x.fillStyle=buckle;x.fillRect(-12,62,16,14);x.fillStyle='#ff6b9a';x.beginPath();x.arc(-4,69,3.2,0,7);x.fill();   // ハートの宝石
+  for(const [sx,sy] of[[28,24],[-26,22]]){const ar=x.createLinearGradient(sx,sy-12,sx,sy+8);ar.addColorStop(0,'#e8edf5');ar.addColorStop(.5,'#9aa3b5');ar.addColorStop(1,'#4b5263');
+    x.fillStyle=ar;x.beginPath();x.ellipse(sx,sy,14,9,0,Math.PI,0);x.lineTo(sx+14,sy+3);x.lineTo(sx-14,sy+3);x.closePath();x.fill();
+    x.fillStyle='#ffd24a';for(const rx of[-8,0,8])x.fillRect(sx+rx-1.2,sy-3,2.4,2.4);}
   const wave=Math.sin(t*.2)*10;ell(42,40-wave,12,9,'#f2a7a0');ell(-44,56,11,9,'#f2a7a0');   // 手をふる
-  x.fillStyle='#c0c8d8';x.beginPath();x.moveTo(-28,30);x.lineTo(-60,38);x.lineTo(-28,46);x.closePath();x.fill();
-  x.strokeStyle='#2a1810';x.lineWidth=3;x.beginPath();x.arc(-6,30,5,Math.PI*1.1,Math.PI*1.9);x.moveTo(-17,30);x.arc(-22,30,5,Math.PI*1.1,Math.PI*1.9);x.stroke();  // にっこり目
-  x.beginPath();x.arc(-12,44,9,.2*Math.PI,.8*Math.PI);x.stroke();ell(-30,40,5,3,'#ff9bb0');ell(6,40,5,3,'#ff9bb0');
-  x.restore();drawCrown(cx-4*s,y+12*s,1.1*s);}
+  for(let k=0;k<3;k++){x.fillStyle='#f4efe6';x.beginPath();const bx=46+k*2,by=34-wave+k*3;x.moveTo(bx,by-2);x.quadraticCurveTo(bx+8,by-4,bx+9,by-9);x.lineTo(bx+2,by+2);x.closePath();x.fill();}
+  // ドリルの鼻（ゆっくり回る）
+  const drill=x.createLinearGradient(0,30,0,46);drill.addColorStop(0,'#f4f7fb');drill.addColorStop(.45,'#a9b2c2');drill.addColorStop(1,'#5a6273');
+  x.fillStyle=drill;x.beginPath();x.moveTo(-28,30);x.lineTo(-60,38);x.lineTo(-28,46);x.closePath();x.fill();
+  const turn=(t*.03)%1;x.strokeStyle='#5a6273';x.lineWidth=2;x.beginPath();for(let k=0;k<3;k++){const tt=(k+turn)/3,xx=-30-tt*28,hh=8*(1-tt)+1;x.moveTo(xx,38-hh);x.lineTo(xx-3,38+hh);}x.stroke();
+  // にっこり目・ほっぺ・笑った口
+  x.strokeStyle='#2a1810';x.lineWidth=3;x.lineCap='round';x.beginPath();x.arc(-6,30,5,Math.PI*1.1,Math.PI*1.9);x.moveTo(-17,30);x.arc(-22,30,5,Math.PI*1.1,Math.PI*1.9);x.stroke();
+  ell(-30,40,5,3,'#ff9bb0');ell(6,40,5,3,'#ff9bb0');
+  x.fillStyle='#5a1a1a';x.beginPath();x.arc(-12,44,8,.05*Math.PI,.95*Math.PI);x.closePath();x.fill();ell(-12,49,4,2.4,'#ff8a9a');
+  x.fillStyle='#fffaf0';for(const fx of[-16,-8]){x.beginPath();x.moveTo(fx-2,44.5);x.lineTo(fx+2,44.5);x.lineTo(fx,48.5);x.closePath();x.fill();}
+  x.restore();drawBossCrown(cx-4*s,y+12*s,1.15*s,false);}
 function drawRainbow(){const cols=['#ff5a5a','#ffa43c','#ffe14d','#6fdc6f','#4fc3ff','#7a7aff','#c86bff'];x.globalAlpha=.55;cols.forEach((c,i)=>{x.strokeStyle=c;x.lineWidth=12;x.beginPath();x.arc(W/2,ground+60,330-i*12,Math.PI,0);x.stroke();});x.globalAlpha=1}
 function drawEnding(){
   const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b1030');g.addColorStop(1,'#3a2a5a');x.fillStyle=g;x.fillRect(0,0,W,H);
@@ -2300,7 +2322,7 @@ function drawEnding(){
   drawParts(true);
   x.textAlign='center';x.fillStyle='#fff';x.shadowColor='#000';x.shadowBlur=6;
   const sy=creditsY();
-  credits().forEach((l,i)=>{const y=sy+i*46;if(y>-40&&y<ground-110){x.font=(i===0||l.startsWith('—'))?'bold 34px system-ui':'26px system-ui';x.fillText(l,W/2,y)}});
+  credits().forEach((l,i)=>{const y=sy+i*46;if(y>-40&&y<ground-(endingRare?175:110)){x.font=(i===0||l.startsWith('—'))?'bold 34px system-ui':'26px system-ui';x.fillText(l,W/2,y)}});
   if(endingDone()){x.font='bold 64px system-ui';x.fillStyle='#ffdf50';x.fillText('THE END',W/2,190);x.fillStyle='#fff';x.font='bold 28px system-ui';x.fillText('FINAL SCORE  '+score,W/2,245);x.font='22px system-ui';if(Math.floor(endT/30)%2)x.fillText('タップで もういちど あそぶ',W/2,300);}
   x.shadowBlur=0;x.textAlign='left';
 }
