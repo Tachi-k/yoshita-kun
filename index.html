@@ -80,8 +80,15 @@ canvas{display:block;background:#17283c}
 #mazeJoystick .right{right:6px;top:50%;translate:0 -50%}
 #mazeKnob{position:absolute;width:42%;aspect-ratio:1;top:50%;left:50%;translate:-50% -50%;border:2px solid #fff2ac;border-radius:50%;background:#ffda63;box-shadow:0 3px 0 #9b712e;pointer-events:none}
 @media (orientation:landscape){
-  #mazeLayout{grid-template-columns:minmax(0,1fr) clamp(105px,20vw,164px)}
+  #mazeLayout{grid-template-columns:clamp(105px,20vw,164px) minmax(0,1fr)}
+  #mazeControls{grid-area:1/1}
+  #mazeBoard{grid-area:1/2}
   #mazeBoard{width:min(100%,calc((100dvh - 117px)*1.44))}
+}
+@media (orientation:portrait){
+  #mazeControls{justify-self:start;grid-template-columns:auto auto;align-items:center;gap:3px 14px}
+  #mazeJoystick{grid-row:1/3;grid-column:1}
+  #mazeStatus,#mazeRetry{grid-column:2}
 }
 #slotBoard{width:min(330px,100%)}
 .arcadeStatus{min-height:1.5em;color:#ffdf70}
@@ -968,10 +975,23 @@ function mazeEnemyStep(from,target){
   }
   return from;
 }
+const MAZE_GLIDE_FRAMES=8;
+function mazeVisualPosition(target,from){
+  if(!from)return target;
+  const progress=maze.motion.frame/MAZE_GLIDE_FRAMES;
+  return target.map((value,i)=>from[i]+(value-from[i])*progress);
+}
+function updateMazeMotion(){
+  if(!maze.motion)return;
+  if(++maze.motion.frame>=MAZE_GLIDE_FRAMES)maze.motion=null;
+  drawMaze();
+}
 function mazeMove(dir){
   if(arcadeGame!=='maze'||maze.done)return;
   const next=mazeWalk(maze.hero,MAZE_MOVES[dir]);
   if(!next)return;
+  const fromHero=mazeVisualPosition(maze.hero,maze.motion?.hero);
+  const fromFoes=maze.foes.map((foe,i)=>mazeVisualPosition(foe,maze.motion?.foes[i]));
   maze.hero=next;
   if(dir==='left'||dir==='right')maze.facing=dir==='left'?-1:1;
   const hit=()=>maze.foes.some(foe=>foe[0]===next[0]&&foe[1]===next[1]);
@@ -982,9 +1002,11 @@ function mazeMove(dir){
     collided=hit();
   }
   if(collided){
+    maze.motion=null;
     maze.lives--;maze.hero=MAZE_START;maze.foes=MAZE_ENEMY_STARTS.slice();maze.turn=0;
     maze.done=maze.lives===0;sound('hurt');
   }else{
+    maze.motion={hero:fromHero,foes:fromFoes,frame:0};
     if(maze.stars.delete(next.join(',')))sound('coin');
     maze.done=maze.stars.size===0;
     if(maze.done)sound('oneup');
@@ -1004,16 +1026,33 @@ function drawMaze(){
       mazeCtx.rotate(Math.PI/4);mazeCtx.fillRect(-3,-3,6,6);mazeCtx.restore();
     }
   }));
-  maze.foes.forEach(([x,y],i)=>{
-    const cx=x*size+16,cy=y*size+16;
-    ell(cx,cy,11,9,i?'#de86ae':'#8ca1ef',mazeCtx);
-    ell(cx-4,cy-2,1.8,2,'#19243c',mazeCtx);
-    ell(cx+4,cy-2,1.8,2,'#19243c',mazeCtx);
+  const [heroX,heroY]=mazeVisualPosition(maze.hero,maze.motion?.hero);
+  maze.foes.forEach((foe,i)=>{
+    const [fx,fy]=mazeVisualPosition(foe,maze.motion?.foes[i]);
+    const moved=fx!==foe[0]||fy!==foe[1];
+    const bounce=moved?Math.sin(maze.motion.frame/MAZE_GLIDE_FRAMES*Math.PI)*2:0;
+    drawMazeCritter(fx*size+16,fy*size+16-bounce,i,Math.sign(heroX-fx));
   });
-  mazeCtx.save();mazeCtx.translate(maze.hero[0]*size+6,maze.hero[1]*size+5);mazeCtx.scale(.6,.6);
-  drawPlayerAt(0,0,maze.facing,'front',0,mazeCtx);mazeCtx.restore();
-  mazeStatus.textContent=maze.done?(maze.lives?'クリア！ 星を全部集めた！':'ミス！ やり直すと再挑戦できます。'):
+  mazeCtx.save();mazeCtx.translate(heroX*size+6,heroY*size+5);mazeCtx.scale(.6,.6);
+  const walking=maze.motion&&heroX!==maze.hero[0];
+  drawPlayerAt(0,0,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
+  const status=maze.done?(maze.lives?'クリア！ 星を全部集めた！':'ミス！ やり直すと再挑戦できます。'):
     '残りの星 '+maze.stars.size+'　ライフ '+maze.lives;
+  if(mazeStatus.textContent!==status)mazeStatus.textContent=status;
+}
+function drawMazeCritter(cx,cy,i,look){
+  const body=i?'#e781a8':'#8c9eee',shade=i?'#ac4e80':'#5268bf';
+  const oval=(x,y,rx,ry,color)=>ell(cx+x,cy+y,rx,ry,color,mazeCtx);
+  oval(-6,8,4,2.5,shade);oval(6,8,4,2.5,shade);
+  oval(-7,-6,4,4.5,body);oval(7,-6,4,4.5,body);
+  oval(0,1,11,8.5,body);
+  for(const dx of[-4,4]){
+    oval(dx*1.8,3,2,1.3,'#ffc0ce');
+    oval(dx,-1,2.7,3,'#fff8e9');
+    oval(dx+look*.7,0,1.2,1.8,'#202942');
+  }
+  mazeCtx.strokeStyle=shade;mazeCtx.lineWidth=1.2;mazeCtx.beginPath();
+  mazeCtx.arc(cx,cy+3,2,0,Math.PI);mazeCtx.stroke();
 }
 function randomSlotSymbol(){return SLOT_STOPS[Math.floor(Math.random()*SLOT_STOPS.length)];}
 function drawSlots(reels){
@@ -1339,7 +1378,7 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
-if(state==='arcade'){if(arcadeGame==='maze')updateMazeHold();return;}
+if(state==='arcade'){if(arcadeGame==='maze'){updateMazeMotion();updateMazeHold();}return;}
 if(mode==='title'){
   demoT++;
   if(demoBossShownAt){
