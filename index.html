@@ -1499,10 +1499,10 @@ document.addEventListener('keydown',event=>{
 },true);
 
 // ===== 大砲の弾：ときどき画面の右から飛んでくる =====
+// 弾の高さ。「頭をかすって見えるのに当たらない」高さ（以前の「少し上」）は使わない
 const CANNON_HEIGHTS=[
   {height:18,label:'足もと'},
   {height:44,label:'顔の高さ'},
-  {height:68,label:'少し上'},
   {height:95,label:'頭上'},
 ];
 let balls=[],cannonWarn=null,cannonT=60*8,cannonShot=null;   // cannonShot: 撃った直後の大砲（反動と発射の炎を描く）
@@ -1510,7 +1510,7 @@ function cannonOn(){return (mode==='game'||demoScene==='cannon')&&state==='play'
 function updateCannon(p,oldY){
   if(cannonOn()){cannonT--;
     if(cannonT===60){
-      const shot=mode==='title'?CANNON_HEIGHTS[3]:CANNON_HEIGHTS[Math.floor(Math.random()*CANNON_HEIGHTS.length)];
+      const shot=mode==='title'?CANNON_HEIGHTS.find(h=>h.label==='頭上'):CANNON_HEIGHTS[Math.floor(Math.random()*CANNON_HEIGHTS.length)];
       cannonWarn={y:ground-shot.height,label:shot.label,t:60};sound('whistle');
     }
     if(cannonT<=0){const w=cannonWarn||{y:ground-18};balls.push({x:camera+W+30,y:w.y,vx:-6.5,vy:0,r:14,dead:false});cannonShot={y:w.y,t:40};cannonWarn=null;sound('cannon');cannonT=60*(7+Math.floor(Math.random()*8));}}
