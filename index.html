@@ -974,7 +974,7 @@ function resetMaze(){
   MAZE.forEach((row,y)=>Array.from(row).forEach((cell,x)=>{
     if(cell==='.'&&(x!==MAZE_START[0]||y!==MAZE_START[1]))stars.add(x+','+y);
   }));
-  maze={hero:MAZE_START,foes:MAZE_ENEMY_STARTS.slice(),stars,lives:3,turn:0,facing:1,done:false};
+  maze={hero:MAZE_START,foes:MAZE_ENEMY_STARTS.slice(),stars,lives:3,turn:0,facing:1,done:false,foeMotion:[null,null]};
   drawMaze();
 }
 function mazeWalk(pos,move){
@@ -995,37 +995,48 @@ function mazeEnemyStep(from,target){
   return from;
 }
 const MAZE_GLIDE_FRAMES=8;
-function mazeVisualPosition(target,from){
-  if(!from)return target;
-  const progress=maze.motion.frame/MAZE_GLIDE_FRAMES;
-  return target.map((value,i)=>from[i]+(value-from[i])*progress);
+function mazeVisualPosition(target,motion){
+  if(!motion)return target;
+  const progress=motion.frame/motion.duration;
+  return target.map((value,i)=>motion.from[i]+(value-motion.from[i])*progress);
+}
+function advanceMazeMotion(motion){
+  if(!motion||++motion.frame>=motion.duration)return null;
+  return motion;
 }
 function updateMazeMotion(){
-  if(!maze.motion)return;
-  if(++maze.motion.frame>=MAZE_GLIDE_FRAMES)maze.motion=null;
+  if(!maze.motion&&!maze.foeMotion.some(Boolean))return;
+  maze.motion=advanceMazeMotion(maze.motion);
+  maze.foeMotion=maze.foeMotion.map(advanceMazeMotion);
   drawMaze();
 }
 function mazeMove(dir){
   if(arcadeGame!=='maze'||maze.done)return;
   const next=mazeWalk(maze.hero,MAZE_MOVES[dir]);
   if(!next)return;
-  const fromHero=mazeVisualPosition(maze.hero,maze.motion?.hero);
-  const fromFoes=maze.foes.map((foe,i)=>mazeVisualPosition(foe,maze.motion?.foes[i]));
+  const fromHero=mazeVisualPosition(maze.hero,maze.motion);
   maze.hero=next;
   if(dir==='left'||dir==='right')maze.facing=dir==='left'?-1:1;
   const hit=()=>maze.foes.some(foe=>foe[0]===next[0]&&foe[1]===next[1]);
   let collided=hit();
   if(!collided){
     maze.turn++;
-    maze.foes=maze.foes.map((foe,i)=>maze.turn%(i===0?3:4)===0?mazeEnemyStep(foe,next):foe);
+    maze.foes=maze.foes.map((foe,i)=>{
+      if(maze.turn%(i===0?3:4)!==0)return foe;
+      const target=mazeEnemyStep(foe,next);
+      if(target!==foe){
+        maze.foeMotion[i]={from:mazeVisualPosition(foe,maze.foeMotion[i]),frame:0,duration:i===0?22:29};
+      }
+      return target;
+    });
     collided=hit();
   }
   if(collided){
-    maze.motion=null;
+    maze.motion=null;maze.foeMotion=[null,null];
     maze.lives--;maze.hero=MAZE_START;maze.foes=MAZE_ENEMY_STARTS.slice();maze.turn=0;
     maze.done=maze.lives===0;sound('hurt');
   }else{
-    maze.motion={hero:fromHero,foes:fromFoes,frame:0};
+    maze.motion={from:fromHero,frame:0,duration:MAZE_GLIDE_FRAMES};
     if(maze.stars.delete(next.join(',')))sound('coin');
     maze.done=maze.stars.size===0;
     if(maze.done)sound('oneup');
@@ -1045,11 +1056,11 @@ function drawMaze(){
       mazeCtx.rotate(Math.PI/4);mazeCtx.fillRect(-3,-3,6,6);mazeCtx.restore();
     }
   }));
-  const [heroX,heroY]=mazeVisualPosition(maze.hero,maze.motion?.hero);
+  const [heroX,heroY]=mazeVisualPosition(maze.hero,maze.motion);
   maze.foes.forEach((foe,i)=>{
-    const [fx,fy]=mazeVisualPosition(foe,maze.motion?.foes[i]);
-    const moved=fx!==foe[0]||fy!==foe[1];
-    const bounce=moved?Math.sin(maze.motion.frame/MAZE_GLIDE_FRAMES*Math.PI)*2:0;
+    const motion=maze.foeMotion[i];
+    const [fx,fy]=mazeVisualPosition(foe,motion);
+    const bounce=motion?Math.sin(motion.frame/motion.duration*Math.PI):0;
     drawMazeCritter(fx*size+16,fy*size+16-bounce,i,Math.sign(heroX-fx));
   });
   mazeCtx.save();mazeCtx.translate(heroX*size+6,heroY*size+5);mazeCtx.scale(.6,.6);
