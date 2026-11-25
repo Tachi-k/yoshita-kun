@@ -262,6 +262,40 @@ const STAGE2_OFFSET=240,STAGE2_START=STAGE2_OFFSET+60,STAGE2_BONUS_X=38;
 function stageStartX(){return stage===2?STAGE2_START:60;}
 // ===== 1面の西（左）側：スタートから左へ進むと「西のひみつの道」。左はしの気球からも2面へ =====
 let westSide=false,westArea=null,eastArea=null,westVisited=false;
+// 穴：土の断面（壁の土・石・根っこ）と、まわりに掘り出した土の山、ふちの草
+function drawHole(h,depth){
+  const L=h.x,R=h.x+h.w,T=h.y,dusk=stage===2;
+  // 掘り出した土の山（掘るほど大きくなる）
+  const pile=Math.min(3,h.stage)*3.2;
+  for(const [px,dir] of[[L-8,-1],[R+8,1]]){ell(px,T-1,10+pile,3+pile*.8,dusk?'#6a4630':'#8a5a32');ell(px-dir*2,T-2-pile*.5,6+pile*.6,2+pile*.5,dusk?'#8a6040':'#a8703e');
+    for(let k=0;k<3;k++)ell(px+dir*(6+k*5),T-1-((k*7)%3),1.8,1.4,dusk?'#5a3a28':'#6e4426');}
+  // 中：上は土の色、奥ほど暗い
+  const g=x.createLinearGradient(0,T,0,T+depth);g.addColorStop(0,'#4a2e1e');g.addColorStop(.35,'#2a1a12');g.addColorStop(1,'#0e0806');
+  x.fillStyle=g;x.fillRect(L,T,h.w,depth);
+  // 左右の壁（土の層・石・根っこ）
+  for(const [wx,dir] of[[L,1],[R,-1]]){const wg=x.createLinearGradient(wx,0,wx+dir*9,0);wg.addColorStop(0,'#7a4e2e');wg.addColorStop(1,'#3a2416');
+    x.fillStyle=wg;x.fillRect(dir>0?wx:wx-9,T,9,depth);
+    for(let yy=T+8;yy<T+depth-4;yy+=11)ell(wx+dir*(3+((yy*7)%4)),yy,2.2,1.6,'#9a8a7a88');}
+  x.strokeStyle='#5a3a22';x.lineWidth=1.5;x.lineCap='round';
+  if(depth>16){x.beginPath();x.moveTo(L+2,T+8);x.quadraticCurveTo(L+12,T+14,L+9,T+22);x.moveTo(R-2,T+12);x.quadraticCurveTo(R-11,T+17,R-7,T+26);x.stroke();}   // 根っこ
+  // 底の土
+  x.fillStyle='#5a3a24';x.fillRect(L,T+depth-5,h.w,5);x.fillStyle='#7a5234';x.fillRect(L+4,T+depth-5,h.w-8,2);
+  // ふちの土の切り口と、たれ下がる草
+  x.fillStyle='#8a5a32';x.fillRect(L-1,T,h.w+2,3);
+  x.fillStyle=dusk?'#5a9a4a':'#4fb850';
+  for(const [ex,dir] of[[L,1],[R,-1]]){x.beginPath();x.moveTo(ex-dir*2,T);x.lineTo(ex+dir*5,T+6);x.lineTo(ex+dir*3,T);x.lineTo(ex+dir*9,T+4);x.lineTo(ex+dir*7,T);x.closePath();x.fill();}
+}
+// カッコいい文字：太いふち＋奥行き＋グラデーション（gold / white / red / blue）
+function fancyText(t,cx,cy,size,style='gold'){
+  const cols={gold:['#fffbe0','#ffd84a','#ff8a1a','#4a2208'],white:['#ffffff','#eef5ff','#b8cff0','#0e1a34'],red:['#ffe0e0','#ff6a6a','#c0182a','#3a0810'],blue:['#e8f8ff','#7fd4ff','#2a7ae0','#0a1a40']}[style];
+  x.save();x.font='900 '+size+'px system-ui';x.lineJoin='round';
+  x.fillStyle=cols[3];x.fillText(t,cx,cy+size*.09);   // 奥行き
+  x.lineWidth=size*.2;x.strokeStyle='#10182e';x.strokeText(t,cx,cy);
+  const g=x.createLinearGradient(0,cy-size*.8,0,cy+size*.1);g.addColorStop(0,cols[0]);g.addColorStop(.5,cols[1]);g.addColorStop(1,cols[2]);
+  x.fillStyle=g;x.fillText(t,cx,cy);
+  x.lineWidth=Math.max(1,size*.035);x.strokeStyle='#ffffff88';x.strokeText(t,cx,cy-size*.02);
+  x.restore();
+}
 function drawSignpost(sx,text){
   x.fillStyle='#6a4428';x.fillRect(sx-3,ground-58,6,58);
   x.font='bold 14px system-ui';const tw=x.measureText(text).width+16;
@@ -2563,7 +2597,7 @@ function draw(){
     }
   }
   for(const h of holes){if((h.secret||h.arcade)&&h.stage===3){const g=.5+Math.sin(Date.now()*.008)*.3;x.fillStyle=`rgba(255,223,80,${g*.35})`;x.fillRect(h.x-6,ground-14,h.w+12,14);}}
-  for(const h of holes){const depth=h.stage===3?h.h:h.stage*h.h/4;x.fillStyle='#241922';x.fillRect(h.x,h.y,h.w,depth);x.fillStyle='#68422d';x.fillRect(h.x,h.y+depth-4,h.w,4);x.strokeStyle='#dfb06e';x.lineWidth=2;x.strokeRect(h.x,h.y,h.w,depth);if(h.stage<3){x.fillStyle='#fff';x.font='bold 15px system-ui';x.fillText(h.stage+'/3',h.x+h.w/2-15,h.y-8);}else if(!(boss&&boss.hole===h)){x.fillStyle='#0004';x.fillRect(h.x+4,h.y-11,h.w-8,5);x.fillStyle=player.hole===h?'#5fc8ff':(h.t<90?'#ff655e':'#ffdf50');x.fillRect(h.x+4,h.y-11,(h.w-8)*Math.min(1,h.t/HOLE_T),5);}
+  for(const h of holes){const depth=h.stage===3?h.h:h.stage*h.h/4;drawHole(h,depth);if(h.stage<3){x.font='800 16px system-ui';x.lineWidth=4;x.lineJoin='round';x.strokeStyle='#0d1830';x.strokeText(h.stage+'/3',h.x+h.w/2-15,h.y-10);x.fillStyle='#fff';x.fillText(h.stage+'/3',h.x+h.w/2-15,h.y-10);}else if(!(boss&&boss.hole===h)){x.fillStyle='#0004';x.fillRect(h.x+4,h.y-11,h.w-8,5);x.fillStyle=player.hole===h?'#5fc8ff':(h.t<90?'#ff655e':'#ffdf50');x.fillRect(h.x+4,h.y-11,(h.w-8)*Math.min(1,h.t/HOLE_T),5);}
     if((h.secret||h.arcade)&&h.stage===3){x.strokeStyle='#ffdf50';x.lineWidth=3;x.strokeRect(h.x,h.y,h.w,h.h);x.strokeStyle='#c8913c';x.beginPath();x.moveTo(h.x+14,h.y+4);x.lineTo(h.x+14,h.y+h.h);x.moveTo(h.x+h.w-14,h.y+4);x.lineTo(h.x+h.w-14,h.y+h.h);for(let yy=h.y+12;yy<h.y+h.h;yy+=10){x.moveTo(h.x+14,yy);x.lineTo(h.x+h.w-14,yy)}x.stroke();}
     // 連鎖バッジ：何匹入っているか・埋めたら何点か・あと何匹で倍率が上がるか
     const n=inHole(h).length;if(n>0){const cx=h.x+h.w/2,by=h.y-46,pulse=1+Math.sin(Date.now()*.012)*.06;
@@ -2602,20 +2636,20 @@ function draw(){
   if(arenaOn){x.fillStyle='#2a1d36';x.fillRect(AX-24,140,28,ground-140);}
   x.restore();
   // HUD
-  x.fillStyle=inBasement||stage===2?'#fff':'#20304a';if(stage===2||inBasement){x.shadowColor='#0008';x.shadowBlur=4;}x.font='bold 30px system-ui';
+  x.fillStyle='#fff';x.strokeStyle='#0d1830';x.lineJoin='round';x.lineWidth=4.5;const hudT=(t,tx,ty)=>{x.strokeText(t,tx,ty);x.fillText(t,tx,ty);};x.font='800 30px system-ui';
   // 左から順に並べる（数字がふえても重ならない）
-  {let hx=22;const put=t=>{x.fillText(t,hx,42);hx+=x.measureText(t).width+20;};
+  {let hx=22;const put=t=>{hudT(t,hx,42);hx+=x.measureText(t).width+20;};
     put('SCORE '+score);drawLifeHeart(hx+16,31,32,false);hx+=38;put('× '+lives);put('STAGE '+stage);if(!arenaOn)put('💎 '+diamonds);}
-  if(mode==='game'){x.font='bold 20px system-ui';x.fillText('コイン '+coinProgress+'/'+COINS_PER_LIFE,22,72);const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+  if(mode==='game'){x.font='800 20px system-ui';x.lineWidth=4;hudT('コイン '+coinProgress+'/'+COINS_PER_LIFE,22,72);const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
     const bx0=arenaOn?445:610,by0=6,bw=arenaOn?140:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
     x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
     x.fillStyle='#fff';x.font='900 38px system-ui';x.textAlign='right';x.fillText(String(sec),bx0+bw-12,by0+43);x.textAlign='left';x.restore();}
-  if(!arenaOn&&!inBasement&&!(westSide&&!westVisited)){x.font='bold 26px system-ui';x.fillText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42);}   // 西の道は、看板を通るまでゴール表示もかくす
-  x.font='bold 18px system-ui';
+  if(!arenaOn&&!inBasement&&!(westSide&&!westVisited)){x.font='900 26px system-ui';x.lineWidth=6;hudT(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42);}   // 西の道は、看板を通るまでゴール表示もかくす
+  x.font='700 18px system-ui';x.lineWidth=4;
   const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':'ボーナス！ 時間内に たくさん集めよう'):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
-  if(!bossIntroLong())x.fillText(hint,22,mode==='game'?98:72);
-  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){x.font='bold 20px system-ui';x.fillText('モグラ大王 ドリモグ',595,28);x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
+  if(!bossIntroLong())hudT(hint,22,mode==='game'?98:72);
+  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){x.font='900 20px system-ui';x.lineWidth=5;hudT('モグラ大王 ドリモグ',595,28);x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
   // ボス登場の演出（映画のような黒帯と名前のカットイン）
   if(bossIntroLong()){const T=boss.t,bar=Math.min(1,T/25)*46;x.fillStyle='#000';x.fillRect(0,0,W,bar);x.fillRect(0,H-bar,W,bar);
@@ -2629,9 +2663,9 @@ function draw(){
     x.textAlign='left';}
   // バナー・オーバーレイ
   x.textAlign='center';
-  if(bannerT>0&&state==='play'&&!paused&&(bannerText||bannerSub)){x.globalAlpha=Math.min(1,bannerT/30);x.lineWidth=6;x.strokeStyle='#20304a';x.fillStyle='#fff';
-    if(bannerText){x.font='bold 52px system-ui';x.strokeText(bannerText,W/2,210);x.fillText(bannerText,W/2,210);}
-    x.font='bold 28px system-ui';x.strokeText(bannerSub,W/2,bannerText?258:200);x.fillText(bannerSub,W/2,bannerText?258:200);x.globalAlpha=1;}
+  if(bannerT>0&&state==='play'&&!paused&&(bannerText||bannerSub)){x.globalAlpha=Math.min(1,bannerT/30);
+    if(bannerText)fancyText(bannerText,W/2,212,58,'gold');
+    if(bannerSub)fancyText(bannerSub,W/2,bannerText?262:200,28,'white');x.globalAlpha=1;}
   if(bonusResult&&state==='play'&&!paused){
     const r=bonusResult;
     x.save();x.globalAlpha=Math.min(1,r.t/30);
@@ -2643,11 +2677,11 @@ function draw(){
     x.fillText('自己ベスト　'+r.best+'点',W/2,185);
     x.restore();
   }
-  if(state==='goal'){x.fillStyle='#20304a';x.font='bold 30px system-ui';x.fillText('GOAL!',W/2,110);}
+  if(state==='goal')fancyText('GOAL!',W/2,140,56,'gold');
   // ミスの理由を表示
-  if((state==='dying'||state==='lose')&&deathCause){x.font='bold 30px system-ui';x.lineWidth=6;x.strokeStyle='#20304a';x.fillStyle='#ff8a8a';const yy=state==='lose'?150:200;x.strokeText(deathCause,W/2,yy);x.fillText(deathCause,W/2,yy);}
-  if(state==='clear'){x.fillStyle='#0008';x.fillRect(0,0,W,H);x.fillStyle='#ffdf50';x.font='bold 56px system-ui';x.fillText('STAGE 1 CLEAR!',W/2,215);x.fillStyle='#fff';x.font='bold 26px system-ui';x.fillText('TIME BONUS  +'+timeBonus,W/2,265);x.font='24px system-ui';x.fillText('つぎは 大王の谷へ…',W/2,310);}
-  if(state==='lose'){x.fillStyle='#0009';x.fillRect(0,0,W,H);x.fillStyle='white';x.font='bold 54px system-ui';x.fillText('ゲームオーバー',W/2,235);x.font='26px system-ui';x.fillText(stage===2?'タップで ステージ2から再挑戦':'画面をタップ / Rキーで再挑戦',W/2,295);}
+  if((state==='dying'||state==='lose')&&deathCause)fancyText(deathCause,W/2,state==='lose'?150:200,36,'red');
+  if(state==='clear'){x.fillStyle='#0008';x.fillRect(0,0,W,H);fancyText('STAGE 1 CLEAR!',W/2,215,62,'gold');fancyText('TIME BONUS  +'+timeBonus,W/2,268,30,'white');fancyText('つぎは 大王の谷へ…',W/2,312,24,'blue');}
+  if(state==='lose'){x.fillStyle='#0009';x.fillRect(0,0,W,H);fancyText('ゲームオーバー',W/2,238,60,'red');fancyText(stage===2?'タップで ステージ2から再挑戦':'画面をタップ / Rキーで再挑戦',W/2,296,26,'white');}
   x.textAlign='left';
 }
 function creditsY(){return H+40-endT*.75}
