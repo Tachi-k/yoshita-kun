@@ -1037,9 +1037,9 @@ function mazeFoePosition(foe){
   if(!foe.next)return foe.pos;
   return foe.pos.map((value,i)=>value+(foe.next[i]-value)*foe.t);
 }
-function updateMazeFoe(foe){
-  if(foe.wait>0){foe.wait--;return;}
-  let budget=foe.speed;
+function updateMazeFoe(foe,frames){
+  if(foe.wait>0){foe.wait-=frames;return;}
+  let budget=foe.speed*frames;
   while(budget>0){
     if(!foe.next){
       const step=mazeEnemyStep(foe.pos,maze.hero);
@@ -1052,10 +1052,12 @@ function updateMazeFoe(foe){
     if(foe.t>=1){foe.pos=foe.next;foe.next=null;foe.t=0;}
   }
 }
-function updateMazeMotion(){
+// 画面の描きかえ（requestAnimationFrame）ごとに、実際に経過した時間ぶんだけ進める。
+// 60fps固定の更新に合わせると、画面の更新タイミングとずれてカクついて見えるため。
+function updateMazeMotion(frames){
   if(maze.done)return;
-  if(maze.motion&&++maze.motion.frame>=maze.motion.duration)maze.motion=null;
-  maze.foes.forEach(updateMazeFoe);
+  if(maze.motion&&(maze.motion.frame+=frames)>=maze.motion.duration)maze.motion=null;
+  maze.foes.forEach(foe=>updateMazeFoe(foe,frames));
   const [hx,hy]=mazeVisualPosition(maze.hero,maze.motion);
   if(maze.foes.some(foe=>{const [fx,fy]=mazeFoePosition(foe);return Math.hypot(fx-hx,fy-hy)<MAZE_HIT_DISTANCE;}))mazeHit();
   drawMaze();
@@ -1094,7 +1096,7 @@ function drawMaze(){
   const [heroX,heroY]=mazeVisualPosition(maze.hero,maze.motion);
   maze.foes.forEach((foe,i)=>{
     const [fx,fy]=mazeFoePosition(foe);
-    const bounce=Math.abs(Math.sin(foe.phase*Math.PI))*1.5;
+    const bounce=(1-Math.cos(foe.phase*Math.PI*2))*.6;
     const blink=foe.wait>0&&Math.floor(foe.wait/6)%2;
     if(!blink)drawMazeCritter(fx*size+16,fy*size+16-bounce,i,foe.look);
   });
@@ -1455,7 +1457,7 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
-if(state==='arcade'){if(arcadeGame==='maze'){updateMazeMotion();updateMazeHold();}return;}
+if(state==='arcade'){if(arcadeGame==='maze')updateMazeHold();return;}
 if(mode==='title'){
   demoT++;
   if(demoBossShownAt){
@@ -1988,7 +1990,7 @@ function setPause(on){if(on&&!canPause())return;if(paused===on)return;paused=on;
 function drawPause(){x.fillStyle='#0009';x.fillRect(0,0,W,H);x.textAlign='center';x.fillStyle='#fff';x.font='900 72px system-ui';x.fillText('PAUSE',W/2,250);
   x.font='bold 24px system-ui';x.fillText('画面をタップで さいかい',W/2,305);x.font='18px system-ui';x.fillStyle='#cfd8ea';x.fillText('SCORE '+score+'　　♥ × '+lives,W/2,350);x.textAlign='left';}
 const STEP=1000/60;let last=0,acc=0;
-function loop(t){if(!last)last=t;acc+=Math.min(100,t-last)*(mode==='title'?.85:1);last=t;if(paused)acc=0;while(acc>=STEP){update();acc-=STEP;}mp3LoopCheck();draw();if(mode==='title')drawTitle();if(paused)drawPause();requestAnimationFrame(loop)}
+function loop(t){if(!last)last=t;if(state==='arcade'&&arcadeGame==='maze'&&!paused)updateMazeMotion(Math.min(100,t-last)/STEP);acc+=Math.min(100,t-last)*(mode==='title'?.85:1);last=t;if(paused)acc=0;while(acc>=STEP){update();acc-=STEP;}mp3LoopCheck();draw();if(mode==='title')drawTitle();if(paused)drawPause();requestAnimationFrame(loop)}
 if(!restoreQuestEnding())toTitle();
 requestAnimationFrame(loop);
 
