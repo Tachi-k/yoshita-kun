@@ -652,7 +652,7 @@ SONGS.basement={len:32,dur:()=>60/128/2/hurryMul(),step(i,t,sd){const bar=i>>3,b
   if(b%4===0)bnote(140,t,.1,'sine',.18,50);if(b%4===2)hat(t,.05,.08);if(b%2===1)hat(t,.02);
   if(i%8===7)bell(m?m+12:88,t,.015);}};
 SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];if(m){bnote(mf(m+5),t,sd*.7,'square',.04);bnote(mf(m+17),t,sd*.3,'sine',.04);}bnote(mf(BS_ROOT[bar]+5+(b%2?12:0)),t,sd*.7,'triangle',.11);if(b%2===0)bnote(150,t,.1,'sine',.18,50);hat(t,.025);if(b===4)hat(t,.06,.1);}};
-function currentSong(){if(mode==='title'||mode==='opening')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
+function currentSong(){if(mode==='title'||mode==='opening')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
 // ===== MP3のBGM =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
 // 未登録の場面ではオリジナルBGMを再生。ループ区間未指定なら曲全体を繰り返す。
@@ -832,7 +832,15 @@ function updateBoss(p,oldY){
     if(!b.endingSong)b.endingSong=chooseEndingSong();
     // ボス撃破演出中に、このあと使うエンディング曲だけを先読みする。
     if(mode==='game'&&mp3Enabled&&musicOn)mp3Load(mp3Get(b.endingSong));
-    b.vy+=.3;b.y+=b.vy;if(b.t<=210&&b.t%8===0){boom(b.x+Math.random()*b.w,Math.min(ground,b.y+Math.random()*b.h),12,['#ffdf50','#ff655e','#fff']);if(b.t%16===0)sound('boom')}
+    // 倒した瞬間：時間が止まったように白く光る → くるくる回りながら爆発 → 王冠が飛んでいき、大爆発で空のかなたへ
+    const bcx=b.x+b.w/2,bcy=b.y+b.h/2;
+    if(b.t<36){b.vy=0;shake=Math.max(shake,14);if(b.t===1){sound('bosshit');boom(bcx,bcy,30,['#fff','#ffdf50'],9);}}
+    else if(b.t<130){b.spin=(b.spin||0)+.08+(b.t-36)*.004;b.y-=.4;
+      if(b.t%6===0){boom(b.x+Math.random()*b.w,b.y+Math.random()*b.h,14,['#ffdf50','#ff655e','#fff']);if(b.t%12===0)sound('boom');shake=Math.max(shake,8);}
+      if(b.t===60&&!b.crownFly){b.crownFly={x:bcx,y:b.y+5,vx:3.5,vy:-11,spin:0};sound('boing');}}
+    else{if(b.t===130){b.vy=-12;shake=30;sound('slam');sound('boom');boom(bcx,bcy,60,['#fff','#ffdf50','#ff655e','#7fe3ff'],12);}
+      b.spin=(b.spin||0)+.35;b.vy+=.3;b.y+=b.vy;b.x+=4;}
+    if(b.crownFly){const cf=b.crownFly;cf.vy+=.35;cf.x+=cf.vx;cf.y+=cf.vy;cf.spin+=.2;if(cf.y>ground-10&&cf.vy>0){cf.y=ground-10;cf.vy*=-.45;cf.vx*=.6;if(Math.abs(cf.vy)<1){cf.vy=0;cf.vx=0;}}}
     if(b.t>210&&!b.clearPlayed){b.clearPlayed=true;playBossClear();banner('GAME CLEAR!','モグラ大王 ドリモグを たおした！',300)}
     // 読み込み失敗時や再生停止時にも進行を止めない（最大8秒）。
     if(b.t>210&&(bossClearDone||b.t>690)){
@@ -1921,6 +1929,45 @@ function chooseEndingSong(){
   return roll<.1?'rare':roll<.75?'wedding':'ending';
 }
 const VICTORY_FLIGHT_FRAMES=54;
+// ===== エンディングのアニメーション（約9秒・タップで飛ばせる）=====
+// 夕焼けの谷：主人公がよろこぶ → 光につつまれて姫（3周目はよし太くん）が空から降りてくる → ハート → ふたりで空の国へのぼっていく → 白くなってエンディング画面へ
+const END_CUT_LEN=540;let endCutT=0;
+function finishEndingCut(){state='ending';endT=0;parts=[];endP=null;}
+function updateEndingCut(){endCutT++;updateParts();if(shake>0)shake--;
+  if(endCutT===200||endCutT===215||endCutT===230)for(let k=0;k<8;k++)parts.push({x:W/2+(Math.random()-.5)*40,y:ground-90,vx:(Math.random()-.5)*3,vy:-2-Math.random()*2,g:-.01,s:6+Math.random()*4,life:70,max:70,col:['#ff4d78','#ff85b2','#ffc2db'][k%3],heart:true});
+  if(endCutT===200)sound('coin');if(endCutT===300)sound('oneup');
+  if(endCutT>=END_CUT_LEN)finishEndingCut();}
+function drawEndingCut(){const t=endCutT;
+  const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#3a2a6a');g.addColorStop(.45,'#c8609a');g.addColorStop(.75,'#ffa86a');g.addColorStop(1,'#ffe0a0');x.fillStyle=g;x.fillRect(0,0,W,H);
+  ell(W/2,ground-40,90,90,'#ffe9a033');ell(W/2,ground-40,60,60,'#fff2c055');   // 夕日
+  // 空の国のお城（雲の上）
+  const cy0=110-Math.min(40,Math.max(0,t-300)*.15);
+  for(const [cx,cs] of[[W/2-80,1.3],[W/2+70,1.2],[W/2,1.6]])drawCloud(cx,cy0+40,cs,'#e8b8d8','#fff4fa','#ffffff');
+  x.fillStyle='#fff6e8';x.fillRect(W/2-40,cy0-30,80,50);for(const [tx,th] of[[-48,70],[34,70],[-12,95]]){x.fillRect(W/2+tx,cy0+20-th,16,th);x.beginPath();x.moveTo(W/2+tx-3,cy0+20-th);x.lineTo(W/2+tx+8,cy0+20-th-18);x.lineTo(W/2+tx+19,cy0+20-th);x.closePath();x.fill();}
+  x.fillStyle='#ffd88a';for(const wx of[-30,-6,18])x.fillRect(W/2+wx,cy0-12,8,12);
+  // 地面
+  const gg=x.createLinearGradient(0,ground,0,H);gg.addColorStop(0,'#7a4c35');gg.addColorStop(1,'#3a2418');x.fillStyle=gg;x.fillRect(0,ground,W,H-ground);x.fillStyle='#5f9a4c';x.fillRect(0,ground,W,10);
+  // 主人公と、助けだしたなかま
+  const rise=Math.max(0,t-330)*1.5,heroX=W/2-110+Math.min(60,Math.max(0,t-160)*.8),hop=t<150?Math.abs(Math.sin(t*.15))*26:0;
+  const fallK=Math.min(1,Math.max(0,(t-60)/120)),partnerX=W/2+70-Math.min(40,Math.max(0,t-160)*.5),partnerY=ground-46-(1-fallK)*360-rise;
+  const drawHeroBig=()=>{x.save();x.translate(heroX+17,ground-hop-rise);x.scale(2,2);x.translate(-(heroX+17),-ground);drawHero(heroX,ground-42,1,hop>2?'jump':'front',0);x.restore();};
+  const drawPartnerBig=()=>{x.save();x.translate(partnerX+17,partnerY+46);x.scale(2,2);x.translate(-(partnerX+17),-(partnerY+46));
+    if(princessRound)drawPlayerAt(partnerX,partnerY+4,-1,fallK<1?'jump':'front');else drawPartner(partnerX,partnerY,-1);x.restore();};
+  if(fallK<1){const lg=x.createRadialGradient(partnerX+17,partnerY+20,4,partnerX+17,partnerY+20,90);lg.addColorStop(0,'#fff8d0cc');lg.addColorStop(1,'#fff8d000');x.fillStyle=lg;x.fillRect(partnerX-80,partnerY-70,200,180);}   // 光につつまれて降りてくる
+  drawHeroBig();if(t>=60)drawPartnerBig();
+  if(t>=330){for(let k=0;k<3;k++){const a=t*.12+k*2.1;x.fillStyle='#fff8c0';x.fillRect(W/2+Math.cos(a)*120,ground-60-rise+Math.sin(a)*40,3,3);}}   // のぼっていくきらきら
+  drawParts();
+  x.textAlign='center';
+  const fade=(a,b)=>Math.max(0,Math.min(1,(t-a)/20,(b-t)/20));
+  const heroName=princessRound?'ソラ姫':'よし太くん',partnerName=princessRound?'よし太くん':'ソラ姫';
+  if(t<150){x.globalAlpha=fade(0,150);opBubble('やったー！',heroX+17,ground-150-hop);x.globalAlpha=1;}
+  if(t>=150&&t<260){x.globalAlpha=fade(150,260);opBubble(heroName+'！',partnerX+17,partnerY-30,'#ffe0ef');x.globalAlpha=1;}
+  if(t>=200&&t<320){x.globalAlpha=fade(200,320);fancyText(partnerName+'を たすけだした！',W/2,ground-260,40,'gold');x.globalAlpha=1;}
+  if(t>=330&&t<520){x.globalAlpha=fade(330,520);fancyText('ふたりで 空の国へ…',W/2,H-40,34,'white');x.globalAlpha=1;}
+  x.textAlign='left';
+  if(t>END_CUT_LEN-60){x.fillStyle=`rgba(255,255,255,${(t-(END_CUT_LEN-60))/60})`;x.fillRect(0,0,W,H);}   // 白くなってエンディングへ
+  x.font='bold 16px system-ui';x.fillStyle='#ffffffcc';x.textAlign='right';x.fillText('タップで スキップ ▶▶',W-16,H-14);x.textAlign='left';
+}
 let victoryFlight=null;
 function startVictoryFlight(p){
   state='victoryFlight';
@@ -1938,7 +1985,7 @@ function updateVictoryFlight(){
   victoryFlight=null;
   if(mode==='game')clearCount++;
   clearedAdventure=true;
-  state='ending';bonusUsed={};roomT=0;endT=0;parts=[];
+  state='endingCut';endCutT=0;bonusUsed={};roomT=0;endT=0;parts=[];   // エンディング画面の前に、ソラ姫を助けだすアニメーション
   addTimeBonus();score+=lives*1000;
   endingRare=boss.endingSong==='rare';endingPair=boss.endingSong==='wedding';endP=null;
   if(endingRare)score+=5000;
@@ -1947,6 +1994,7 @@ function updateVictoryFlight(){
 // ===== 更新 =====
 function update(){
 if(mode==='opening'){updateOpening();return;}
+if(state==='endingCut'){updateEndingCut();return;}
 if(state==='arcade')return;
 if(mode==='title'){
   demoT++;
@@ -2580,8 +2628,8 @@ function drawShockwave(w){
 }
 const BOSS_SCALE=1.3;
 function drawBoss(b){
-  if(b.st==='dead'&&b.t%6<3)return;if(b.st==='intro'&&!b.short&&b.phase==='rumble')return;
-  const fl=b.flash>0&&b.flash%6<3,cx=b.x+b.w/2,d=b.dir,y=b.y,stun=b.st==='stun';
+  if(b.st==='dead'&&b.t>=130&&b.t%6<3)return;if(b.st==='intro'&&!b.short&&b.phase==='rumble')return;
+  const fl=(b.flash>0&&b.flash%6<3)||(b.st==='dead'&&b.t<36&&b.t%8<5),cx=b.x+b.w/2,d=b.dir,y=b.y,stun=b.st==='stun';
   const C=c=>fl?'#fff':c,angry=b.st==='windup'||b.st==='charge',now=Date.now();
   x.save();
   if(b.spin){const ry=y+b.h/2;x.translate(cx,ry);x.rotate(b.spin);x.translate(-cx,-ry);}
@@ -2637,7 +2685,7 @@ function drawBoss(b){
   x.fillStyle=C('#c8303a');x.beginPath();x.ellipse(cx+d*15,y+59,7,2.6,0,0,Math.PI*2);x.fill();
   x.fillStyle=C('#fffaf0');for(let k=0;k<5;k++){const fx=cx+d*(5+k*5),big=k===0||k===4;x.beginPath();x.moveTo(fx-2.3,y+55);x.lineTo(fx+2.3,y+55);x.lineTo(fx,y+55+(big?7:4));x.closePath();x.fill();}
   // 王冠（宝石つき）
-  drawBossCrown(cx-d*4,y+12,1.25,fl);
+  if(!(b.st==='dead'&&b.crownFly))drawBossCrown(cx-d*4,y+12,1.25,fl);   // 倒したあとは王冠が飛んでいく
   x.restore();
   if(stun){for(let k=0;k<3;k++){const a=b.t*.12+k*2.1;x.fillStyle='#ffdf50';x.font='bold 18px system-ui';x.fillText('★',cx+Math.cos(a)*36-8,y-6+Math.sin(a)*8)}}
 }
@@ -2737,6 +2785,7 @@ function drawLadderCrack(sx){
 }
 function draw(){
   if(mode==='opening'){drawOpening();return;}
+  if(state==='endingCut'){drawEndingCut();return;}
   if(state==='ending'){drawEnding();return}
   x.save();if(shake>0)x.translate((realRandom()-.5)*shake*.8,(realRandom()-.5)*shake*.8);
   if(inBasement){if(roomKind==='basement')drawBasementBg();else drawBonusBg();}else drawSky();
@@ -2793,6 +2842,8 @@ function draw(){
   if(skyRope&&stage===2&&!inBasement)drawSkyRope();
   if(stage===1&&!inBasement)drawBalloon('back');
   if(boss)drawBoss(boss);
+  if(boss&&boss.st==='dead'&&boss.crownFly){const cf=boss.crownFly;x.save();x.translate(cf.x,cf.y);x.rotate(cf.spin);drawBossCrown(0,8,1.25,false);x.restore();
+    if(Math.floor(boss.t/10)%2)for(let k=0;k<4;k++){const a=boss.t*.1+k*1.57;x.fillStyle='#fff8c0';x.fillRect(cf.x+Math.cos(a)*22-1.5,cf.y+Math.sin(a)*14-1.5,3,3);}}
   drawCannon();
   for(const r of rocks)drawBossRock(r);
   for(const w of waves)drawShockwave(w);
@@ -2807,6 +2858,8 @@ function draw(){
   drawParts();drawPopups();
   if(arenaOn){x.fillStyle='#2a1d36';x.fillRect(AX-24,140,28,ground-140);}
   x.restore();
+  if(boss&&boss.st==='dead'&&mode==='game'){const t=boss.t,a=t<36?(1-t/36)*.75:(t>=130&&t<160)?(1-(t-130)/30)*.85:0;if(a>0){x.fillStyle=`rgba(255,255,255,${a})`;x.fillRect(0,0,W,H);}
+    if(t>=36&&t<130){x.save();x.translate(W/2,H/2);x.rotate(t*.02);x.globalAlpha=.18;for(let k=0;k<12;k++){x.rotate(Math.PI/6);x.fillStyle='#ffe9a0';x.beginPath();x.moveTo(0,0);x.lineTo(-40,-700);x.lineTo(40,-700);x.closePath();x.fill();}x.restore();}}   // 倒したときの光
   // HUD
   x.fillStyle='#fff';x.strokeStyle='#0d1830';x.lineJoin='round';x.lineWidth=4.5;const hudT=(t,tx,ty)=>{x.strokeText(t,tx,ty);x.fillText(t,tx,ty);};x.font='800 30px system-ui';
   // 左から順に並べる（数字がふえても重ならない）
@@ -2964,7 +3017,7 @@ if(!restoreQuestEnding())startOpening();   // 最初はオープニングから�
 requestAnimationFrame(loop);
 
 // キーボード
-document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose')retry();else reset()}});
+document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(state==='endingCut'&&mode==='game'){finishEndingCut();return;}if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose')retry();else reset()}});
 document.addEventListener('keyup',e=>{let k=e.key.toLowerCase();if(['arrowleft','a'].includes(k))keys.left=false;if(['arrowright','d'].includes(k))keys.right=false;if([' ','arrowup','w'].includes(k))keys.jump=false});
 
 // 方向パッド：大きな ◀ ▶ の2つ。指を離さずスライドで左右を切り替え（ジャンプは右のジャンプボタンで）
@@ -2980,7 +3033,7 @@ function holdButton(el,down,up){let id=null;el.addEventListener('pointerdown',e=
 holdButton(document.getElementById('jump'),()=>keys.jump=true,()=>keys.jump=false);
 holdButton(document.getElementById('dig'),()=>{dig();},()=>{}); // 1タップにつき1回だけ掘る。デモAIの自動掘削は維持
 
-c.addEventListener('pointerdown',()=>{if(mode==='opening'){endOpening();return;}if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
+c.addEventListener('pointerdown',()=>{if(mode==='opening'){endOpening();return;}if(state==='endingCut'){finishEndingCut();return;}if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
 
 // スクロール・ズーム・長押しメニューを防止
 document.addEventListener('touchmove',e=>{if(!arcade.open)e.preventDefault();},{passive:false});
