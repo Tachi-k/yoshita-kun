@@ -86,6 +86,34 @@ function credits(){return endingRare?CREDITS_RARE:endingPair?CREDITS_PAIR:CREDIT
 function newPlayer(inv){return {x:60,y:300,w:34,h:42,vx:0,vy:0,on:false,inv:inv,facing:1,hole:null}}
 // perch を渡すと空の踏み台の上から始まり、しばらく踏み台を往復してから地面へ降りる
 function makeEnemy(x0,type,i,perch){return {x:x0,y:perch?perch.y-32:ground-32,w:32,h:32,alive:true,dir:i%2?1:-1,vy:0,spawnX:x0,respawns:0,type,speed:type==='hop'?1.3:type==='boar'?.9:.7,hopT:40+i*7,grounded:true,home:perch?null:x0,range:240,perchT:perch?240+Math.floor(Math.random()*240):0}}
+function boarSpeed(e,p){
+  if(!e.grounded||e.kick>0){
+    e.windup=0;e.charge=0;
+    return e.speed;
+  }
+  if(e.windup||e.charge){
+    e.dir=e.chargeDir;
+    if(!onSurface(e.x+(e.dir>0?e.w+8:-8),e.y+e.h)){
+      e.windup=0;e.charge=0;e.recover=45;
+      return 0;
+    }
+    if(e.windup){
+      if(--e.windup===0)e.charge=60;
+      return 0;
+    }
+    if(--e.charge===0)e.recover=55;
+    return 5.8;
+  }
+  if(e.recover>0){
+    e.recover--;
+    return e.speed;
+  }
+  if(e.chasing&&Math.abs(p.x+p.w/2-e.x-e.w/2)<=245){
+    e.windup=34;e.chargeDir=e.dir;
+    return 0;
+  }
+  return e.speed*(e.chasing?1.45:1);
+}
 function onSurface(px,y){return platforms.some(b=>Math.abs(b.y-y)<2&&px>=b.x&&px<=b.x+b.w)}
 function groundAt(px){return platforms.some(b=>b.y===ground&&px>=b.x&&px<=b.x+b.w)}
 function addPerchEnemies(idx){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));idx.forEach((k,i)=>{const f=floats[k];if(f)enemies.push(makeEnemy(f.x+f.w/2-16,i%2===1?'hop':'walk',i+20,f))})}
@@ -114,9 +142,9 @@ function loadStage(n){
     [[2,'gem'],[4,'coins'],[7,'heart'],[9,'gem'],[13,'chest'],[16,'gem']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
     banner('STAGE 1','そよかぜの丘');
   }else{
-    AX=STAGE2_OFFSET+3120;world=AX+960;
+    AX=STAGE2_OFFSET+3840;world=AX+960;
     platforms.push({x:0,y:ground,w:STAGE2_OFFSET,h:75});
-    for(let i=0;i<13;i++){
+    for(let i=0;i<16;i++){
       if(i!==4&&i!==8)platforms.push({x:STAGE2_OFFSET+i*240,y:ground,w:240,h:75});
     }
     platforms.push({x:AX,y:ground,w:960,h:75});
@@ -124,11 +152,11 @@ function loadStage(n){
     const boarLaneStart=STAGE2_OFFSET+2330;
     for(let i=0;i<8;i++)platforms.push({x:STAGE2_OFFSET+330+i*270,y:330-(i%3)*45,w:110,h:18});
     platforms.push({x:AX+170,y:320,w:110,h:18},{x:AX+680,y:320,w:110,h:18});
-    for(let i=0;i<23;i++){
+    for(let i=0;i<30;i++){
       const cx=STAGE2_OFFSET+200+i*120;
       coins.push({x:cx,y:cx>=boarLaneStart?ground-30:270+(i%4)*30,taken:false});
     }
-    [520,760,1320,1500,1700,1850,2250,2450,2730,2960].forEach((ex,i)=>enemies.push(makeEnemy(STAGE2_OFFSET+ex,i===2||i===6||i>=8?'boar':i%2===1?'hop':'walk',i)));
+    [520,760,1320,1500,1700,1850,2250,2450,2730,3100,3510].forEach((ex,i)=>enemies.push(makeEnemy(STAGE2_OFFSET+ex,i===2||i===6||i>=8?'boar':i%2===1?'hop':'walk',i)));
     addPerchEnemies([1,3,6]);
     [[2,'gem'],[5,'heart'],[7,'coins'],[9,'chest'],[12,'gem']].forEach(([k,t])=>spots.push({x:STAGE2_OFFSET+k*240+120,type:t,found:false}));
     banner('STAGE 2','大王の谷');
@@ -980,7 +1008,8 @@ for(const e of enemies){if(!e.alive)continue;
   else e.chasing=false;
   if(e.type==='hop'&&e.grounded&&!(perched&&e.perchT>0)&&--e.hopT<=0){e.vy=-10.5;e.grounded=false;e.hopT=55+Math.floor(Math.random()*50);}
   if(e.safe>0)e.safe--;
-  e.x+=e.dir*(e.kick>0?3.2:e.speed*(e.chasing?(e.type==='boar'?2.8:1.45):1));if(e.kick>0)e.kick--;
+  const speed=e.type==='boar'?boarSpeed(e,p):e.speed*(e.chasing?1.45:1);
+  e.x+=e.dir*(e.kick>0?3.2:speed);if(e.kick>0)e.kick--;
   if(e.x<0||e.x>world-e.w){e.dir*=-1;e.x=Math.max(0,Math.min(world-e.w,e.x));}
   const ecx=e.x+e.w/2;
   const trap=e.vy>=0?holes.find(h=>h.stage===3&&ecx>h.x+3&&ecx<h.x+h.w-3&&e.y+e.h>=ground-12&&e.y+e.h<=ground+18&&!(boss&&boss.hole===h)&&inHole(h).length<HOLE_MAX):null;
@@ -1128,10 +1157,20 @@ function drawEnemy(e){
   if(e.type==='boar'){
     const cx=e.x+16,cy=e.y+20;
     const stride=e.grounded?Math.sin(e.x*.3)*3:0;
+    const scrape=e.windup?Math.sin(e.windup*.65)*4:0;
+    if(e.windup){
+      x.save();x.font='bold 16px system-ui';x.textAlign='center';
+      x.fillStyle='#fff2a0';x.fillText('！',cx,cy-21);x.restore();
+    }
     x.save();x.translate(cx,cy);x.scale(e.dir,1);
     ell(-7-stride,9,3,3,'#59352d');
-    ell(8+stride,9,3,3,'#59352d');
-    ell(-2,0,14,9,e.chasing?'#a84b28':'#bd7444');
+    ell(8+stride+scrape,9-Math.abs(scrape)*.5,3,3,'#59352d');
+    if(e.windup||e.charge){
+      const dustX=e.windup?13+scrape:-18;
+      ell(dustX,10,3,2,'#e0aa76');
+      ell(dustX-4,7,2,1.5,'#f1c797');
+    }
+    ell(-2,0,14,9,e.charge?'#a84b28':'#bd7444');
     ell(4,-9,4,5,'#713c31');
     ell(11,2,5,4,'#eeb887');
     ell(13,1,1.5,1.5,'#683929');
