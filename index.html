@@ -57,6 +57,23 @@ canvas{display:block;background:#17283c}
   .btn{width:min(92px,21vw);height:min(92px,21vw)}#jump{width:min(110px,25vw);height:min(110px,25vw)}
 }
 @media (hover:hover) and (pointer:fine){.help{display:block}.hint{display:none}}
+#arcade{box-sizing:border-box;width:min(560px,94vw);max-height:92dvh;overflow:auto;border:2px solid #79a7cb;border-radius:16px;padding:16px;background:#17283c;color:#fff;text-align:center;touch-action:pan-y}
+#arcade::backdrop{background:#071322c9}
+#arcade h2,#arcade h3{margin:0 0 8px}
+#arcade p{margin:8px 0}
+#arcade button{border:0;border-radius:8px;padding:8px 13px;margin:3px;background:#e9f0ff;color:#17283c;font:700 15px system-ui;cursor:pointer;touch-action:manipulation;min-height:36px}
+#arcade button:disabled{opacity:.5}
+#arcade canvas{display:block;background:#102035;margin:6px auto;max-width:100%;height:auto;object-fit:contain}
+#mazeBoard{width:min(390px,100%,49dvh)}
+#slotBoard{width:min(330px,100%)}
+.arcadeStatus{min-height:1.5em;color:#ffdf70}
+@media (max-height:450px) and (orientation:landscape){
+  #arcade{padding:8px}
+  #arcade h2,#arcade h3{font-size:16px;margin:0}
+  #arcade p{margin:3px 0}
+  #mazeBoard{width:min(390px,100%,45dvh)}
+  #arcade button{min-height:30px;padding:4px 10px}
+}
 </style></head><body>
 <div id="stage">
 <canvas id="game" width="960" height="540"></canvas>
@@ -69,6 +86,34 @@ canvas{display:block;background:#17283c}
 <button id="startBtn">▶ START</button>
 <div class="topbtns"><button id="changeBgm" aria-label="BGM変更。現在：ファミコン風。アレンジ曲に切り替える" aria-pressed="false"><small>現在：ファミコン風</small>♫ BGM変更</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
+<dialog id="arcade" aria-labelledby="arcadeTitle">
+  <h2 id="arcadeTitle">はしごの先のあそび場</h2>
+  <div>
+    <button id="mazeSelect" type="button">きらきら迷路</button>
+    <button id="slotsSelect" type="button">よし太くんスロット</button>
+    <button id="arcadeExit" type="button">地上へ戻る</button>
+  </div>
+  <section id="mazePanel" hidden>
+    <h3>きらきら迷路</h3>
+    <p>敵をかわして、迷路の星を全部集めよう。</p>
+    <canvas id="mazeBoard" width="416" height="288" aria-label="迷路"></canvas>
+    <div id="mazeDirections" aria-label="方向ボタン">
+      <button type="button" data-dir="left" aria-label="左">←</button>
+      <button type="button" data-dir="up" aria-label="上">↑</button>
+      <button type="button" data-dir="down" aria-label="下">↓</button>
+      <button type="button" data-dir="right" aria-label="右">→</button>
+      <button id="mazeRetry" type="button">やり直す</button>
+    </div>
+    <p id="mazeStatus" class="arcadeStatus" role="status"></p>
+  </section>
+  <section id="slotsPanel" hidden>
+    <h3>よし太くんスロット</h3>
+    <p>よし太くんが3つそろうと大当たり！</p>
+    <canvas id="slotBoard" width="330" height="104" aria-label="スロットの絵柄"></canvas>
+    <button id="slotSpin" type="button">まわす</button>
+    <p id="slotStatus" class="arcadeStatus" role="status"></p>
+  </section>
+</dialog>
 <script>
 const c=document.querySelector('canvas'),x=c.getContext('2d'),W=960,H=540,ground=465;
 let world=4300,stage=1,AX=0,arenaOn=false,boss=null,rocks=[],waves=[],parts=[],shake=0,bannerText='',bannerSub='',bannerT=0,clearT=0,endT=0,stageStartScore=0;
@@ -133,7 +178,7 @@ function loadStage(n){
   victoryFlight=null;
   stopStageClearAudio();
   stopBossSounds();
-  stage=n;stageStartScore=score;stageStartCoinProgress=coinProgress;stageStartDiamonds=diamonds;diamondVaultUsed=false;bonusLoot=null;bonusResult=null;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonT=60*8;lastSafeX=stageStartX();bonusUsed[n]=false;crossed1=false;roomKind='basement';roomT=0;inBasement=false;surface=null;secret={x:n===1?2520:STAGE2_OFFSET+840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
+  stage=n;stageStartScore=score;stageStartCoinProgress=coinProgress;stageStartDiamonds=diamonds;diamondVaultUsed=false;bonusLoot=null;bonusResult=null;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonT=60*8;lastSafeX=stageStartX();bonusUsed[n]=false;roomKind='basement';roomT=0;inBasement=false;surface=null;secret={x:n===1?2520:STAGE2_OFFSET+840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
   if(n===1){
     world=4300;
     for(let i=0;i<world/240;i++){if(i!==5&&i!==11&&i!==15)platforms.push({x:i*240,y:ground,w:240,h:75});}
@@ -617,7 +662,15 @@ function updateBoss(p,oldY){
 // ===== タイトル画面とデモプレイ =====
 let inBasement=false,surface=null,secret={x:2520,used:false};
 // ===== 隠し地下室 =====
-function checkSecret(h){if((mode!=='game'&&demoScene!=='basement')||secret.used||inBasement)return;
+const ARCADE_LADDER_X=3300;
+function checkSecret(h){
+  if(mode==='game'&&stage===1&&ARCADE_LADDER_X>=h.x&&ARCADE_LADDER_X<=h.x+h.w){
+    h.arcade=true;
+    popup(h.x+h.w/2,ground-60,'遊び場への はしご発見！','#ffdf50',24,110);
+    sound('treasure');sparkleFx(h.x+h.w/2);
+    return;
+  }
+  if((mode!=='game'&&demoScene!=='basement')||secret.used||inBasement)return;
   if(secret.x>=h.x-4&&secret.x<=h.x+h.w+4){h.secret=true;h.t=Math.max(h.t,HOLE_T);popup(h.x+h.w/2,ground-60,'はしご発見！','#ffdf50',28,110);sound('treasure');sparkleFx(h.x+h.w/2);}}
 function vaultVisible(){return stage===2&&!inBasement&&!arenaOn&&!diamondVaultUsed;}
 function enterBasement(h){
@@ -738,7 +791,7 @@ function stage2Rush(){
 function bossRush(){return arenaOn?1+.35*(1-timeLeft/(BOSS_TIME*60)):1}   // ボス戦はだんだん速く
 function addTimeBonus(){timeBonus=Math.ceil(timeLeft/60)*10;score+=timeBonus}
 let lastSafeX=60;
-let roomKind='basement',roomT=0,bonusUsed={},crossed1=false;   // roomKind: basement=隠し地下室 / rain=ボーナス画面 / sky=ボーナスステージ
+let roomKind='basement',roomT=0,bonusUsed={};   // roomKind: basement=隠し地下室 / rain=ボーナス画面 / sky=ボーナスステージ
 function inBonus(){return inBasement&&roomKind!=='basement'}   // 最後に安全な地面に立っていた位置（ミスした時の再開地点）
 // ===== エンディングでも主人公を動かせる =====
 const QUEST_TRIAL_URL='https://tachi-k.github.io/ojiya-quest/';
@@ -796,6 +849,178 @@ function updateEndPlayer(){
 }
 function drawEndPlayer(){if(!endP)return;drawPlayerAt(endP.x,endP.y,endP.f,!endP.on?'jump':endP.walking?'walk':'front',endP.stride);
   if(endT<360&&Math.floor(endT/30)%2){x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#ffffffcc';x.fillText('← → で うごける・ジャンプもできる',W/2,H-14);x.textAlign='left';}}
+// 秘密のはしごの先。ミニゲーム中は本編の時計を止める。
+const arcade=document.getElementById('arcade');
+const mazePanel=document.getElementById('mazePanel'),slotsPanel=document.getElementById('slotsPanel');
+const mazeCtx=document.getElementById('mazeBoard').getContext('2d');
+const slotCtx=document.getElementById('slotBoard').getContext('2d');
+const mazeStatus=document.getElementById('mazeStatus'),slotStatus=document.getElementById('slotStatus');
+const slotSpin=document.getElementById('slotSpin');
+const MAZE=[
+  '#############',
+  '#.....#.....#',
+  '#.###.#.###.#',
+  '#...........#',
+  '###.#.#.#.###',
+  '#...#...#...#',
+  '#.###.#.###.#',
+  '#...........#',
+  '#############',
+];
+const MAZE_MOVES={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+const MAZE_START=[1,1],MAZE_ENEMY_STARTS=[[11,1],[11,7]];
+const SLOT_SYMBOLS=['よし太くん','さくらんぼ','ダイヤ','ベル','錦鯉'];
+const SLOT_ICONS=['','🍒','💎','🔔','🐟'];
+const SLOT_STOPS=[0,0,1,2,3,4];
+let arcadeHole=null,arcadeGame=null,maze=null,slotTimer=null;
+
+function enterArcade(h){
+  state='arcade';arcadeHole=h;arcadeGame=null;
+  mazePanel.hidden=true;slotsPanel.hidden=true;
+  clearInput();arcade.showModal();
+}
+function exitArcade(){
+  if(state!=='arcade')return;
+  stopSlotSpin();
+  const h=arcadeHole;
+  holes=holes.filter(other=>other!==h);
+  player.x=h.x+h.w+6;player.y=ground-player.h;
+  player.vx=0;player.vy=0;player.hole=null;player.on=true;
+  player.inv=Math.max(player.inv,90);lastSafeX=player.x;
+  camera=followCamera(player.x);arcadeHole=null;arcadeGame=null;
+  clearInput();state='play';arcade.close();
+}
+function selectArcadeGame(game){
+  stopSlotSpin();
+  arcadeGame=game;mazePanel.hidden=game!=='maze';slotsPanel.hidden=game!=='slots';
+  if(game==='maze')resetMaze();
+  else{drawSlots([1,0,3]);slotStatus.textContent='まわすを押してスタート';}
+}
+
+function resetMaze(){
+  const stars=new Set();
+  MAZE.forEach((row,y)=>Array.from(row).forEach((cell,x)=>{
+    if(cell==='.'&&(x!==MAZE_START[0]||y!==MAZE_START[1]))stars.add(x+','+y);
+  }));
+  maze={hero:MAZE_START,foes:MAZE_ENEMY_STARTS.slice(),stars,lives:3,turn:0,facing:1,done:false};
+  drawMaze();
+}
+function mazeWalk(pos,move){
+  const next=[pos[0]+move[0],pos[1]+move[1]];
+  return MAZE[next[1]]?.[next[0]]==='.'?next:null;
+}
+function mazeEnemyStep(from,target){
+  const seen=new Set([from.join(',')]),queue=[[from,null]];
+  for(let i=0;i<queue.length;i++){
+    const [pos,first]=queue[i];
+    if(pos[0]===target[0]&&pos[1]===target[1])return first||from;
+    for(const move of Object.values(MAZE_MOVES)){
+      const next=mazeWalk(pos,move);
+      if(!next||seen.has(next.join(',')))continue;
+      seen.add(next.join(','));queue.push([next,first||next]);
+    }
+  }
+  return from;
+}
+function mazeMove(dir){
+  if(arcadeGame!=='maze'||maze.done)return;
+  const next=mazeWalk(maze.hero,MAZE_MOVES[dir]);
+  if(!next)return;
+  maze.hero=next;
+  if(dir==='left'||dir==='right')maze.facing=dir==='left'?-1:1;
+  const hit=()=>maze.foes.some(foe=>foe[0]===next[0]&&foe[1]===next[1]);
+  let collided=hit();
+  if(!collided){
+    maze.turn++;
+    maze.foes=maze.foes.map((foe,i)=>maze.turn%(i===0?3:4)===0?mazeEnemyStep(foe,next):foe);
+    collided=hit();
+  }
+  if(collided){
+    maze.lives--;maze.hero=MAZE_START;maze.foes=MAZE_ENEMY_STARTS.slice();maze.turn=0;
+    maze.done=maze.lives===0;sound('hurt');
+  }else{
+    if(maze.stars.delete(next.join(',')))sound('coin');
+    maze.done=maze.stars.size===0;
+    if(maze.done)sound('oneup');
+  }
+  drawMaze();
+}
+function drawMaze(){
+  const size=32;
+  mazeCtx.fillStyle='#102035';mazeCtx.fillRect(0,0,416,288);
+  MAZE.forEach((row,y)=>Array.from(row).forEach((cell,x)=>{
+    const px=x*size,py=y*size;
+    if(cell==='#'){
+      mazeCtx.fillStyle='#3c6181';mazeCtx.fillRect(px+1,py+1,size-2,size-2);
+      mazeCtx.fillStyle='#527b9c';mazeCtx.fillRect(px+5,py+5,size-10,3);
+    }else if(maze.stars.has(x+','+y)){
+      mazeCtx.fillStyle='#ffe391';mazeCtx.save();mazeCtx.translate(px+16,py+16);
+      mazeCtx.rotate(Math.PI/4);mazeCtx.fillRect(-3,-3,6,6);mazeCtx.restore();
+    }
+  }));
+  maze.foes.forEach(([x,y],i)=>{
+    const cx=x*size+16,cy=y*size+16;
+    ell(cx,cy,11,9,i?'#de86ae':'#8ca1ef',mazeCtx);
+    ell(cx-4,cy-2,1.8,2,'#19243c',mazeCtx);
+    ell(cx+4,cy-2,1.8,2,'#19243c',mazeCtx);
+  });
+  mazeCtx.save();mazeCtx.translate(maze.hero[0]*size+6,maze.hero[1]*size+5);mazeCtx.scale(.6,.6);
+  drawPlayerAt(0,0,maze.facing,'front',0,mazeCtx);mazeCtx.restore();
+  mazeStatus.textContent=maze.done?(maze.lives?'クリア！ 星を全部集めた！':'ミス！ やり直すと再挑戦できます。'):
+    '残りの星 '+maze.stars.size+'　ライフ '+maze.lives;
+}
+function randomSlotSymbol(){return SLOT_STOPS[Math.floor(Math.random()*SLOT_STOPS.length)];}
+function drawSlots(reels){
+  slotCtx.fillStyle='#102035';slotCtx.fillRect(0,0,330,104);
+  reels.forEach((symbol,i)=>{
+    const left=8+i*108;
+    slotCtx.fillStyle='#ffefd1';slotCtx.fillRect(left,6,98,92);
+    if(symbol===0){
+      slotCtx.save();slotCtx.translate(left+32,20);
+      drawPlayerAt(0,0,1,'front',0,slotCtx);slotCtx.restore();
+    }else{
+      slotCtx.fillStyle='#283620';slotCtx.font='36px system-ui';slotCtx.textAlign='center';
+      slotCtx.fillText(SLOT_ICONS[symbol],left+49,59);
+    }
+    slotCtx.font='bold 13px system-ui';slotCtx.textAlign='center';slotCtx.fillStyle='#283620';
+    slotCtx.fillText(SLOT_SYMBOLS[symbol],left+49,83);
+  });
+}
+function stopSlotSpin(){
+  if(slotTimer!==null){clearInterval(slotTimer);slotTimer=null;}
+  slotSpin.disabled=false;
+}
+function startSlotSpin(){
+  if(arcadeGame!=='slots'||slotTimer!==null)return;
+  const result=Array.from({length:3},randomSlotSymbol);
+  let tick=0;
+  slotSpin.disabled=true;slotStatus.textContent='回転中…';
+  slotTimer=setInterval(()=>{
+    tick++;
+    drawSlots(result.map((symbol,i)=>tick>=8+i*4?symbol:randomSlotSymbol()));
+    if(tick<16)return;
+    stopSlotSpin();
+    const won=result.every(symbol=>symbol===0);
+    slotStatus.textContent=won?'大当たり！ よし太くんが3つ！':'はずれ。もう一度まわせます。';
+    if(won)sound('oneup');
+  },80);
+}
+document.getElementById('mazeSelect').addEventListener('click',()=>selectArcadeGame('maze'));
+document.getElementById('slotsSelect').addEventListener('click',()=>selectArcadeGame('slots'));
+document.getElementById('arcadeExit').addEventListener('click',exitArcade);
+document.getElementById('mazeRetry').addEventListener('click',resetMaze);
+document.getElementById('mazeDirections').addEventListener('click',event=>{
+  if(event.target.dataset.dir)mazeMove(event.target.dataset.dir);
+});
+slotSpin.addEventListener('click',startSlotSpin);
+arcade.addEventListener('cancel',event=>{event.preventDefault();exitArcade();});
+document.addEventListener('keydown',event=>{
+  if(state!=='arcade')return;
+  event.stopImmediatePropagation();
+  const dir={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'}[event.key];
+  if(dir&&arcadeGame==='maze'){event.preventDefault();mazeMove(dir);}
+},true);
+
 // ===== 大砲の弾：ときどき画面の右から飛んでくる =====
 const CANNON_HEIGHTS=[
   {height:18,label:'足もと'},
@@ -882,7 +1107,7 @@ function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=fa
   }
   if(demoScene==='rain'){
     if(!inBonus()){
-      keys.left=crossed1&&p.x>1330;
+      keys.left=p.x>1330;
       return;
     }
     const target=items.filter(it=>it.type==='coin').sort((a,b)=>b.y-a.y)[0];
@@ -1040,7 +1265,7 @@ if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!bonusUsed[2]&&p.x<=STAGE2_B
 if(p.hole&&p.y+p.h>ground-2)clampToHole(p,p.hole);
 p.y+=p.vy;p.on=false;
 if(p.hole&&p.y+p.h<=ground-2)p.hole=null;
-if(p.hole){const floor=ground+p.hole.h;if(p.y+p.h>=floor){p.y=floor-p.h;p.vy=0;p.on=true;if(p.hole.secret&&!inBasement){enterBasement(p.hole);return;}}}
+if(p.hole){const floor=ground+p.hole.h;if(p.y+p.h>=floor){p.y=floor-p.h;p.vy=0;p.on=true;if(p.hole.arcade){enterArcade(p.hole);return;}if(p.hole.secret&&!inBasement){enterBasement(p.hole);return;}}}
 else if(p.vy>=0){const cx=p.x+p.w/2;
   const pit=(oldY+p.h<=ground+10&&p.y+p.h>=ground)?holes.find(h=>h.stage===3&&cx>h.x+4&&cx<h.x+h.w-4&&!trappedIn(h)):null;
   if(pit){p.hole=pit;clampToHole(p,pit);}
@@ -1097,15 +1322,19 @@ if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'){exitBasement
 if(inBonus()&&state==='play'){roomT--;
   if(roomKind==='rain'&&roomT>20&&roomT%7===0){const r=Math.random();items.push({type:r<.03?'heart':r<.12?'gem':'coin',x:40+Math.random()*(W-80),y:-20,vx:(Math.random()-.5)*1.2,vy:1,t:300});}
   if(roomT<=0){exitBasement();return;}}
-if((mode==='game'||demoScene==='rain')&&stage===1&&!inBasement&&p.on&&p.x>1450)crossed1=true;
-if((mode==='game'||demoScene==='rain')&&stage===1&&!inBasement&&crossed1&&!bonusUsed[1]&&p.y>H+10&&p.x+p.w/2>1190&&p.x+p.w/2<1450){enterBonus('rain',1580);return;}
+// 崖の底で横位置を判定すると、落ちながら移動したときに入口を通り過ぎてしまう。
+const fallX=p.x+p.w/2;
+if((mode==='game'||demoScene==='rain')&&stage===1&&!inBasement&&!bonusUsed[1]&&!p.hole&&
+   fallX>=1200&&fallX<1440&&oldY+p.h<=ground&&p.y+p.h>ground){
+  enterBonus('rain',1580);return;
+}
 updateCannon(p,oldY);if(state!=='play')return;
 if(p.y>H+80)die('落ちてしまった！');
 if(stage===1&&!inBasement&&state==='play'&&p.x+p.w>world-158){state='goal';goalTick=0;goalSX=p.x;goalSY=p.y;balloonLift=0;balloonVy=0;p.vy=0;p.hole=null;p.facing=1;sound('jump');}
 camera=followCamera(p.x);}
 
 // ===== 描画 =====
-function ell(cx,cy,rx,ry,col){x.fillStyle=col;x.beginPath();x.ellipse(cx,cy,rx,ry,0,0,7);x.fill()}
+function ell(cx,cy,rx,ry,col,context=x){context.fillStyle=col;context.beginPath();context.ellipse(cx,cy,rx,ry,0,0,7);context.fill()}
 function drawCrown(cx,y,s){x.fillStyle='#ffcf28';x.beginPath();x.moveTo(cx-20*s,y);x.lineTo(cx-20*s,y-14*s);x.lineTo(cx-10*s,y-5*s);x.lineTo(cx,y-18*s);x.lineTo(cx+10*s,y-5*s);x.lineTo(cx+20*s,y-14*s);x.lineTo(cx+20*s,y);x.closePath();x.fill();x.fillStyle='#e64040';x.fillRect(cx-3*s,y-7*s,6*s,5*s)}
 // ソラ姫（オリジナルキャラ）：黒髪・水色のドレス・花かんむり
 function drawPartner(px,py,facing){const f=facing;
@@ -1117,7 +1346,9 @@ function drawPartner(px,py,facing){const f=facing;
   for(let k=0;k<5;k++){x.fillStyle=['#ff6b8a','#ffd84d','#ffffff','#ff9ad5','#7fe3ff'][k];x.beginPath();x.arc(px+5+k*6,py+2,3.2,0,7);x.fill();}   // 花かんむり
   x.fillStyle='#ff6b8a';x.beginPath();x.arc(px+17+f*14,py+30,5,0,7);x.fill();x.fillStyle='#5fbf5f';x.fillRect(px+16+f*14,py+33,2,8);}   // ブーケ
 function drawHeart(cx,cy,r,col){x.fillStyle=col;x.beginPath();x.arc(cx-r/2,cy,r/2,0,7);x.arc(cx+r/2,cy,r/2,0,7);x.fill();x.beginPath();x.moveTo(cx-r,cy+r*.15);x.lineTo(cx,cy+r*1.1);x.lineTo(cx+r,cy+r*.15);x.closePath();x.fill()}
-function drawPlayerAt(px,py,facing,pose,stride=0){
+function drawPlayerAt(px,py,facing,pose,stride=0,context=x){
+  const x=context;
+  const oval=(cx,cy,rx,ry,color)=>ell(cx,cy,rx,ry,color,x);
   const walking=pose==='walk',jumping=pose==='jump';
   const swing=walking?Math.sin(stride*.19):0;
   const bob=walking?Math.abs(swing)*1.7:0;
@@ -1131,24 +1362,24 @@ function drawPlayerAt(px,py,facing,pose,stride=0){
   x.lineCap='round';
   if(walking){
     line('#c6ccd9',8,-1,-13,-2-swing*7,-5-Math.max(0,swing)*3);
-    ell(-swing*7,-3-Math.max(0,swing)*3,5,3,hoof);
+    oval(-swing*7,-3-Math.max(0,swing)*3,5,3,hoof);
     line('#e9edf3',8,2,-13,2+swing*7,-5-Math.max(0,-swing)*3);
-    ell(4+swing*7,-3-Math.max(0,-swing)*3,5,3,hoof);
+    oval(4+swing*7,-3-Math.max(0,-swing)*3,5,3,hoof);
   }else{
     line('#e9edf3',9,-5,-13,-6,-5);
     line('#e9edf3',9,5,-13,jumping?9:6,jumping?-8:-5);
-    ell(-6,-3,5,3,hoof);
-    ell(jumping?9:6,jumping?-6:-3,5,3,hoof);
+    oval(-6,-3,5,3,hoof);
+    oval(jumping?9:6,jumping?-6:-3,5,3,hoof);
   }
   x.translate(0,-bob);
   if(!walking){
     // 正面から見て左にある腕が、よしたくんの右腕。
     line(coat,7,-9,-23,jumping?-19:-15,jumping?-39:-19);
-    ell(jumping?-19:-16,jumping?-42:-18,4,4,hoof);
+    oval(jumping?-19:-16,jumping?-42:-18,4,4,hoof);
     line(coat,7,9,-23,16,-19);
-    ell(17,-18,4,3,hoof);
+    oval(17,-18,4,3,hoof);
   }
-  ell(0,-19,walking?9:12,10,coat);
+  oval(0,-19,walking?9:12,10,coat);
   if(!walking){
     line(lapel,3,-6,-23,-5,-12);
     line(lapel,3,6,-23,5,-12);
@@ -1156,37 +1387,37 @@ function drawPlayerAt(px,py,facing,pose,stride=0){
   }
   if(walking){
     line(lapel,6,-2,-23,-2-swing*5,-15);
-    ell(-2-swing*6,-13,3,3,hoof);
+    oval(-2-swing*6,-13,3,3,hoof);
   }
-  ell(walking?-10:-14,-38,6,3,shade);
-  if(!walking)ell(14,-38,6,3,shade);
-  ell(walking?-6:-9,-46,3,6,'#e8edf1');
-  if(!walking)ell(9,-46,3,6,'#e8edf1');
-  ell(walking?1:0,-35,walking?13:16,14,shade);
-  ell(walking?1:0,-36,walking?12:15,13,gold);
+  oval(walking?-10:-14,-38,6,3,shade);
+  if(!walking)oval(14,-38,6,3,shade);
+  oval(walking?-6:-9,-46,3,6,'#e8edf1');
+  if(!walking)oval(9,-46,3,6,'#e8edf1');
+  oval(walking?1:0,-35,walking?13:16,14,shade);
+  oval(walking?1:0,-36,walking?12:15,13,gold);
 
   // 赤・白・黒のねじり鉢巻。
-  ell(0,-45,11,4,'#672b2c');
-  ell(-7,-46,3,3,'#e64b4f');
-  ell(-3,-44,3,3,'#fff4de');
-  ell(1,-45,3,3,'#292538');
-  ell(5,-44,3,3,'#e64b4f');
-  ell(8,-46,3,3,'#fff4de');
+  oval(0,-45,11,4,'#672b2c');
+  oval(-7,-46,3,3,'#e64b4f');
+  oval(-3,-44,3,3,'#fff4de');
+  oval(1,-45,3,3,'#292538');
+  oval(5,-44,3,3,'#e64b4f');
+  oval(8,-46,3,3,'#fff4de');
   if(walking){
-    ell(6,-36,2.4,2.8,'#201f2d');
-    ell(6.6,-37,1,1,'#fff');
-    ell(11,-29,8,5,'#fff4df');
-    ell(15,-30,1.5,1,'#62515b');
+    oval(6,-36,2.4,2.8,'#201f2d');
+    oval(6.6,-37,1,1,'#fff');
+    oval(11,-29,8,5,'#fff4df');
+    oval(15,-30,1.5,1,'#62515b');
     line('#8f543f',1,10,-26,13,-26);
   }else{
-    ell(-6,-36,2.5,2.8,'#201f2d');
-    ell(6,-36,2.5,2.8,'#201f2d');
-    ell(-5.3,-37,1,1,'#fff');
-    ell(6.7,-37,1,1,'#fff');
-    ell(0,-29,10,6,'#fff4df');
-    ell(-4,-30,1.5,1,'#62515b');
-    ell(4,-30,1.5,1,'#62515b');
-    ell(0,-25,3,1.8,'#b74a62');
+    oval(-6,-36,2.5,2.8,'#201f2d');
+    oval(6,-36,2.5,2.8,'#201f2d');
+    oval(-5.3,-37,1,1,'#fff');
+    oval(6.7,-37,1,1,'#fff');
+    oval(0,-29,10,6,'#fff4df');
+    oval(-4,-30,1.5,1,'#62515b');
+    oval(4,-30,1.5,1,'#62515b');
+    oval(0,-25,3,1.8,'#b74a62');
   }
   x.restore();
 }
@@ -1337,9 +1568,13 @@ function draw(){
     for(const [dx,dy] of [[-1,.3],[1,.25],[-.6,.8],[.7,.9],[.1,1]]){x.moveTo(cx,ground+2);x.lineTo(cx+dx*70*L,ground+2+dy*30*L);x.lineTo(cx+dx*110*L,ground+4+dy*55*L);}x.stroke();}
   // 隠し場所の目印：土に小さなひび割れ（よく見ないと気づかない）
   if(!inBasement&&!secret.used&&!holes.some(h=>h.secret)){const sx=secret.x;x.strokeStyle='#5e3a22';x.lineWidth=2;x.beginPath();x.moveTo(sx-9,ground+20);x.lineTo(sx-2,ground+29);x.lineTo(sx-6,ground+37);x.moveTo(sx-2,ground+29);x.lineTo(sx+7,ground+26);x.lineTo(sx+10,ground+34);x.stroke();}
-  for(const h of holes){if(h.secret&&h.stage===3){const g=.5+Math.sin(Date.now()*.008)*.3;x.fillStyle=`rgba(255,223,80,${g*.35})`;x.fillRect(h.x-6,ground-14,h.w+12,14);}}
+  if(stage===1&&!inBasement&&!holes.some(h=>h.arcade)){
+    x.strokeStyle='#9f7145';x.lineWidth=2;x.beginPath();x.moveTo(ARCADE_LADDER_X-10,ground+16);
+    x.lineTo(ARCADE_LADDER_X,ground+26);x.lineTo(ARCADE_LADDER_X+8,ground+19);x.stroke();
+  }
+  for(const h of holes){if((h.secret||h.arcade)&&h.stage===3){const g=.5+Math.sin(Date.now()*.008)*.3;x.fillStyle=`rgba(255,223,80,${g*.35})`;x.fillRect(h.x-6,ground-14,h.w+12,14);}}
   for(const h of holes){const depth=h.stage===3?h.h:h.stage*h.h/4;x.fillStyle='#241922';x.fillRect(h.x,h.y,h.w,depth);x.fillStyle='#68422d';x.fillRect(h.x,h.y+depth-4,h.w,4);x.strokeStyle='#dfb06e';x.lineWidth=2;x.strokeRect(h.x,h.y,h.w,depth);if(h.stage<3){x.fillStyle='#fff';x.font='bold 15px system-ui';x.fillText(h.stage+'/3',h.x+h.w/2-15,h.y-8);}else if(!(boss&&boss.hole===h)){x.fillStyle='#0004';x.fillRect(h.x+4,h.y-11,h.w-8,5);x.fillStyle=player.hole===h?'#5fc8ff':(h.t<90?'#ff655e':'#ffdf50');x.fillRect(h.x+4,h.y-11,(h.w-8)*Math.min(1,h.t/HOLE_T),5);}
-    if(h.secret&&h.stage===3){x.strokeStyle='#ffdf50';x.lineWidth=3;x.strokeRect(h.x,h.y,h.w,h.h);x.strokeStyle='#c8913c';x.beginPath();x.moveTo(h.x+14,h.y+4);x.lineTo(h.x+14,h.y+h.h);x.moveTo(h.x+h.w-14,h.y+4);x.lineTo(h.x+h.w-14,h.y+h.h);for(let yy=h.y+12;yy<h.y+h.h;yy+=10){x.moveTo(h.x+14,yy);x.lineTo(h.x+h.w-14,yy)}x.stroke();}
+    if((h.secret||h.arcade)&&h.stage===3){x.strokeStyle='#ffdf50';x.lineWidth=3;x.strokeRect(h.x,h.y,h.w,h.h);x.strokeStyle='#c8913c';x.beginPath();x.moveTo(h.x+14,h.y+4);x.lineTo(h.x+14,h.y+h.h);x.moveTo(h.x+h.w-14,h.y+4);x.lineTo(h.x+h.w-14,h.y+h.h);for(let yy=h.y+12;yy<h.y+h.h;yy+=10){x.moveTo(h.x+14,yy);x.lineTo(h.x+h.w-14,yy)}x.stroke();}
     // 連鎖バッジ：何匹入っているか・埋めたら何点か・あと何匹で倍率が上がるか
     const n=inHole(h).length;if(n>0){const cx=h.x+h.w/2,by=h.y-46,pulse=1+Math.sin(Date.now()*.012)*.06;
       x.save();x.translate(cx,by);x.scale(pulse,pulse);x.fillStyle=n>1?'#ff9a3c':'#20304acc';x.beginPath();x.roundRect?x.roundRect(-46,-20,92,30,10):x.rect(-46,-20,92,30);x.fill();
@@ -1488,7 +1723,7 @@ holdButton(document.getElementById('dig'),()=>{dig();},()=>{}); // 1タップに
 c.addEventListener('pointerdown',()=>{if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone())toTitle();else if(canPause())setPause(true);});
 
 // スクロール・ズーム・長押しメニューを防止
-document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+document.addEventListener('touchmove',e=>{if(!arcade.open)e.preventDefault();},{passive:false});
 document.addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('dblclick',e=>e.preventDefault());
