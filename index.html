@@ -49,7 +49,7 @@ canvas{display:block;background:#17283c}
   .hint{display:none}
   .topbtns{left:calc(env(safe-area-inset-left) + 8px);right:auto;width:min(160px,19vw);flex-wrap:wrap;justify-content:center;gap:6px}   /* 横画面：左上（方向パッドの上）に置いて、ゲーム画面にかぶらない */
   .topbtns #bgmSwitch{width:100%}
-  .topbtns #bgmSwitch button{padding:0 4px;font-size:clamp(10px,1.5vw,13px)}
+  .topbtns #bgmSwitch button{padding:0 3px;font-size:clamp(10px,1.35vw,12px)}
   .help{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 6px);left:50%;transform:translateX(-50%);margin:0}
 }
 @media (orientation:landscape) and (max-height:380px){
@@ -146,7 +146,7 @@ canvas{display:block;background:#17283c}
 </div>
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
 <button id="startBtn">▶ START</button>
-<div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGM</span><button type="button" data-bgm="chip" aria-pressed="true">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false">アレンジ</button></div><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
+<div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
 <dialog id="arcade" aria-labelledby="arcadeTitle">
   <div class="arcadeHeader">
