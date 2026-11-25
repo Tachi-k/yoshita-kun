@@ -1858,12 +1858,67 @@ function drawPlayerAt(px,py,facing,pose,stride=0,context=x){
   }
   x.restore();
 }
-function drawItem(it){const ix=it.x,iy=it.y;
-  if(it.type==='coin'){x.fillStyle='#ffcf28';x.beginPath();x.ellipse(ix,iy,8,11,0,0,7);x.fill();x.strokeStyle='#a86c00';x.lineWidth=2;x.stroke();}
-  else if(it.type==='gem'){x.fillStyle='#4fc3ff';x.beginPath();x.moveTo(ix,iy-12);x.lineTo(ix+11,iy-3);x.lineTo(ix,iy+11);x.lineTo(ix-11,iy-3);x.closePath();x.fill();x.fillStyle='#c8f0ff';x.beginPath();x.moveTo(ix,iy-12);x.lineTo(ix+5,iy-3);x.lineTo(ix-5,iy-3);x.closePath();x.fill();}
+// ===== お宝の絵：コイン・ダイヤ・宝箱（光沢のある立体的な絵。拾える範囲は変えていない） =====
+// コイン：くるくる回る金貨。r は縦の半径
+function drawCoin(cx,cy,r,phase){
+  const turn=Math.cos(phase),w=Math.max(.14,Math.abs(turn))*r*.82,edge=Math.min(4,r*.2)*(1-Math.abs(turn)*.6);
+  x.save();
+  ell(cx+edge*Math.sign(turn||1)*.6,cy,w+edge*.5,r,'#9a5f00');   // ふちの厚み
+  const g=x.createLinearGradient(cx-w,cy-r,cx+w,cy+r);
+  g.addColorStop(0,'#fff6b0');g.addColorStop(.35,'#ffd23a');g.addColorStop(.7,'#f2a900');g.addColorStop(1,'#c47c00');
+  x.fillStyle=g;x.beginPath();x.ellipse(cx,cy,w,r,0,0,7);x.fill();
+  x.strokeStyle='#b67400';x.lineWidth=1.6;x.beginPath();x.ellipse(cx,cy,w*.72,r*.74,0,0,7);x.stroke();   // 内側のふち
+  if(Math.abs(turn)>.35){   // 表の星マーク
+    x.fillStyle='#e39a00';x.beginPath();
+    for(let k=0;k<10;k++){const a=-Math.PI/2+k*Math.PI/5,rr=k%2?r*.2:r*.46;x.lineTo(cx+Math.cos(a)*rr*w/r*1.1,cy+Math.sin(a)*rr);}
+    x.closePath();x.fill();
+  }
+  x.globalAlpha=.75;ell(cx-w*.35,cy-r*.45,w*.22,r*.28,'#fffbe0');x.globalAlpha=1;   // 光の反射
+  x.restore();
+}
+// ダイヤ：ブリリアントカット。足もと(by)からの高さ h
+function drawGem(cx,by,h){
+  const w=h*1.1,top=by-h,crown=top+h*.36;
+  const facet=(pts,col)=>{x.fillStyle=col;x.beginPath();pts.forEach(([px,py],i)=>i?x.lineTo(px,py):x.moveTo(px,py));x.closePath();x.fill();};
+  // 下側（パビリオン）
+  facet([[cx-w/2,crown],[cx-w*.18,crown],[cx,by]],'#2b8fd8');
+  facet([[cx-w*.18,crown],[cx+w*.18,crown],[cx,by]],'#5cc8ff');
+  facet([[cx+w*.18,crown],[cx+w/2,crown],[cx,by]],'#1f6fb8');
+  // 上側（クラウン）
+  facet([[cx-w*.3,top],[cx-w/2,crown],[cx-w*.18,crown]],'#8fdcff');
+  facet([[cx-w*.3,top],[cx+w*.3,top],[cx+w*.18,crown],[cx-w*.18,crown]],'#c9f1ff');
+  facet([[cx+w*.3,top],[cx+w/2,crown],[cx+w*.18,crown]],'#4fb4ef');
+  x.strokeStyle='#ffffffaa';x.lineWidth=1;x.beginPath();x.moveTo(cx-w/2,crown);x.lineTo(cx+w/2,crown);x.stroke();
+  x.globalAlpha=.85;facet([[cx-w*.22,top+h*.06],[cx-w*.05,top+h*.06],[cx-w*.14,crown-h*.04]],'#fff');x.globalAlpha=1;
+  const tw=(Date.now()*.004+cx*.01)%(Math.PI*2);   // キラッと光る十字
+  if(Math.sin(tw)>.6){const k=(Math.sin(tw)-.6)/.4,sx=cx+w*.25,sy=top+h*.2,len=h*.35*k;x.fillStyle='#fff';x.fillRect(sx-.8,sy-len,1.6,len*2);x.fillRect(sx-len,sy-.8,len*2,1.6);}
+}
+// 宝箱：木の板・金具・鍵穴つき。足もと(by)からの大きさ
+function drawChest(cx,by,w){
+  const h=w*.62,lid=h*.42,left=cx-w/2,top=by-h;
+  const wood=x.createLinearGradient(0,top,0,by);wood.addColorStop(0,'#b97a3e');wood.addColorStop(1,'#7a4a22');
+  x.fillStyle=wood;x.fillRect(left,top+lid,w,h-lid);   // 箱
+  x.strokeStyle='#5e3517';x.lineWidth=1;for(let k=1;k<3;k++){const yy=top+lid+(h-lid)*k/3;x.beginPath();x.moveTo(left,yy);x.lineTo(left+w,yy);x.stroke();}
+  const lg=x.createLinearGradient(0,top,0,top+lid);lg.addColorStop(0,'#d69552');lg.addColorStop(1,'#9a5f2c');
+  x.fillStyle=lg;x.beginPath();x.moveTo(left,top+lid);x.lineTo(left,top+lid*.45);x.quadraticCurveTo(cx,top-lid*.45,left+w,top+lid*.45);x.lineTo(left+w,top+lid);x.closePath();x.fill();   // 丸いふた
+  x.fillStyle='#3d220e';x.fillRect(left,top+lid-1.5,w,3);   // ふたのすき間
+  const gold=x.createLinearGradient(0,top,0,by);gold.addColorStop(0,'#fff0a0');gold.addColorStop(.5,'#ffc928');gold.addColorStop(1,'#c98a00');
+  x.fillStyle=gold;
+  for(const bx of[left+w*.12,left+w*.88-w*.1]){x.fillRect(bx,top+lid*.2,w*.1,h-lid*.2);}   // 金の帯
+  x.fillRect(left,by-3,w,3);
+  for(const bx of[left+w*.17,left+w*.83])for(const yy of[top+lid+4,by-7])ell(bx,yy,1.3,1.3,'#fff6c0');   // びょう
+  x.fillStyle=gold;x.fillRect(cx-w*.11,top+lid-h*.12,w*.22,h*.3);   // 錠前
+  x.fillStyle='#3d220e';x.beginPath();x.arc(cx,top+lid+h*.02,1.8,0,7);x.fill();x.fillRect(cx-.8,top+lid+h*.02,1.6,h*.09);
+  x.globalAlpha=.35;x.fillStyle='#fff';x.fillRect(left+3,top+lid*.35,w*.35,2);x.globalAlpha=1;
+}
+function drawItem(it){const ix=it.x,iy=it.y,foot=iy+10;   // 置いてある位置の足もと
+  if(it.type==='coin')drawCoin(ix,foot-15,15,Date.now()*.006+ix*.05);
+  else if(it.type==='gem')drawGem(ix,foot,34);
   else if(it.type==='heart'){x.fillStyle='#ff4d6d';x.beginPath();x.arc(ix-5,iy-3,6,0,7);x.arc(ix+5,iy-3,6,0,7);x.fill();x.beginPath();x.moveTo(ix-11,iy-1);x.lineTo(ix,iy+11);x.lineTo(ix+11,iy-1);x.closePath();x.fill();}
-  else if(it.type==='chest'){x.fillStyle='#8a5a2b';x.fillRect(ix-15,iy-10,30,20);x.fillStyle='#a8743a';x.fillRect(ix-15,iy-14,30,7);x.fillStyle='#ffcf28';x.fillRect(ix-15,iy-4,30,4);x.fillRect(ix-3,iy-8,6,9);}
-  if(it.type!=='coin'&&Math.floor(Date.now()/150)%2){x.fillStyle='#fff';x.fillRect(ix+8,iy-14,3,3);}}
+  else if(it.type==='chest'){
+    const glow=.25+.15*Math.sin(Date.now()*.005);x.globalAlpha=glow;ell(ix,foot-18,38,26,'#ffe680');x.globalAlpha=1;   // ほんのり光る
+    drawChest(ix,foot,56);}
+  if(it.type==='heart'&&Math.floor(Date.now()/150)%2){x.fillStyle='#fff';x.fillRect(ix+8,iy-14,3,3);}}
 function drawPopups(){x.textAlign='center';for(const q of popups){x.globalAlpha=Math.min(1,q.t/20);x.font='bold '+q.size+'px system-ui';x.lineWidth=5;x.strokeStyle='#20304a';x.strokeText(q.text,q.x,q.y);x.fillStyle=q.col;x.fillText(q.text,q.x,q.y);}x.globalAlpha=1;x.textAlign='left'}
 // 1面ゴールの熱気球（ロープで地面につながれている）
 function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=Math.sin(Date.now()*.0015)*3;
@@ -2038,7 +2093,7 @@ function draw(){
     if(s&&s.bury){const h=s.bury;x.save();x.setLineDash([6,5]);x.strokeStyle='#ffdf50';x.lineWidth=3;x.strokeRect(h.x-2,ground-2,h.w+4,h.h+4);x.restore();x.textAlign='center';x.font='bold 13px system-ui';x.fillStyle='#ffdf50';x.fillText('掘るで埋める',h.x+h.w/2,ground+h.h+18);x.textAlign='left';}
     else if(s&&!s.hole){x.save();x.setLineDash([6,5]);x.strokeStyle='#ffffffaa';x.lineWidth=2;x.strokeRect(s.x+1,ground+2,s.w-2,10);x.restore();}}
   if(failMark){x.globalAlpha=Math.min(1,failMark.t/12);x.strokeStyle='#ff4d4d';x.lineWidth=5;x.beginPath();x.moveTo(failMark.x-10,ground-8);x.lineTo(failMark.x+10,ground+12);x.moveTo(failMark.x+10,ground-8);x.lineTo(failMark.x-10,ground+12);x.stroke();x.globalAlpha=1;}
-  for(const a of coins){if(a.taken)continue;x.fillStyle='#ffcf28';x.beginPath();x.ellipse(a.x,a.y,11,15,0,0,7);x.fill();x.strokeStyle='#a86c00';x.lineWidth=3;x.stroke();}
+  for(const a of coins){if(a.taken)continue;drawCoin(a.x,a.y,20,Date.now()*.005+a.x*.013);}
   for(const e of enemies){if(!e.alive||e.trapHole)continue;
     // 空中の敵は地面に影を出す（どこに落ちてくるか分かる）
     if(!e.grounded&&e.y+e.h<ground-16&&platforms.some(b=>b.y===ground&&e.x+16>b.x&&e.x+16<b.x+b.w)){const s=Math.max(.3,1-(ground-e.y-e.h)/400);x.fillStyle='#0004';x.beginPath();x.ellipse(e.x+16,ground+2,16*s,4*s,0,0,7);x.fill();}
