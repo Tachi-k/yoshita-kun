@@ -652,7 +652,7 @@ SONGS.basement={len:32,dur:()=>60/128/2/hurryMul(),step(i,t,sd){const bar=i>>3,b
   if(b%4===0)bnote(140,t,.1,'sine',.18,50);if(b%4===2)hat(t,.05,.08);if(b%2===1)hat(t,.02);
   if(i%8===7)bell(m?m+12:88,t,.015);}};
 SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];if(m){bnote(mf(m+5),t,sd*.7,'square',.04);bnote(mf(m+17),t,sd*.3,'sine',.04);}bnote(mf(BS_ROOT[bar]+5+(b%2?12:0)),t,sd*.7,'triangle',.11);if(b%2===0)bnote(150,t,.1,'sine',.18,50);hat(t,.025);if(b===4)hat(t,.06,.1);}};
-function currentSong(){if(mode==='title')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
+function currentSong(){if(mode==='title'||mode==='opening')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
 // ===== MP3のBGM =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
 // 未登録の場面ではオリジナルBGMを再生。ループ区間未指定なら曲全体を繰り返す。
@@ -1729,6 +1729,62 @@ function startDemo(){
   }
   if(demoScene!=='stage2')bannerT=0;
 }
+// ===== オープニング：モグラ大王がソラ姫をさらっていくアニメーション（約11秒・タップで飛ばせる） =====
+const OP_LEN=660;
+let opening=null;
+function startOpening(){mode='opening';opening={t:0};stage=1;camera=0;parts=[];shake=0;state='play';
+  const b=document.getElementById('startBtn');if(b)b.style.display='none';}   // オープニング中はSTARTをかくす（絵がかくれないように）
+function endOpening(){opening=null;parts=[];shake=0;toTitle();}
+function updateOpening(){const o=opening,t=++o.t;updateParts();if(shake>0)shake--;
+  if(t>=150&&t<240){shake=Math.max(shake,3+(t-150)/12);if(t%6===0)boom(760+(Math.random()-.5)*120,ground,3,['#c9a27a','#8a6a4a'],4);}
+  if(t===240){shake=26;boom(760,ground,46,['#c9a27a','#8a6a4a','#5e3a22'],10);}
+  if(t===380)boom(560,ground-60,16,['#fff','#ffdf50'],5);
+  if(t>=OP_LEN)endOpening();}
+function opBubble(text,cx,cy,col='#fff'){x.save();x.font='900 22px system-ui';const w=x.measureText(text).width+26;
+  x.fillStyle=col;x.strokeStyle='#10182e';x.lineWidth=3;x.beginPath();if(x.roundRect)x.roundRect(cx-w/2,cy-24,w,38,14);else x.rect(cx-w/2,cy-24,w,38);x.fill();x.stroke();
+  x.beginPath();x.moveTo(cx-8,cy+14);x.lineTo(cx,cy+28);x.lineTo(cx+8,cy+14);x.closePath();x.fill();x.stroke();
+  x.fillStyle='#10182e';x.textAlign='center';x.fillText(text,cx,cy+3);x.restore();}
+function drawOpening(){const o=opening,t=o.t;
+  x.save();if(shake>0)x.translate((realRandom()-.5)*shake,(realRandom()-.5)*shake);
+  drawSky();
+  // モグラ大王（地面から現れ、ソラ姫をつかんで右上へ飛んでいく）
+  let bx=712,by=ground-88,princessX=560,princessY=ground-46,carried=false;
+  if(t<240)by=ground+40;
+  else if(t<300){const k=(t-240)/60;by=ground+40-(128)*Math.min(1,k*1.6)+Math.sin(Math.min(1,k*1.6)*Math.PI)*-30;}
+  else if(t<380){bx=712-(t-300)*1.6;}
+  else if(t<430){bx=584;carried=true;}
+  else{const k=t-430;bx=584+k*5.5;by=ground-88-k*4.2+k*k*.012;carried=true;}
+  if(carried){princessX=bx-50;princessY=by+34;}
+  if(t>=240){const ob={x:bx,y:by,w:96,h:88,dir:t<430?-1:1,st:t>=300&&t<380?'walk':t>=430?'charge':'walk',t,flash:0};drawBoss(ob);}
+  // 地面と花（大王が地面から出てくるので、地面はあとで重ねる）
+  const gg=x.createLinearGradient(0,ground,0,H);gg.addColorStop(0,'#a96d3d');gg.addColorStop(1,'#5e3719');x.fillStyle=gg;x.fillRect(0,ground,W,H-ground);
+  x.fillStyle='#4fb850';x.fillRect(0,ground,W,12);x.fillStyle='#74d86a';x.beginPath();for(let gx=0;gx<W;gx+=7){const h=3+Math.abs(Math.sin(gx*.7))*4;x.moveTo(gx,ground+2);x.lineTo(gx+2,ground-h);x.lineTo(gx+4,ground+2);}x.fill();
+  for(let k=0;k<14;k++){const fx=40+k*67,fy=ground-4;for(let a=0;a<5;a++)ell(fx+Math.cos(a*1.26)*3,fy+Math.sin(a*1.26)*3,2.2,2.2,['#ff9ad5','#fff','#ffd84d'][k%3]);ell(fx,fy,1.6,1.6,'#ffcf40');}
+  if(t>=240&&t<300){const k=(t-240)/60;x.fillStyle='#3a2416';x.beginPath();x.ellipse(760,ground+4,70*Math.min(1,k*2),12,0,0,7);x.fill();}   // 地面にあいた穴
+  // ソラ姫（花をつんでいる → こわがる → さらわれる）
+  {const scared=t>=300&&!carried,jumpY=scared?Math.abs(Math.sin(t*.4))*6:Math.abs(Math.sin(t*.06))*2;
+    x.save();x.translate(princessX+17,princessY+46-jumpY);x.scale(1.9,1.9);x.translate(-(princessX+17),-(princessY+46));drawPartner(princessX,princessY,carried?1:t>=240?1:-1);x.restore();}
+  // よし太くん（手をふる → おどろく → 追いかける）
+  {let yx=200,pose='front',st=0,face=1;if(t>=470){yx=200+Math.min(360,(t-470)*4);pose=t<560?'walk':'front';st=(t-470)*4;}
+    x.save();x.translate(yx+17,ground);x.scale(1.9,1.9);x.translate(-(yx+17),-ground);drawPlayerAt(yx,ground-42-(t>=300&&t<330?Math.abs(Math.sin(t*.3))*10:0),face,t>=300&&t<330?'jump':pose,st);x.restore();
+    if(t>=560&&t<OP_LEN)opBubble('まってろ ソラ姫！',yx+17,ground-130);}
+  drawParts();
+  // セリフとナレーション
+  if(t>=300&&t<380)opBubble('きゃー！',princessX+17,princessY-70,'#ffe0ef');
+  if(t>=300&&t<350)opBubble('あっ！',217,ground-130);
+  if(t>=400&&t<520)opBubble('たすけてー！',Math.min(W-90,princessX+17),Math.max(70,princessY-40),'#ffe0ef');
+  if(t>=320&&t<430)opBubble('ガハハ！ 姫は いただいた！',Math.min(W-150,bx+90),Math.max(60,by-80),'#ffe1c8');
+  x.textAlign='center';
+  const fadeIn=(a,b)=>Math.max(0,Math.min(1,(t-a)/25,(b-t)/25));
+  if(t<150){x.globalAlpha=fadeIn(10,150);fancyText('空の国は、へいわでした…',W/2,140,40,'white');x.globalAlpha=1;}
+  if(t>=150&&t<240){x.globalAlpha=.5+.5*Math.abs(Math.sin(t*.25));fancyText('ゴゴゴゴ…',W/2+(realRandom()-.5)*6,150,56,'gold');x.globalAlpha=1;}
+  if(t>=250&&t<330){x.globalAlpha=fadeIn(250,330);fancyText('モグラ大王 ドリモグ あらわる！',W/2,130,40,'red');x.globalAlpha=1;}
+  if(t>=560){x.globalAlpha=fadeIn(560,OP_LEN+30);fancyText('よし太くんの大冒険',W/2,150,64,'gold');fancyText('ソラ姫を たすけだせ！',W/2,205,30,'white');x.globalAlpha=1;}
+  x.textAlign='left';
+  x.restore();
+  if(t>OP_LEN-40){x.fillStyle=`rgba(0,0,0,${(t-(OP_LEN-40))/40})`;x.fillRect(0,0,W,H);}   // フェードアウト
+  x.font='bold 16px system-ui';x.fillStyle='#ffffffcc';x.textAlign='right';x.fillText('タップで スキップ ▶▶',W-16,H-14);x.textAlign='left';
+}
 function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
 // clearCount：クリアした回数。2周目はよし太くんの色が変わり、3周目からはソラ姫が冒険する
 let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
@@ -1890,6 +1946,7 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
+if(mode==='opening'){updateOpening();return;}
 if(state==='arcade')return;
 if(mode==='title'){
   demoT++;
@@ -2679,6 +2736,7 @@ function drawLadderCrack(sx){
   x.lineTo(sx+13,ground+12);x.moveTo(sx+3,ground+20);x.lineTo(sx+10,ground+25);x.stroke();
 }
 function draw(){
+  if(mode==='opening'){drawOpening();return;}
   if(state==='ending'){drawEnding();return}
   x.save();if(shake>0)x.translate((realRandom()-.5)*shake*.8,(realRandom()-.5)*shake*.8);
   if(inBasement){if(roomKind==='basement')drawBasementBg();else drawBonusBg();}else drawSky();
@@ -2902,11 +2960,11 @@ const DOUBLE_JUMP_WINDOW=3.5;  // 二段ジャンプできる「てっぺん付�
 // 60Hz・120Hz・30Hz の画面に近い時間はちょうどの値にそろえる
 function snapFrameTime(dt){for(const n of[.5,1,2])if(Math.abs(dt-STEP*n)<1.2)return STEP*n;return dt}
 function loop(t){if(!last)last=t;const dt=snapFrameTime(Math.min(100,t-last));if(state==='arcade'&&arcadeGame==='maze'&&!paused)updateMazeMotion(dt/STEP);acc+=dt*(mode==='title'?.85:1);last=t;if(paused)acc=0;while(acc>=STEP){update();acc-=STEP;}mp3LoopCheck();draw();if(mode==='title')drawTitle();if(paused)drawPause();requestAnimationFrame(loop)}
-if(!restoreQuestEnding())toTitle();
+if(!restoreQuestEnding())startOpening();   // 最初はオープニングから（そのあとタイトルのデモへ）
 requestAnimationFrame(loop);
 
 // キーボード
-document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(mode==='title'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose')retry();else reset()}});
+document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose')retry();else reset()}});
 document.addEventListener('keyup',e=>{let k=e.key.toLowerCase();if(['arrowleft','a'].includes(k))keys.left=false;if(['arrowright','d'].includes(k))keys.right=false;if([' ','arrowup','w'].includes(k))keys.jump=false});
 
 // 方向パッド：大きな ◀ ▶ の2つ。指を離さずスライドで左右を切り替え（ジャンプは右のジャンプボタンで）
@@ -2922,7 +2980,7 @@ function holdButton(el,down,up){let id=null;el.addEventListener('pointerdown',e=
 holdButton(document.getElementById('jump'),()=>keys.jump=true,()=>keys.jump=false);
 holdButton(document.getElementById('dig'),()=>{dig();},()=>{}); // 1タップにつき1回だけ掘る。デモAIの自動掘削は維持
 
-c.addEventListener('pointerdown',()=>{if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
+c.addEventListener('pointerdown',()=>{if(mode==='opening'){endOpening();return;}if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
 
 // スクロール・ズーム・長押しメニューを防止
 document.addEventListener('touchmove',e=>{if(!arcade.open)e.preventDefault();},{passive:false});
