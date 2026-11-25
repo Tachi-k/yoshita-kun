@@ -2002,10 +2002,49 @@ function ell(cx,cy,rx,ry,col,context=x){context.fillStyle=col;context.beginPath(
 function drawCrown(cx,y,s){x.fillStyle='#ffcf28';x.beginPath();x.moveTo(cx-20*s,y);x.lineTo(cx-20*s,y-14*s);x.lineTo(cx-10*s,y-5*s);x.lineTo(cx,y-18*s);x.lineTo(cx+10*s,y-5*s);x.lineTo(cx+20*s,y-14*s);x.lineTo(cx+20*s,y);x.closePath();x.fill();x.fillStyle='#e64040';x.fillRect(cx-3*s,y-7*s,6*s,5*s)}
 // ソラ姫（オリジナルキャラ）：黒髪・水色のドレス・花かんむり
 // ソラ姫：大きな目と丸い顔のちびキャラ。ティアラとふんわりドレス（足もと＝py+46、幅は34の枠におさまる）
-function drawPartner(px,py,facing,X=x){const f=facing>=0?1:-1,t=state==='ending'?endT:Math.floor(performance.now()/16.7);
+function drawPartner(px,py,facing,X=x,pose='front',stride=0){const f=facing>=0?1:-1,t=state==='ending'?endT:Math.floor(performance.now()/16.7);
   const hair='#7a4330',hairLight='#a0603f',skin='#ffe4cc',gown='#ff9fcf',gownLight='#ffd6ec',gownShade='#ef77b4';
   const o=(cx,cy,rx,ry,col)=>ell(cx,cy,rx,ry,col,X);
-  X.save();X.translate(px+17,py+46);X.rotate(Math.sin(t*.05)*.025);   // ゆらゆら
+  X.save();X.translate(px+17,py+46);
+  if(pose==='walk'){   // ===== 歩くときは横向き（進む方へ顔を向け、髪とドレスが後ろへなびく）=====
+    X.scale(f,1);const ph=stride*.19,sw=Math.sin(ph);
+    const hg=X.createLinearGradient(0,-44,0,-10);hg.addColorStop(0,'#8a4c34');hg.addColorStop(1,'#5a2e1e');
+    // 後ろへなびく長い髪
+    X.fillStyle=hg;X.beginPath();X.moveTo(-2,-41);X.quadraticCurveTo(-15,-38,-14,-24);X.quadraticCurveTo(-15-Math.abs(sw)*2,-14,-10,-10);X.quadraticCurveTo(-6,-14,-3,-20);X.closePath();X.fill();
+    // 足（ピンクのくつ）がドレスのすそから交互にのぞく
+    for(const [k,ofs] of[[0,0],[1,Math.PI]]){const fx=2+Math.cos(ph+ofs)*4,lift=Math.max(0,Math.sin(ph+ofs))*2;o(fx,-1.5-lift,3,1.6,k?'#d85a90':'#ff7aa8');}
+    // ドレス（後ろへ広がる横向きのベル形）
+    const dg=X.createLinearGradient(-15,0,12,0);dg.addColorStop(0,'#e86aa8');dg.addColorStop(.6,gown);dg.addColorStop(1,'#ffb8dc');
+    X.fillStyle=dg;X.beginPath();X.moveTo(-3,-20);X.quadraticCurveTo(-7,-10,-15-sw,-3);X.lineTo(11,-3);X.quadraticCurveTo(6,-10,4,-20);X.closePath();X.fill();
+    for(let k=0;k<8;k++)o(-13+k*3.4-sw*.5,-2.8,2.2,1.8,gownLight);   // すそのフリル
+    X.strokeStyle='#d0609a';X.lineWidth=.8;X.beginPath();X.moveTo(0,-15);X.quadraticCurveTo(-4,-9,-8,-3.5);X.moveTo(3,-15);X.quadraticCurveTo(2,-9,3,-3.5);X.stroke();
+    o(0.5,-19,4.5,4.6,gown);o(0.5,-15.5,5,1.6,'#fff');o(-3.6,-15.5,1.8,1.6,'#fff');   // 胸もとと腰のリボン
+    o(-1,-20,3,2.6,gownLight);   // ふくらんだ袖
+    // 前にふる手とブーケ
+    const ax=4+sw*3,ay=-13;X.strokeStyle=skin;X.lineWidth=2.4;X.lineCap='round';X.beginPath();X.moveTo(0,-19);X.lineTo(ax,ay);X.stroke();
+    X.fillStyle='#5fbf5f';X.fillRect(ax-.6,ay,1.2,4.5);o(ax-1.8,ay-1,1.8,1.8,'#ff6b8a');o(ax+1.8,ay-1,1.8,1.8,'#ffd84d');o(ax,ay-2.8,1.8,1.8,'#fff');
+    // 顔（横顔）
+    o(0,-21.5,2,1.8,'#f2cfb2');
+    const sg=X.createRadialGradient(2,-34,1,1,-31,11);sg.addColorStop(0,'#fff1e2');sg.addColorStop(.75,skin);sg.addColorStop(1,'#f0c8a8');
+    X.fillStyle=sg;X.beginPath();X.ellipse(1.5,-31,9.5,9.8,0,0,7);X.fill();
+    o(10.4,-29.6,1.2,1,skin);   // 鼻
+    // 頭の後ろ半分をおおう髪と前髪
+    X.fillStyle=hg;X.beginPath();X.moveTo(9.5,-33);X.quadraticCurveTo(8,-43,-1,-42.5);X.quadraticCurveTo(-11,-41.5,-10.5,-30);X.quadraticCurveTo(-9,-22,-4,-21);X.quadraticCurveTo(-3,-27,-2,-31);X.quadraticCurveTo(3,-34,6,-33.5);X.quadraticCurveTo(8,-31.5,9.5,-33);X.closePath();X.fill();
+    X.strokeStyle=hairLight;X.lineWidth=1;X.beginPath();X.arc(-1,-36,6,Math.PI*1.1,Math.PI*1.6);X.stroke();
+    // 目（まつげつきの大きな目）・ほっぺ・口
+    const blink=t%170<6;
+    if(blink){X.strokeStyle='#3a2340';X.lineWidth=1.2;X.beginPath();X.arc(5.2,-30.5,2,.15*Math.PI,.85*Math.PI);X.stroke();}
+    else{o(5.2,-30,2,2.8,'#2a1630');o(5.4,-29.6,1.5,2.1,'#9a6ad0');o(5.4,-29.4,.7,1,'#1a0c20');o(6,-31.1,.8,.9,'#fff');
+      X.strokeStyle='#2a1630';X.lineWidth=1;X.beginPath();X.arc(5.2,-30,2.3,Math.PI*1.15,Math.PI*1.95);X.lineTo(8.6,-33.4);X.stroke();}
+    X.globalAlpha=.7;o(3.6,-26.5,2.2,1.3,'#ff9bb5');X.globalAlpha=1;
+    X.fillStyle='#e8708e';X.beginPath();X.arc(7.6,-26.4,1.3,.05*Math.PI,.95*Math.PI);X.closePath();X.fill();
+    // ティアラと、後ろの髪かざり
+    X.fillStyle='#ffd24a';X.beginPath();X.moveTo(-3,-41.5);X.lineTo(-1.8,-45.5);X.lineTo(.4,-43);X.lineTo(2.4,-47.5);X.lineTo(4,-43);X.lineTo(6,-45.2);X.lineTo(6.5,-41);X.closePath();X.fill();
+    o(2.4,-44,1.2,1.2,'#ff5f9e');
+    for(let k=0;k<5;k++){const a=k*Math.PI*2/5;o(-8+Math.cos(a)*1.8,-37+Math.sin(a)*1.8,1.4,1.4,'#fff');}o(-8,-37,1.1,1.1,'#ffd84d');
+    X.restore();return;
+  }
+  X.rotate(Math.sin(t*.05)*.025);   // ゆらゆら
   // 後ろ髪（腰まで届くロングヘア）
   const hg=X.createLinearGradient(0,-44,0,-10);hg.addColorStop(0,'#8a4c34');hg.addColorStop(1,'#5a2e1e');
   X.fillStyle=hg;X.beginPath();X.moveTo(-12,-31);X.quadraticCurveTo(-16,-16,-11,-11);X.quadraticCurveTo(-6,-9,-3,-11);X.quadraticCurveTo(0,-8.5,3,-11);X.quadraticCurveTo(6,-9,11,-11);X.quadraticCurveTo(16,-16,12,-31);X.closePath();X.fill();
@@ -2060,7 +2099,7 @@ function drawHeart(cx,cy,r,col){x.fillStyle=col;x.beginPath();x.arc(cx-r/2,cy,r/
 function drawHero(px,py,facing,pose,stride=0,context=x){
   if(!princessRound)return drawPlayerAt(px,py,facing,pose,stride,context);
   const bob=pose==='walk'?Math.abs(Math.sin(stride*.19))*2.5:pose==='jump'?-2:0;
-  drawPartner(px,py-4-bob,facing,context);
+  drawPartner(px,py-4-(pose==='walk'?0:bob),facing,context,pose,stride);
 }
 // よし太くん：おぢやのイメージキャラクターの姿に近づけた絵
 // 大きな丸い顔・白い鼻まわりと笑った口・ねじり鉢巻・白い角・紺の法被（赤い裏地と白い文字）・白いズボン・灰色のひづめ
@@ -2070,10 +2109,16 @@ function drawPlayerAt(px,py,facing,pose,stride=0,context=x){
   const walking=pose==='walk',jumping=pose==='jump';
   const swing=walking?Math.sin(stride*.19):0;
   const bob=walking?Math.abs(swing)*1.6:0;
-  const gold=secondRound?'#d08a3a':'#f6b94a',goldLight=secondRound?'#e8a85a':'#ffd277',goldDark=secondRound?'#9a5a20':'#d48a24';
-  const coat=secondRound?'#1d294d':'#2a2f9a',coatLight=secondRound?'#34437a':'#4a52c8',lining='#c8243a';
-  const hoof=secondRound?'#6a7080':'#8f9aae',hoofDark='#5f697d';
-  const pants='#f4f6fa',pantsShade='#cfd5e0';
+  // 2周目は「初代よし太くん」：茶色い毛・灰色の鼻まわり・ぎょろっとした大きな目・ほっぺの黄色い稲妻・大きな角・ベージュの半ズボン
+  const og=secondRound;
+  const gold=og?'#b45a22':'#f6b94a',goldLight=og?'#cc7434':'#ffd277',goldDark=og?'#7e3a14':'#d48a24';
+  const coat=og?'#27304f':'#2a2f9a',coatLight=og?'#3a4670':'#4a52c8',lining='#c8243a';
+  const hoof=og?'#80858e':'#8f9aae',hoofDark=og?'#5a5f68':'#5f697d';
+  const pants=og?'#d6cbb0':'#f4f6fa',pantsShade=og?'#b4a88c':'#cfd5e0';
+  const muzzle=og?'#b4b6ba':'#fffaf0',muzzleLight=og?'#cfd1d4':'#ffffff';
+  const hornScale=og?1.35:1;
+  const ogEye=(ex,ey)=>{o(ex,ey-.5,3.3,3.6,'#3a2a20');o(ex,ey-.5,2.8,3.1,'#ffffff');o(ex,ey,1.6,1.8,'#111');o(ex+.5,ey-.6,.55,.55,'#fff');};   // 初代のぎょろ目
+  const bolt=(bx,by,dir)=>{X.fillStyle='#ffd23a';X.beginPath();X.moveTo(bx,by-3);X.lineTo(bx+dir*2.2,by-.6);X.lineTo(bx+dir*.6,by-.2);X.lineTo(bx+dir*2.4,by+2.8);X.lineTo(bx-dir*.4,by+.4);X.lineTo(bx+dir*1,by);X.closePath();X.fill();};   // ほっぺの黄色い稲妻
   const line=(col,w,ax,ay,bx,by)=>{X.strokeStyle=col;X.lineWidth=w;X.lineCap='round';X.beginPath();X.moveTo(ax,ay);X.lineTo(bx,by);X.stroke();};
   X.save();X.translate(px+17,py+42);
   if(walking){   // ===== 歩くときは横向き（向いている方へ顔を出す）=====
@@ -2094,18 +2139,18 @@ function drawPlayerAt(px,py,facing,pose,stride=0,context=x){
     X.strokeStyle='#ffffffdd';X.lineWidth=.9;X.beginPath();for(let k=0;k<4;k++){X.moveTo(-1,-21+k*3);X.lineTo(0,-20.4+k*3);}X.stroke();
     // 頭
     const hy=-33;
-    for(const [hx,hh] of[[-5,0],[1,1]]){X.fillStyle=hh?'#fbf7ee':'#e6dfcf';X.beginPath();X.moveTo(hx-2,hy-9);X.quadraticCurveTo(hx+1,hy-15,hx+5,hy-17);X.quadraticCurveTo(hx+4,hy-12,hx+3,hy-8);X.closePath();X.fill();}   // 角（奥と手前）
+    for(const [hx,hh] of[[-5,0],[1,1]]){X.save();X.translate(hx,hy-8);X.scale(hornScale,hornScale);X.translate(-hx,-(hy-8));X.fillStyle=hh?'#fbf7ee':'#e6dfcf';X.beginPath();X.moveTo(hx-2,hy-9);X.quadraticCurveTo(hx+1,hy-15,hx+5,hy-17);X.quadraticCurveTo(hx+4,hy-12,hx+3,hy-8);X.closePath();X.fill();X.restore();}   // 角（奥と手前）
     X.save();X.translate(-11,hy-2);X.rotate(.5);o(0,0,5.4,2.8,goldDark);o(0,-.2,4.8,2.2,gold);o(-.6,0,2.8,1.2,'#ffb0a0');X.restore();   // 後ろの耳
     const hg=X.createRadialGradient(-2,hy-6,2,1,hy,16);hg.addColorStop(0,goldLight);hg.addColorStop(.7,gold);hg.addColorStop(1,goldDark);
     X.fillStyle=hg;X.beginPath();X.ellipse(1,hy,12.5,12,0,0,7);X.fill();
     // 前につき出た白い鼻まわり・鼻の穴・笑った口
-    o(10.5,hy+4.5,7.5,6.2,'#fffaf0');o(10,hy+3.8,6.2,4.8,'#ffffff');
-    o(15.4,hy+2.6,1,1.4,'#3a2a2a');
+    o(10.5,hy+4.5,7.5,6.2,muzzle);o(10,hy+3.8,6.2,4.8,muzzleLight);
+    o(15.4,hy+2.6,og?1.4:1,og?1.9:1.4,'#3a2a2a');
     X.fillStyle='#6a1a24';X.beginPath();X.ellipse(11,hy+7.2,3.6,2.4,0,0,Math.PI);X.closePath();X.fill();o(11,hy+8.6,2.2,1.1,'#ff8aa0');
     // 目とまゆ毛・ほっぺ
-    o(6,hy-2.5,1.9,2.4,'#14141c');o(6.6,hy-3.3,.7,.7,'#fff');
-    X.strokeStyle='#2a1a10';X.lineWidth=1.3;X.beginPath();X.arc(6,hy-5.2,2.4,Math.PI*1.15,Math.PI*1.85);X.stroke();
-    o(4,hy+2,2.2,1.3,'#ffa08a66');
+    if(og)ogEye(6,hy-3);else{o(6,hy-2.5,1.9,2.4,'#14141c');o(6.6,hy-3.3,.7,.7,'#fff');}
+    X.strokeStyle='#2a1a10';X.lineWidth=1.3;X.beginPath();X.arc(6,hy-(og?7:5.2),2.4,Math.PI*1.15,Math.PI*1.85);X.stroke();
+    if(og)bolt(1,hy+1,-1);else o(4,hy+2,2.2,1.3,'#ffa08a66');
     // ねじり鉢巻（横から見たなわの輪）と後ろの結び目
     const rb=(dash,off,col,w)=>{X.save();X.setLineDash(dash);X.lineDashOffset=off;X.strokeStyle=col;X.lineWidth=w;X.beginPath();X.ellipse(0,hy-11.5,9.5,2.6,-.12,0,7);X.stroke();X.restore();};
     rb([],0,'#00000055',5.4);rb([],0,'#f8f4ec',4.4);rb([2.4,7.2],0,'#d8202e',4.4);rb([2.4,7.2],-4.8,'#202028',4.4);
@@ -2144,7 +2189,7 @@ function drawPlayerAt(px,py,facing,pose,stride=0,context=x){
   // 耳（横に出た黄色い耳と、内側のピンク）
   for(const side of[-1,1]){X.save();X.translate(side*13.5,hy-3);X.rotate(side*-.45);o(0,0,5.2,2.8,goldDark);o(0,-.2,4.6,2.2,gold);o(side*.6,0,2.8,1.2,'#ffb0a0');X.restore();}
   // 白い角
-  for(const side of[-1,1]){X.fillStyle='#fbf7ee';X.beginPath();X.moveTo(side*8,hy-8);X.quadraticCurveTo(side*10.5,hy-14,side*13.5,hy-16.5);X.quadraticCurveTo(side*12.6,hy-11.5,side*11.4,hy-6.5);X.closePath();X.fill();X.strokeStyle='#d8d0c0';X.lineWidth=.8;X.stroke();}
+  for(const side of[-1,1]){X.save();X.translate(side*8,hy-8);X.scale(hornScale,hornScale);X.translate(-side*8,-(hy-8));X.fillStyle='#fbf7ee';X.beginPath();X.moveTo(side*8,hy-8);X.quadraticCurveTo(side*10.5,hy-14,side*13.5,hy-16.5);X.quadraticCurveTo(side*12.6,hy-11.5,side*11.4,hy-6.5);X.closePath();X.fill();X.strokeStyle='#d8d0c0';X.lineWidth=.8;X.stroke();X.restore();}
   // 顔（上が少し広い丸い形）
   const hg=X.createRadialGradient(-4,hy-6,2,0,hy,16);hg.addColorStop(0,goldLight);hg.addColorStop(.7,gold);hg.addColorStop(1,goldDark);
   X.fillStyle=hg;X.beginPath();X.ellipse(0,hy,13.5,12.5,0,0,7);X.fill();
@@ -2156,14 +2201,14 @@ function drawPlayerAt(px,py,facing,pose,stride=0,context=x){
   // てっぺんの結び目（ねじれた房）
   X.save();X.translate(-2,by-3.5);X.rotate(-.5);for(const [kx,col] of[[0,'#d8202e'],[2.6,'#f8f4ec'],[5.2,'#202028']]){X.fillStyle=col;X.beginPath();X.ellipse(kx,-2,1.6,3.4,.3,0,7);X.fill();}X.restore();
   // 白い鼻まわり（大きな口元）と鼻の穴・笑った口
-  o(face,hy+5.5,10.5,6.8,'#fffaf0');o(face,hy+4.5,9,5,'#ffffff');
-  o(face-3.6,hy+3.6,1.5,1,'#3a2a2a');o(face+3.6,hy+3.6,1.5,1,'#3a2a2a');
+  o(face,hy+5.5,10.5,6.8,muzzle);o(face,hy+4.5,9,5,muzzleLight);
+  o(face-3.6,hy+3.6,og?2:1.5,og?1.5:1,'#3a2a2a');o(face+3.6,hy+3.6,og?2:1.5,og?1.5:1,'#3a2a2a');
   X.fillStyle='#6a1a24';X.beginPath();X.ellipse(face,hy+7.6,4.2,2.8,0,0,Math.PI);X.closePath();X.fill();
   o(face,hy+9.2,2.6,1.3,'#ff8aa0');
   // 目（黒い目と光）とまゆ毛
-  for(const side of[-1,1]){const ex=face+side*5.2;o(ex,hy-2.5,1.9,2.4,'#14141c');o(ex+.6,hy-3.3,.7,.7,'#fff');
-    X.strokeStyle='#2a1a10';X.lineWidth=1.3;X.lineCap='round';X.beginPath();X.arc(ex,hy-5.2,2.4,Math.PI*1.15,Math.PI*1.85);X.stroke();}
-  o(face-9,hy+1.5,2.2,1.3,'#ffa08a66');o(face+9,hy+1.5,2.2,1.3,'#ffa08a66');   // ほっぺ
+  for(const side of[-1,1]){const ex=face+side*(og?5.6:5.2);if(og)ogEye(ex,hy-3);else{o(ex,hy-2.5,1.9,2.4,'#14141c');o(ex+.6,hy-3.3,.7,.7,'#fff');}
+    X.strokeStyle='#2a1a10';X.lineWidth=1.3;X.lineCap='round';X.beginPath();X.arc(ex,hy-(og?7.2:5.2),2.4,Math.PI*1.15,Math.PI*1.85);X.stroke();}
+  if(og){bolt(face-9.5,hy+.5,-1);bolt(face+9.5,hy+.5,1);}else{o(face-9,hy+1.5,2.2,1.3,'#ffa08a66');o(face+9,hy+1.5,2.2,1.3,'#ffa08a66');}   // ほっぺ
   X.restore();
 }
 // ===== お宝の絵：コイン・ダイヤ・宝箱（光沢のある立体的な絵。拾える範囲は変えていない） =====
