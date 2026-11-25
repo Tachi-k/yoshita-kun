@@ -1905,9 +1905,15 @@ if(p.moveLock>0){if(!keys.left&&!keys.right)p.moveLock=0;else{p.moveLock--;p.vx=
 // ジャンプの猶予（ゲーム中のみ）：着地の少し前に押しても着地した瞬間に跳ぶ（先行入力）／
 // 足場から落ち始めて少しの間はまだ跳べる（崖のぎりぎりで押し遅れても落ちにくい）
 const jumpIn=keys.jump||padJump,assist=mode==='game';
-if(jumpIn&&!p.prevJump)p.jumpBuf=JUMP_BUFFER_FRAMES;else if(p.jumpBuf>0)p.jumpBuf--;
+const jumpPressed=jumpIn&&!p.prevJump;
+if(jumpPressed)p.jumpBuf=JUMP_BUFFER_FRAMES;else if(p.jumpBuf>0)p.jumpBuf--;
 p.prevJump=jumpIn;
-if(bossIntroLong()){p.vx=0;}else if((jumpIn||(assist&&p.jumpBuf>0))&&(p.on||(assist&&p.coyote>0&&!p.hole))){p.vy=-16.5;p.on=false;p.jumping=true;p.jumpBuf=0;p.coyote=0;sound('jump');}
+if(bossIntroLong()){p.vx=0;}else if((jumpIn||(assist&&p.jumpBuf>0))&&(p.on||(assist&&p.coyote>0&&!p.hole))){p.vy=-16.5;p.on=false;p.jumping=true;p.jumpBuf=0;p.coyote=0;
+  // 走りながら跳ぶと遠くまで（runJump）、その場で跳ぶと てっぺん近くで もう一回跳べる（standJump → 二段ジャンプ）
+  const moving=keys.left||keys.right;p.runJump=assist&&moving;p.standJump=assist&&!moving;p.doubleUsed=false;sound('jump');}
+else if(assist&&jumpPressed&&!p.on&&!p.hole&&p.standJump&&!p.doubleUsed&&Math.abs(p.vy)<DOUBLE_JUMP_WINDOW){
+  p.vy=-14;p.doubleUsed=true;p.jumpBuf=0;p.jumping=true;tone(720,.12,'square',.06,0,1180);boom(p.x+p.w/2,p.y+p.h,10,['#fff','#bfe6ff','#ffdf50'],4);popup(p.x+p.w/2,p.y-8,'二段ジャンプ！','#bfe6ff',18,40);}
+if(!p.on&&p.runJump&&!p.kickT)p.vx*=RUN_JUMP_SPEED;   // 走りジャンプ中は横に速く進む
 p.vy=Math.min(16,p.vy+.65);
 p.x=Math.max(arenaOn?AX:0,Math.min(world-p.w,p.x+p.vx));
 if(mode==='game'&&stage===1&&!inBasement&&p.on&&!p.hole){
@@ -1927,7 +1933,7 @@ else if(p.vy>=0){const cx=p.x+p.w/2;
   if(pit){p.hole=pit;clampToHole(p,pit);}
   else for(const b of platforms){if(rect(p,b)&&oldY+p.h<=b.y+10){p.y=b.y-p.h;p.vy=0;p.on=true;}}}
 
-if(p.on){p.jumping=false;p.coyote=COYOTE_FRAMES;}else if(p.coyote>0)p.coyote--;
+if(p.on){p.jumping=false;p.coyote=COYOTE_FRAMES;p.runJump=false;p.standJump=false;}else if(p.coyote>0)p.coyote--;
 p.walking=p.on&&!p.kickT&&p.x!==oldX;
 if(p.walking)p.stride=(p.stride||0)+Math.abs(p.x-oldX);
 
@@ -2756,6 +2762,8 @@ function drawPause(){x.fillStyle='#0009';x.fillRect(0,0,W,H);x.textAlign='center
   x.font='bold 24px system-ui';x.fillText('画面をタップで さいかい',W/2,305);x.font='18px system-ui';x.fillStyle='#cfd8ea';x.fillText('SCORE '+score+'　　♥ × '+lives,W/2,350);x.textAlign='left';}
 const STEP=1000/60;let last=0,acc=0;
 const JUMP_BUFFER_FRAMES=8,COYOTE_FRAMES=6;
+const RUN_JUMP_SPEED=1.35;     // 走りジャンプの横の速さ（ふつうの何倍か）
+const DOUBLE_JUMP_WINDOW=3.5;  // 二段ジャンプできる「てっぺん付近」の広さ（上下の速さがこれより小さいとき）
 // 1コマの時間は毎回わずかにぶれる。そのままだと「更新0回のコマ」と「2回のコマ」が混ざってカクつくので、
 // 60Hz・120Hz・30Hz の画面に近い時間はちょうどの値にそろえる
 function snapFrameTime(dt){for(const n of[.5,1,2])if(Math.abs(dt-STEP*n)<1.2)return STEP*n;return dt}
