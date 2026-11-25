@@ -120,10 +120,15 @@ function loadStage(n){
       if(i!==4&&i!==8)platforms.push({x:STAGE2_OFFSET+i*240,y:ground,w:240,h:75});
     }
     platforms.push({x:AX,y:ground,w:960,h:75});
-    for(let i=0;i<10;i++)platforms.push({x:STAGE2_OFFSET+330+i*270,y:330-(i%3)*45,w:110,h:18});
+    // ボス手前は頭上の足場を置かず、イノシシが走り回れる地上区間にする。
+    const boarLaneStart=STAGE2_OFFSET+2330;
+    for(let i=0;i<8;i++)platforms.push({x:STAGE2_OFFSET+330+i*270,y:330-(i%3)*45,w:110,h:18});
     platforms.push({x:AX+170,y:320,w:110,h:18},{x:AX+680,y:320,w:110,h:18});
-    for(let i=0;i<23;i++)coins.push({x:STAGE2_OFFSET+200+i*120,y:270+(i%4)*30,taken:false});
-    [520,760,1320,1500,1700,1850,2250,2450,2730,2960].forEach((ex,i)=>enemies.push(makeEnemy(STAGE2_OFFSET+ex,i===2||i===6||i===8?'boar':i%2===1?'hop':'walk',i)));
+    for(let i=0;i<23;i++){
+      const cx=STAGE2_OFFSET+200+i*120;
+      coins.push({x:cx,y:cx>=boarLaneStart?ground-30:270+(i%4)*30,taken:false});
+    }
+    [520,760,1320,1500,1700,1850,2250,2450,2730,2960].forEach((ex,i)=>enemies.push(makeEnemy(STAGE2_OFFSET+ex,i===2||i===6||i>=8?'boar':i%2===1?'hop':'walk',i)));
     addPerchEnemies([1,3,6]);
     [[2,'gem'],[5,'heart'],[7,'coins'],[9,'chest'],[12,'gem']].forEach(([k,t])=>spots.push({x:STAGE2_OFFSET+k*240+120,type:t,found:false}));
     banner('STAGE 2','大王の谷');
