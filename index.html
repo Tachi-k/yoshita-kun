@@ -89,6 +89,9 @@ canvas{display:block;background:#17283c}
   #mazeStatus,#mazeRetry{grid-column:2}
 }
 #slotBoard{width:min(330px,100%)}
+#slotPayout{margin:8px auto;width:min(310px,100%);color:#ffe384;font:800 18px system-ui}
+#slotPayout progress{display:block;width:100%;height:12px;margin-top:5px;accent-color:#ffd74b}
+#slotPayoutCount{font-variant-numeric:tabular-nums}
 .arcadeStatus{min-height:1.5em;color:#ffdf70}
 @media (max-height:450px) and (orientation:landscape){
   #arcade{padding:8px}
@@ -136,6 +139,10 @@ canvas{display:block;background:#17283c}
     <canvas id="slotBoard" width="330" height="104" aria-label="スロットの絵柄"></canvas>
     <button id="slotSpin" type="button">まわす</button>
     <p id="slotStatus" class="arcadeStatus" role="status"></p>
+    <div id="slotPayout" hidden aria-hidden="true">
+      <span id="slotPayoutCount"></span>
+      <progress id="slotPayoutMeter" value="0" max="1"></progress>
+    </div>
   </section>
 </dialog>
 <script>
@@ -922,6 +929,8 @@ const mazeCtx=document.getElementById('mazeBoard').getContext('2d');
 const slotCtx=document.getElementById('slotBoard').getContext('2d');
 const mazeStatus=document.getElementById('mazeStatus'),slotStatus=document.getElementById('slotStatus');
 const slotSpin=document.getElementById('slotSpin');
+const slotPayout=document.getElementById('slotPayout'),slotPayoutCount=document.getElementById('slotPayoutCount');
+const slotPayoutMeter=document.getElementById('slotPayoutMeter');
 const MAZE=[
   '#############',
   '#.....#.....#',
@@ -962,7 +971,7 @@ function selectArcadeGame(game){
   arcadeGame=game;arcade.classList.toggle('maze-open',game==='maze');mazePanel.hidden=game!=='maze';slotsPanel.hidden=game!=='slots';
   document.getElementById('arcadeTitle').textContent=game==='maze'?'きらきら迷路':'はしごの先のあそび場';
   if(game==='maze')resetMaze();
-  else{drawSlots([1,0,3]);slotStatus.textContent='まわすを押してスタート';}
+  else{drawSlots([1,0,3]);slotPayout.hidden=true;slotStatus.textContent='まわすを押してスタート';}
 }
 
 function resetMaze(){
@@ -1125,11 +1134,32 @@ function slotPrize(reels){
   if(new Set(reels).size===2)return {rank:4,coins:5};
   return null;
 }
+function playSlotPayout(prize){
+  const notes=prize.rank===1?[523,659,784,1047]:[659,880];
+  notes.forEach((note,i)=>tone(note,.18,'triangle',.085,i*.085));
+  const duration=[0,18,13,9,6][prize.rank];
+  let tick=0;
+  slotSpin.disabled=true;
+  slotPayout.hidden=false;
+  slotPayoutMeter.max=prize.coins;
+  slotPayoutMeter.value=0;
+  slotPayoutCount.textContent='コイン 0 / '+prize.coins+'枚';
+  slotTimer=setInterval(()=>{
+    tick++;
+    const count=Math.ceil(tick*prize.coins/duration);
+    slotPayoutMeter.value=count;
+    slotPayoutCount.textContent='コイン '+count+' / '+prize.coins+'枚';
+    const pitch=1120+(tick%4)*120;
+    tone(pitch,.09,'triangle',.045,0,pitch*1.2);
+    tone(pitch*1.47,.065,'sine',.035,.026);
+    if(tick>=duration)stopSlotSpin();
+  },75);
+}
 function startSlotSpin(){
   if(arcadeGame!=='slots'||slotTimer!==null)return;
   const result=Array.from({length:3},randomSlotSymbol);
   let tick=0;
-  slotSpin.disabled=true;slotStatus.textContent='回転中…';
+  slotPayout.hidden=true;slotSpin.disabled=true;slotStatus.textContent='回転中…';
   slotTimer=setInterval(()=>{
     tick++;
     drawSlots(result.map((symbol,i)=>tick>=8+i*4?symbol:randomSlotSymbol()));
@@ -1142,7 +1172,7 @@ function startSlotSpin(){
     collectCoins(prize.coins,player.x+17,player.y-20);
     slotStatus.textContent=heading+' コイン '+prize.coins+'枚（+'+
       prize.coins*COIN_POINTS+'点）'+(lives>oldLives?' 1UP！':'');
-    sound('treasure');
+    playSlotPayout(prize);
   },80);
 }
 document.getElementById('arcadeExit').addEventListener('click',exitArcade);
