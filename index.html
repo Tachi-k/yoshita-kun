@@ -741,7 +741,23 @@ let lastSafeX=60;
 let roomKind='basement',roomT=0,bonusUsed={},crossed1=false;   // roomKind: basement=隠し地下室 / rain=ボーナス画面 / sky=ボーナスステージ
 function inBonus(){return inBasement&&roomKind!=='basement'}   // 最後に安全な地面に立っていた位置（ミスした時の再開地点）
 // ===== エンディングでも主人公を動かせる =====
+const QUEST_TRIAL_URL='https://tachi-k.github.io/ojiya-quest/';
+const QUEST_DOOR_X=W-100;
 let endP=null;
+function drawQuestDoor(){
+  const left=QUEST_DOOR_X-25,top=ground-76;
+  x.save();
+  x.fillStyle='#9f79db';
+  x.beginPath();if(x.roundRect)x.roundRect(left-5,top-5,60,81,[25,25,3,3]);else x.rect(left-5,top-5,60,81);x.fill();
+  x.fillStyle='#2a1948';
+  x.beginPath();if(x.roundRect)x.roundRect(left,top,50,76,[20,20,0,0]);else x.rect(left,top,50,76);x.fill();
+  ell(QUEST_DOOR_X+13,ground-31,3.5,3.5,'#ffe178');
+  x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#fff0ba';
+  x.fillText('ひみつのドア',QUEST_DOOR_X,top-30);
+  x.font='bold 12px system-ui';
+  x.fillText('おぢやクエスト（試作品）',QUEST_DOOR_X,top-11);
+  x.restore();
+}
 function endingPrincessPosition(){
   if(endingRare)return {x:W/2-14,y:ground-46-Math.abs(Math.sin(endT*.13+1))*18};
   if(endingPair)return {x:W/2+14,y:ground-46-Math.abs(Math.sin(endT*.06+.5))*8};
@@ -763,6 +779,11 @@ function updateEndPlayer(){
   if(q.walking){q.f=Math.sign(vx);q.stride=(q.stride||0)+Math.abs(q.x-oldX);}
   if((keys.jump||padJump)&&q.on){q.vy=-14;q.on=false;sound('jump');}
   q.vy=Math.min(16,q.vy+.65);q.y+=q.vy;if(q.y>=ground-42){q.y=ground-42;q.vy=0;q.on=true;}
+  if(q.walking&&q.on&&Math.abs(q.x+17-QUEST_DOOR_X)<12&&!q.enteredDoor){
+    q.enteredDoor=true;
+    window.location.assign(QUEST_TRIAL_URL);
+    return;
+  }
   if(q.cool>0)q.cool--;
   const near=(tx,w)=>q.x+34>tx&&q.x<tx+w;
   const princess=endingPrincessPosition();
@@ -1425,6 +1446,7 @@ function drawEnding(){
     x.strokeStyle='#fff8';x.lineWidth=6;x.beginPath();x.arc(W/2,ground,120,Math.PI,0);x.stroke();for(let k=0;k<=12;k++){const a=Math.PI+k*Math.PI/12;x.fillStyle=['#ff9ad5','#fff','#ffd84d'][k%3];x.beginPath();x.arc(W/2+Math.cos(a)*120,ground+Math.sin(a)*120,6,0,7);x.fill();}
     drawEndPlayer();drawPartner(princess.x,princess.y,endP&&endP.x>princess.x?1:-1);
   }else{drawEndPlayer();}
+  drawQuestDoor();
   drawParts(true);
   x.textAlign='center';x.fillStyle='#fff';x.shadowColor='#000';x.shadowBlur=6;
   const sy=creditsY();
