@@ -23,10 +23,11 @@ canvas{display:block;background:#17283c}
 .topbtns button{width:44px;height:44px;border-radius:12px;border:0;background:rgba(23,40,60,.55);color:#fff;font-size:22px;padding:0;touch-action:none}
 #music.off{opacity:.6}
 /* BGMの切りかえ：2つのうち、いま流れている方が黄色く光る。押した方に切りかわる */
-#bgmSwitch{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border-radius:12px;background:rgba(23,40,60,.72);color:#fff}
-#bgmSwitch span{grid-column:1/-1;text-align:center;font:700 11px system-ui;opacity:.85;line-height:1.3}
-.topbtns #bgmSwitch button{width:auto;height:36px;padding:0 8px;border-radius:9px;background:transparent;color:#fff;font:800 13px system-ui;touch-action:manipulation;white-space:nowrap}
-.topbtns #bgmSwitch button[aria-pressed="true"]{background:#ffdf50;color:#17283c;box-shadow:0 2px 0 #b58b18}
+#bgmSwitch{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px 6px 6px;border-radius:14px;background:rgba(23,40,60,.88);border:2px solid #ffdf50;box-shadow:0 0 14px #ffdf5066;color:#fff}
+#bgmSwitch span{grid-column:1/-1;text-align:center;font:900 16px system-ui;color:#ffdf50;line-height:1.25;letter-spacing:.04em}
+.topbtns #bgmSwitch button{width:auto;height:44px;padding:0 10px;border-radius:10px;background:rgba(255,255,255,.14);border:1.5px solid #ffffff66;color:#fff;font:800 16px system-ui;touch-action:manipulation;white-space:nowrap}
+.topbtns #bgmSwitch button[aria-pressed="true"]{background:#ffdf50;border-color:#fff;color:#17283c;box-shadow:0 3px 0 #b58b18}
+.topbtns #bgmSwitch button[aria-pressed="true"]::before{content:'✓ '}
 .topbtns #bgmSwitch button:focus-visible{outline:3px solid #fff;outline-offset:1px}
 #startBtn{position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;font:900 22px system-ui;letter-spacing:2px;padding:9px 28px;border-radius:44px;border:0;background:#ffdf50;color:#20304a;box-shadow:0 6px 0 #c9971e,0 10px 24px #0006;touch-action:manipulation;animation:pulse 1.1s ease-in-out infinite}
 #startBtn:active{transform:translateX(-50%) translateY(4px);box-shadow:0 2px 0 #c9971e}
@@ -48,12 +49,11 @@ canvas{display:block;background:#17283c}
   #jump{width:min(94px,12vw,26vh);height:min(94px,12vw,26vh)}
   .hint{display:none}
   .topbtns{left:calc(env(safe-area-inset-left) + 8px);right:auto;width:min(160px,19vw);flex-wrap:wrap;justify-content:center;gap:6px}   /* 横画面：左上（方向パッドの上）に置いて、ゲーム画面にかぶらない */
-  .topbtns #bgmSwitch{width:100%}
-  .topbtns #bgmSwitch button{padding:0 3px;font-size:clamp(10px,1.35vw,12px)}
+  .topbtns #bgmSwitch{width:100%;grid-template-columns:1fr}   /* 横画面：2つを縦に並べて、文字を大きく */
+  .topbtns #bgmSwitch span{font-size:clamp(10px,1.8vw,16px)}
+  .topbtns #bgmSwitch button{height:clamp(34px,10vh,44px);padding:0 2px;font-size:clamp(10px,2vw,16px)}
+  .controls .pad:first-child{align-self:end;padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}   /* 方向パッドは下へ寄せて、BGMボタンと重ならない */
   .help{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 6px);left:50%;transform:translateX(-50%);margin:0}
-}
-@media (orientation:landscape) and (max-height:380px){
-  .controls .pad:first-child{align-self:end;padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}   /* 背の低い画面：方向パッドを下へ寄せて、上のBGMボタンと重ならない */
 }
 @media (orientation:portrait){
   #stage > canvas{width:100%;height:auto;aspect-ratio:16/9;margin-top:env(safe-area-inset-top)}
