@@ -64,22 +64,31 @@ canvas{display:block;background:#17283c}
 #arcade button{border:0;border-radius:8px;padding:8px 13px;margin:3px;background:#e9f0ff;color:#17283c;font:700 15px system-ui;cursor:pointer;touch-action:manipulation;min-height:36px}
 #arcade button:disabled{opacity:.5}
 #arcade canvas{display:block;background:#102035;margin:6px auto;max-width:100%;height:auto;object-fit:contain}
-#mazeBoard{width:min(390px,100%,49dvh)}
-#mazeDirections{display:grid;grid-template-columns:repeat(3, minmax(42px,58px)) auto;grid-template-rows:repeat(2,auto);justify-content:center;align-items:center;touch-action:none}
-#mazeDirections [data-dir]{font-size:22px;min-height:42px;padding:0;touch-action:none}
-#mazeDirections [data-dir="up"]{grid-area:1/2}
-#mazeDirections [data-dir="left"]{grid-area:2/1}
-#mazeDirections [data-dir="down"]{grid-area:2/2}
-#mazeDirections [data-dir="right"]{grid-area:2/3}
-#mazeRetry{grid-area:2/4}
-#mazeDirections [data-dir].held{background:#ffdf50}
+#arcade.maze-open{width:min(1120px,97vw);max-height:97dvh;padding:12px}
+#mazeLayout{display:grid;justify-items:center;align-items:center;gap:8px}
+#mazeBoard{width:100%;margin:0!important;image-rendering:pixelated}
+#mazeControls{display:grid;justify-items:center;gap:4px}
+#mazeJoystick{position:relative;width:clamp(96px,24vw,136px);aspect-ratio:1;border:2px solid #57799b;border-radius:50%;background:#0c1b2f;color:#e8f3ff;touch-action:none;user-select:none;cursor:grab}
+#mazeJoystick:active{cursor:grabbing}
+#mazeJoystick:focus-visible{outline:3px solid #ffdf50;outline-offset:3px}
+#mazeJoystick .arrow{position:absolute;line-height:1;font-size:17px;pointer-events:none}
+#mazeJoystick .up{top:6px;left:50%;translate:-50% 0}
+#mazeJoystick .down{bottom:6px;left:50%;translate:-50% 0}
+#mazeJoystick .left{left:6px;top:50%;translate:0 -50%}
+#mazeJoystick .right{right:6px;top:50%;translate:0 -50%}
+#mazeKnob{position:absolute;width:42%;aspect-ratio:1;top:50%;left:50%;translate:-50% -50%;border:2px solid #fff2ac;border-radius:50%;background:#ffda63;box-shadow:0 3px 0 #9b712e;pointer-events:none}
+@media (orientation:landscape){
+  #mazeLayout{grid-template-columns:minmax(0,1fr) clamp(105px,20vw,164px)}
+  #mazeBoard{width:min(100%,calc((100dvh - 117px)*1.44))}
+}
 #slotBoard{width:min(330px,100%)}
 .arcadeStatus{min-height:1.5em;color:#ffdf70}
 @media (max-height:450px) and (orientation:landscape){
   #arcade{padding:8px}
   #arcade h2,#arcade h3{font-size:16px;margin:0}
   #arcade p{margin:3px 0}
-  #mazeBoard{width:min(390px,100%,45dvh)}
+  #mazeBoard{width:min(100%,calc((100dvh - 88px)*1.44))}
+  #mazeJoystick{width:clamp(76px,23dvh,110px)}
   #arcade button{min-height:30px;padding:4px 10px}
 }
 </style></head><body>
@@ -101,16 +110,18 @@ canvas{display:block;background:#17283c}
   </div>
   <section id="mazePanel" hidden>
     <h3>きらきら迷路</h3>
-    <p>方向ボタンを長押しで移動。星を全部集めよう。</p>
-    <canvas id="mazeBoard" width="416" height="288" aria-label="迷路"></canvas>
-    <div id="mazeDirections" aria-label="方向ボタン">
-      <button type="button" data-dir="left" aria-label="左">←</button>
-      <button type="button" data-dir="up" aria-label="上">↑</button>
-      <button type="button" data-dir="down" aria-label="下">↓</button>
-      <button type="button" data-dir="right" aria-label="右">→</button>
-      <button id="mazeRetry" type="button">やり直す</button>
+    <div id="mazeLayout">
+      <canvas id="mazeBoard" width="416" height="288" aria-label="迷路"></canvas>
+      <div id="mazeControls">
+        <div id="mazeJoystick" tabindex="0" aria-label="ジョイスティック。押したまま動かすか、矢印キーで移動">
+          <span class="arrow up" aria-hidden="true">↑</span><span class="arrow left" aria-hidden="true">←</span>
+          <span class="arrow right" aria-hidden="true">→</span><span class="arrow down" aria-hidden="true">↓</span>
+          <span id="mazeKnob" aria-hidden="true"></span>
+        </div>
+        <p id="mazeStatus" class="arcadeStatus" role="status"></p>
+        <button id="mazeRetry" type="button">やり直す</button>
+      </div>
     </div>
-    <p id="mazeStatus" class="arcadeStatus" role="status"></p>
   </section>
   <section id="slotsPanel" hidden>
     <h3>よし太くんスロット</h3>
@@ -912,6 +923,7 @@ function enterArcade(h){
 function exitArcade(){
   if(state!=='arcade')return;
   stopSlotSpin();
+  releaseMazeJoystick();
   stopMazeHold();
   const h=arcadeHole;
   holes=holes.filter(other=>other!==h);
@@ -923,7 +935,7 @@ function exitArcade(){
 }
 function selectArcadeGame(game){
   stopSlotSpin();
-  arcadeGame=game;mazePanel.hidden=game!=='maze';slotsPanel.hidden=game!=='slots';
+  arcadeGame=game;arcade.classList.toggle('maze-open',game==='maze');mazePanel.hidden=game!=='maze';slotsPanel.hidden=game!=='slots';
   if(game==='maze')resetMaze();
   else{drawSlots([1,0,3]);slotStatus.textContent='まわすを押してスタート';}
 }
@@ -1067,16 +1079,14 @@ function startSlotSpin(){
 }
 document.getElementById('arcadeExit').addEventListener('click',exitArcade);
 document.getElementById('mazeRetry').addEventListener('click',resetMaze);
-const mazeDirections=document.getElementById('mazeDirections');
+const mazeJoystick=document.getElementById('mazeJoystick'),mazeKnob=document.getElementById('mazeKnob');
+let mazePointer=null;
 const MAZE_KEYS={arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'up',w:'up',arrowdown:'down',s:'down'};
 function stopMazeHold(){
-  mazeHold?.button?.classList.remove('held');
   mazeHold=null;
 }
-function beginMazeHold(dir,source,button=null){
-  stopMazeHold();
-  mazeHold={dir,source,button,wait:13};
-  button?.classList.add('held');
+function beginMazeHold(dir,source){
+  mazeHold={dir,source,wait:13};
   mazeMove(dir);
 }
 function updateMazeHold(){
@@ -1086,22 +1096,46 @@ function updateMazeHold(){
     mazeMove(mazeHold.dir);
   }
 }
-mazeDirections.addEventListener('pointerdown',event=>{
-  const dir=event.target.dataset.dir;
-  if(!dir||event.button!==0)return;
+function joystickDirection(dx,dy,deadZone){
+  if(Math.hypot(dx,dy)<deadZone)return null;
+  if(Math.abs(dx)>=Math.abs(dy))return dx<0?'left':'right';
+  return dy<0?'up':'down';
+}
+function steerMazeJoystick(event){
+  const box=mazeJoystick.getBoundingClientRect();
+  const dx=event.clientX-box.left-box.width/2,dy=event.clientY-box.top-box.height/2;
+  const direction=joystickDirection(dx,dy,box.width*.13);
+  const limit=box.width*.26;
+  const scale=Math.min(1,limit/(Math.hypot(dx,dy)||1));
+  mazeKnob.style.transform='translate('+dx*scale+'px,'+dy*scale+'px)';
+  if(!direction){
+    if(mazeHold?.source===mazePointer)stopMazeHold();
+  }else if(mazeHold?.source!==mazePointer||mazeHold.dir!==direction){
+    beginMazeHold(direction,mazePointer);
+  }
+}
+function releaseMazeJoystick(){
+  if(mazePointer===null)return;
+  if(mazeHold?.source===mazePointer)stopMazeHold();
+  mazePointer=null;
+  mazeKnob.style.transform='';
+}
+mazeJoystick.addEventListener('pointerdown',event=>{
+  if(mazePointer!==null||event.button!==0)return;
   event.preventDefault();
-  event.target.setPointerCapture(event.pointerId);
-  beginMazeHold(dir,event.pointerId,event.target);
+  mazePointer=event.pointerId;
+  mazeJoystick.setPointerCapture(mazePointer);
+  steerMazeJoystick(event);
+});
+mazeJoystick.addEventListener('pointermove',event=>{
+  if(mazePointer===event.pointerId)steerMazeJoystick(event);
 });
 for(const type of ['pointerup','pointercancel','lostpointercapture']){
-  mazeDirections.addEventListener(type,event=>{if(mazeHold?.source===event.pointerId)stopMazeHold();});
+  mazeJoystick.addEventListener(type,event=>{if(mazePointer===event.pointerId)releaseMazeJoystick();});
 }
-mazeDirections.addEventListener('click',event=>{
-  if(event.detail===0&&event.target.dataset.dir)mazeMove(event.target.dataset.dir);
-});
 slotSpin.addEventListener('click',startSlotSpin);
 arcade.addEventListener('cancel',event=>{event.preventDefault();exitArcade();});
-window.addEventListener('blur',stopMazeHold);
+window.addEventListener('blur',()=>{releaseMazeJoystick();stopMazeHold();});
 document.addEventListener('keydown',event=>{
   if(state!=='arcade')return;
   event.stopImmediatePropagation();
