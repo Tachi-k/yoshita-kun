@@ -1360,20 +1360,9 @@ function drawTitle(){
 }
 
 // ボス撃破後、よし太くんが画面上へ飛び去ってからエンディングへ。
-const LAST_STANDARD_ENDING_KEY='yoshita-last-standard-ending';
-let lastStandardEnding=null;
-try{lastStandardEnding=localStorage.getItem(LAST_STANDARD_ENDING_KEY);}catch(_){}
 function chooseEndingSong(){
   const roll=Math.random();
-  if(roll<.1)return 'rare';
-  if(lastStandardEnding==='ending')return 'wedding';
-  if(lastStandardEnding==='wedding')return 'ending';
-  return roll<.55?'wedding':'ending';
-}
-function rememberStandardEnding(song){
-  if(song==='rare'||mode!=='game')return;
-  lastStandardEnding=song;
-  try{localStorage.setItem(LAST_STANDARD_ENDING_KEY,song);}catch(_){}
+  return roll<.1?'rare':roll<.75?'wedding':'ending';
 }
 const VICTORY_FLIGHT_FRAMES=54;
 let victoryFlight=null;
@@ -1394,7 +1383,6 @@ function updateVictoryFlight(){
   clearedAdventure=true;
   state='ending';bonusUsed={};roomT=0;endT=0;parts=[];
   addTimeBonus();score+=lives*1000;
-  rememberStandardEnding(boss.endingSong);
   endingRare=boss.endingSong==='rare';endingPair=boss.endingSong==='wedding';endP=null;
   if(endingRare)score+=5000;
 }
