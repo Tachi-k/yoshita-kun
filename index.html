@@ -625,10 +625,10 @@ function drawParts(hearts=false){
 // 掘れる場所を探す：掘りかけの穴があればそれを続ける。崖の端や隣の穴にかかる時は少しずらして掘れる場所を探す
 function digSpot(){if(bossIntroLong())return null;if(inBasement)return null;
   const p=player;if(state!=='play'||!p.on||p.hole||Math.abs(p.y+p.h-ground)>=12)return null;
-  const hw=arenaOn?100:48,hd=arenaOn?60:48,dir=p.facing===-1?-1:1,pc=p.x+p.w/2,center=pc+dir*(hw/2+28);
+  const hw=arenaOn?132:48,hd=arenaOn?72:48,dir=p.facing===-1?-1:1,pc=p.x+p.w/2,center=pc+dir*(hw/2+28);
   const cur=holes.find(h=>h.stage<3&&Math.abs(h.x+h.w/2-center)<h.w/2+8&&(dir>0?(h.x+h.w>p.x+p.w-4&&h.x<p.x+p.w+110):(h.x<p.x+4&&h.x+h.w>p.x-110)));   /* 向いている側の穴だけ続きを掘る（左右対称） */if(cur)return {hole:cur};
   // 敵が入っている穴の前なら「埋める」
-  const occ=holes.find(h=>h.stage===3&&Math.abs(h.x+h.w/2-center)<h.w/2+12&&inHole(h).length>0);if(occ)return {bury:occ};
+  const occ=holes.find(h=>h.stage===3&&Math.abs(h.x+h.w/2-center)<h.w/2+12&&(inHole(h).length>0||(!arenaOn&&!h.secret&&!h.arcade&&p.hole!==h)));if(occ)return {bury:occ};   // ふつうのステージでは、空の穴ももう一回掘ると埋まる
   for(const off of[0,-8,-16,-22,8,16,24]){const c=center+dir*off;
     if(Math.abs(c-pc)<hw/2+6)continue;   // 足元に掘らない
     // 穴の範囲がすべて地面の上にあるか（地面の継ぎ目をまたいでもOK、崖にかかるのはNG）
@@ -1437,8 +1437,13 @@ function drawCannonGun(){
   const g=x.createLinearGradient(0,y-13,0,y+13);g.addColorStop(0,'#5b6070');g.addColorStop(.35,'#a9b0c0');g.addColorStop(1,'#22252e');
   x.fillStyle=g;x.beginPath();x.moveTo(mx,y-11);x.lineTo(mx+80,y-15);x.lineTo(mx+80,y+15);x.lineTo(mx,y+11);x.closePath();x.fill();   // 砲身
   x.fillStyle='#3a3e4a';x.fillRect(mx-4,y-14,8,28);   // 砲口のリング
-  x.fillStyle='#c9a34a';x.fillRect(mx+26,y-14,4,28);x.fillRect(mx+50,y-15,4,30);   // 金の帯
+  x.fillStyle='#c9a34a';x.fillRect(mx+8,y-12,4,24);x.fillRect(mx+58,y-15,4,30);   // 金の帯
   x.fillStyle='#111';ell(mx-3,y,3,8,'#111');
+  // 大砲の顔：にらむ目とへの字口（左を向いている）
+  for(const ex of[mx+24,mx+40]){ell(ex,y-4,5,5.5,'#fffbe8');ell(ex-1.8,y-3.5,2.6,3.2,'#1a1a22');ell(ex-2.6,y-4.6,.9,.9,'#fff');}
+  x.strokeStyle='#15161c';x.lineWidth=3;x.lineCap='round';x.beginPath();x.moveTo(mx+18,y-12);x.lineTo(mx+29,y-9);x.moveTo(mx+35,y-9);x.lineTo(mx+46,y-12);x.stroke();
+  x.lineWidth=2.2;x.beginPath();x.moveTo(mx+26,y+8);x.quadraticCurveTo(mx+32,y+4,mx+38,y+8);x.stroke();
+  x.globalAlpha=.5;ell(mx+16,y+3,3,1.8,'#ff8a8a');ell(mx+48,y+3,3,1.8,'#ff8a8a');x.globalAlpha=1;
   if(flash>0){   // 発射の炎
     x.globalAlpha=flash;ell(mx-22,y,26,14,'#ff8a2a');ell(mx-14,y,16,9,'#ffe27a');ell(mx-8,y,7,5,'#fff');x.globalAlpha=1;}
   if(cannonShot&&!flash){x.globalAlpha=Math.min(.5,cannonShot.t/40);for(let k=0;k<3;k++)ell(mx-8-k*10,y-6-k*7-(40-cannonShot.t)*.4,10+k*4,8+k*3,'#d8d8e0');x.globalAlpha=1;}   // 煙
@@ -1982,23 +1987,51 @@ function drawPopups(){x.textAlign='center';for(const q of popups){x.globalAlpha=
 function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=Math.sin(Date.now()*.0015)*3;
   const firing=state==='goal'&&goalTick>28,flame=firing?(.8+Math.random()*.5):(Math.floor(Date.now()/900)%3===0?.35:0);
   if(part==='back'){
+    // つなぎとめるロープと杭
     if(!(state==='goal'&&goalTick>45)&&state!=='clear'){x.strokeStyle='#8a6a4a';x.lineWidth=2;x.beginPath();x.moveTo(bx-30,top+30);x.lineTo(bx-70,ground);x.moveTo(bx+30,top+30);x.lineTo(bx+70,ground);x.stroke();x.fillStyle='#5a4030';x.fillRect(bx-74,ground-6,8,8);x.fillRect(bx+66,ground-6,8,8);}
-    x.strokeStyle='#6b5a4a';x.lineWidth=2;x.beginPath();x.moveTo(bx-26+sway,cy+66);x.lineTo(bx-28,top);x.moveTo(bx+26+sway,cy+66);x.lineTo(bx+28,top);x.moveTo(bx-10+sway,cy+70);x.lineTo(bx-10,top);x.moveTo(bx+10+sway,cy+70);x.lineTo(bx+10,top);x.stroke();
-    // 球皮（ストライプ）
-    x.save();x.beginPath();x.ellipse(bx+sway,cy,64,74,0,0,7);x.clip();
-    const cols=['#ff5a5a','#ffe14d','#4fc3ff','#ffffff','#ff5a5a','#ffe14d','#4fc3ff'];for(let k=0;k<7;k++){x.fillStyle=cols[k];x.fillRect(bx-64+sway+k*18.3,cy-80,18.4,160);}
-    x.fillStyle='#ffffff55';x.beginPath();x.ellipse(bx-22+sway,cy-30,14,28,-.3,0,7);x.fill();x.restore();
-    x.fillStyle='#d94a4a';x.beginPath();x.moveTo(bx-30+sway,cy+64);x.lineTo(bx+30+sway,cy+64);x.lineTo(bx+16+sway,cy+82);x.lineTo(bx-16+sway,cy+82);x.closePath();x.fill();
-    if(flame>0){x.fillStyle='#ff9a3c';x.beginPath();x.moveTo(bx-9,top-6);x.quadraticCurveTo(bx,top-6-48*flame,bx+9,top-6);x.fill();x.fillStyle='#ffe27a';x.beginPath();x.moveTo(bx-4,top-6);x.quadraticCurveTo(bx,top-6-28*flame,bx+4,top-6);x.fill();}
-    x.fillStyle='#444';x.fillRect(bx-6,top-8,12,6);
+    // 球皮とかごをつなぐロープ
+    x.strokeStyle='#5e4a3a';x.lineWidth=1.6;x.beginPath();for(const [ux,lx] of[[-24,-28],[-9,-10],[9,10],[24,28]]){x.moveTo(bx+ux+sway,cy+76);x.lineTo(bx+lx,top);}x.stroke();
+    // 球皮：上がまるく下がすぼまった形
+    const ex=bx+sway,shape=()=>{x.beginPath();x.moveTo(ex-20,cy+70);x.bezierCurveTo(ex-58,cy+38,ex-78,cy-10,ex-62,cy-46);x.bezierCurveTo(ex-46,cy-82,ex+46,cy-82,ex+62,cy-46);x.bezierCurveTo(ex+78,cy-10,ex+58,cy+38,ex+20,cy+70);x.closePath();};
+    x.save();shape();x.clip();
+    const cols=['#e8453c','#ffd23a','#2f9ee8','#fff7ea'];
+    for(let k=-4;k<4;k++){   // 縦のしま（球の丸みに合わせて曲げる）
+      x.fillStyle=cols[(k+8)%4];x.beginPath();
+      const a0=k/4,a1=(k+1)/4,xa=v=>Math.sin(v*Math.PI/2)*78;
+      x.moveTo(ex+xa(a0)*.3,cy+78);x.quadraticCurveTo(ex+xa(a0)*1.25,cy-5,ex+xa(a0)*.1,cy-84);x.lineTo(ex+xa(a1)*.1,cy-84);x.quadraticCurveTo(ex+xa(a1)*1.25,cy-5,ex+xa(a1)*.3,cy+78);x.closePath();x.fill();}
+    const shade=x.createRadialGradient(ex-26,cy-38,8,ex,cy,96);shade.addColorStop(0,'#ffffff66');shade.addColorStop(.45,'#ffffff00');shade.addColorStop(1,'#00000066');
+    x.fillStyle=shade;x.fillRect(ex-90,cy-90,180,180);   // 光と影で丸く見せる
+    x.strokeStyle='#00000022';x.lineWidth=1;for(let k=-3;k<=3;k++){x.beginPath();x.ellipse(ex,cy-5,Math.abs(k)*20+.5,82,0,0,7);x.stroke();}   // 縫い目
+    x.restore();
+    x.strokeStyle='#00000033';x.lineWidth=1.5;shape();x.stroke();
+    // すそ（口金）
+    const sk=x.createLinearGradient(ex-20,0,ex+20,0);sk.addColorStop(0,'#8a2a22');sk.addColorStop(.4,'#d94a4a');sk.addColorStop(1,'#7a2018');
+    x.fillStyle=sk;x.beginPath();x.moveTo(ex-20,cy+68);x.lineTo(ex+20,cy+68);x.lineTo(ex+13,cy+84);x.lineTo(ex-13,cy+84);x.closePath();x.fill();
+    // バーナーの炎
+    if(flame>0){x.globalAlpha=.6;ell(bx,top-14-20*flame,12*flame,26*flame,'#ff7a2a');x.globalAlpha=1;
+      x.fillStyle='#ff9a3c';x.beginPath();x.moveTo(bx-9,top-8);x.quadraticCurveTo(bx,top-8-52*flame,bx+9,top-8);x.fill();
+      x.fillStyle='#ffe27a';x.beginPath();x.moveTo(bx-4,top-8);x.quadraticCurveTo(bx,top-8-30*flame,bx+4,top-8);x.fill();
+      x.fillStyle='#bfe6ff';x.beginPath();x.moveTo(bx-2,top-8);x.quadraticCurveTo(bx,top-8-12*flame,bx+2,top-8);x.fill();}
+    // バーナー（金属の枠）
+    const mt=x.createLinearGradient(0,top-12,0,top-2);mt.addColorStop(0,'#d8dde6');mt.addColorStop(1,'#5a606c');
+    x.fillStyle=mt;x.fillRect(bx-9,top-12,18,8);x.fillStyle='#3a3e48';x.fillRect(bx-14,top-4,28,3);
   }else{
-    x.fillStyle='#a8743a';x.fillRect(bx-30,top,60,38);x.strokeStyle='#7a5226';x.lineWidth=2;for(let k=1;k<4;k++){x.beginPath();x.moveTo(bx-30,top+k*9.5);x.lineTo(bx+30,top+k*9.5);x.stroke();}for(let k=1;k<6;k++){x.beginPath();x.moveTo(bx-30+k*10,top);x.lineTo(bx-30+k*10,top+38);x.stroke();}
-    x.fillStyle='#5a3a1a';x.fillRect(bx-32,top-3,64,6);
+    // かご：編みこんだ籐のもようと、皮のふち
+    const wk=x.createLinearGradient(0,top,0,top+38);wk.addColorStop(0,'#c99052');wk.addColorStop(1,'#8a5a2c');
+    x.fillStyle=wk;x.beginPath();x.moveTo(bx-30,top);x.lineTo(bx+30,top);x.lineTo(bx+27,top+38);x.lineTo(bx-27,top+38);x.closePath();x.fill();
+    x.save();x.clip();
+    for(let r=0;r<6;r++)for(let c=0;c<10;c++){const wx=bx-30+c*6+(r%2)*3,wy=top+3+r*6.2;x.fillStyle=(r+c)%2?'#a8743a':'#d9a466';x.beginPath();x.ellipse(wx,wy,3.2,2.2,0,0,7);x.fill();}
+    x.fillStyle='#00000022';x.fillRect(bx-30,top+30,60,8);
+    x.restore();
+    x.fillStyle='#5a3418';x.beginPath();if(x.roundRect)x.roundRect(bx-33,top-4,66,8,4);else x.rect(bx-33,top-4,66,8);x.fill();
+    x.fillStyle='#ffffff22';x.fillRect(bx-31,top-3,62,2);
   }}
+
 // キャラクターの見た目の大きさ（当たり判定は変えず、足もとを中心に絵だけ大きくする）
 const CHAR_SCALE=1.4;
 function drawScaled(cx,footY,fn){x.save();x.translate(cx,footY);x.scale(CHAR_SCALE,CHAR_SCALE);x.translate(-cx,-footY);fn();x.restore();}
 // 敵キャラ：グラデーションの体・つやのある目・地面の影で立体的に（当たり判定は 32×32 のまま）
+const BOAR_SCALE=1.3;   // イノシシは ほかの敵より大きく描く
 function drawEnemy(e){
   const rg=(cx,cy,r,c0,c1,c2)=>{const g=x.createRadialGradient(cx-r*.35,cy-r*.4,r*.1,cx,cy,r);g.addColorStop(0,c0);g.addColorStop(.6,c1);g.addColorStop(1,c2);return g;};
   const shine=(ex,ey,r)=>{ell(ex+r*.35,ey-r*.4,r*.32,r*.32,'#fff');ell(ex-r*.3,ey+r*.35,r*.15,r*.15,'#ffffffcc');};
@@ -2008,7 +2041,9 @@ function drawEnemy(e){
     const stride=e.grounded?Math.sin(e.x*.3)*3:0;
     const scrape=e.windup?Math.sin(e.windup*.65)*4:0;
     if(e.windup){x.save();x.font='bold 16px system-ui';x.textAlign='center';x.fillStyle='#fff2a0';x.fillText('！',cx,cy-21);x.restore();}
-    x.save();x.translate(cx,cy);x.scale(e.dir,1);
+    x.save();x.translate(cx,e.y+30);x.scale(e.dir*BOAR_SCALE,BOAR_SCALE);x.translate(0,-10);   // 足もとを中心に大きく
+    // しっぽ
+    x.strokeStyle='#5a3324';x.lineWidth=1.6;x.beginPath();x.moveTo(-16,-2);x.quadraticCurveTo(-21,-6,-19,-1);x.quadraticCurveTo(-18,2,-21,1);x.stroke();
     // 奥の足・手前の足（ひづめ）
     for(const [lx,ph] of[[-8,-stride],[8,stride+scrape]]){x.strokeStyle='#5a3324';x.lineWidth=4;x.lineCap='round';x.beginPath();x.moveTo(lx,4);x.lineTo(lx+ph*.6,9);x.stroke();ell(lx+ph*.6,10,3.2,2.2,'#2a1a14');}
     if(e.windup||e.charge){const dustX=e.windup?13+scrape:-18;x.globalAlpha=.7;ell(dustX,10,4,2.5,'#e0aa76');ell(dustX-5,7,2.5,1.8,'#f1c797');x.globalAlpha=1;}
@@ -2016,6 +2051,8 @@ function drawEnemy(e){
     x.fillStyle=rg(-2,0,15,e.charge?'#d0703c':'#d99560',e.charge?'#a84b28':'#a86438','#5e3420');x.beginPath();x.ellipse(-2,0,15,10,0,0,7);x.fill();
     x.strokeStyle='#3e2216';x.lineWidth=1.3;x.beginPath();for(let k=0;k<7;k++){const bx=-14+k*3.6,by=-8.5+Math.abs(k-3)*.5;x.moveTo(bx,by);x.lineTo(bx-1.5,by-4-(k%2)*1.5);}x.stroke();   // せなかの毛
     ell(-6,4,7,3,'#00000018');
+    x.fillStyle='#4a2a1a';x.beginPath();x.moveTo(-12,-6);for(let k=0;k<8;k++){const bx=-12+k*2.6;x.lineTo(bx+1.3,-11.5-(k%2)*2.2-Math.sin(k*.9)*1.2);x.lineTo(bx+2.6,-7.5+Math.abs(k-4)*.25);}x.lineTo(6,-6);x.closePath();x.fill();   // たてがみ
+    x.strokeStyle='#ffffff22';x.lineWidth=1;for(let k=0;k<6;k++){x.beginPath();x.moveTo(-12+k*4,-3+(k%2));x.lineTo(-10+k*4,1+(k%2));x.stroke();}   // 毛なみのつや
     // 耳
     x.fillStyle='#6e3a28';x.beginPath();x.moveTo(1,-8);x.lineTo(4,-15);x.lineTo(8,-7);x.closePath();x.fill();
     x.fillStyle='#e7a28a';x.beginPath();x.moveTo(2.8,-8.5);x.lineTo(4.2,-12.5);x.lineTo(6.5,-8);x.closePath();x.fill();
@@ -2325,17 +2362,20 @@ function draw(){
   if(arenaOn){x.fillStyle='#2a1d36';x.fillRect(AX-24,140,28,ground-140);}
   x.restore();
   // HUD
-  x.fillStyle=inBasement||stage===2?'#fff':'#20304a';if(stage===2&&!inBasement){x.shadowColor='#0008';x.shadowBlur=4;}x.font='bold 24px system-ui';x.fillText('SCORE '+score,22,38);drawLifeHeart(234,29,26,false);x.fillText('× '+lives,252,38);x.fillText('STAGE '+stage,300,38);if(!arenaOn)x.fillText('💎 '+diamonds,510,38);
-  if(mode==='game'){x.font='bold 14px system-ui';x.fillText('コイン '+coinProgress+'/'+COINS_PER_LIFE,400,38);const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+  x.fillStyle=inBasement||stage===2?'#fff':'#20304a';if(stage===2&&!inBasement){x.shadowColor='#0008';x.shadowBlur=4;}x.font='bold 30px system-ui';
+  // 左から順に並べる（数字がふえても重ならない）
+  {let hx=22;const put=t=>{x.fillText(t,hx,42);hx+=x.measureText(t).width+20;};
+    put('SCORE '+score);drawLifeHeart(hx+16,31,32,false);hx+=38;put('× '+lives);put('STAGE '+stage);if(!arenaOn)put('💎 '+diamonds);}
+  if(mode==='game'){x.font='bold 20px system-ui';x.fillText('コイン '+coinProgress+'/'+COINS_PER_LIFE,22,72);const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
-    const bx0=arenaOn?480:600,by0=6,bw=arenaOn?100:170,bh=46;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
-    x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 13px system-ui';x.fillText(arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+19);
-    x.fillStyle='#fff';x.font='900 32px system-ui';x.textAlign='right';x.fillText(String(sec),bx0+bw-14,by0+37);x.textAlign='left';x.restore();}
-  if(!arenaOn&&!inBasement)x.fillText(stage===1?'GOAL →':'BOSS →',805,38);
-  x.font='16px system-ui';
+    const bx0=arenaOn?445:610,by0=6,bw=arenaOn?140:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
+    x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
+    x.fillStyle='#fff';x.font='900 38px system-ui';x.textAlign='right';x.fillText(String(sec),bx0+bw-12,by0+43);x.textAlign='left';x.restore();}
+  if(!arenaOn&&!inBasement){x.font='bold 26px system-ui';x.fillText(stage===1?'GOAL →':'BOSS →',800,42);}
+  x.font='bold 18px system-ui';
   const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':'ボーナス！ 時間内に たくさん集めよう'):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
-  if(!bossIntroLong())x.fillText(hint,22,65);
-  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){x.font='bold 16px system-ui';x.fillText('モグラ大王 ドリモグ',590,30);x.fillStyle='#0006';x.fillRect(590,38,300,16);x.fillStyle='#e64040';x.fillRect(592,40,296*boss.hp/3,12);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(590,38,300,16);}
+  if(!bossIntroLong())x.fillText(hint,22,mode==='game'?98:72);
+  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){x.font='bold 20px system-ui';x.fillText('モグラ大王 ドリモグ',595,28);x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
   // ボス登場の演出（映画のような黒帯と名前のカットイン）
   if(bossIntroLong()){const T=boss.t,bar=Math.min(1,T/25)*46;x.fillStyle='#000';x.fillRect(0,0,W,bar);x.fillRect(0,H-bar,W,bar);
