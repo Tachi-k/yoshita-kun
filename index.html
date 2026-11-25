@@ -1211,21 +1211,52 @@ function drawEnemy(e){
       ell(dustX-4,7,2,1.5,'#f1c797');
     }
     ell(-2,0,14,9,e.charge?'#a84b28':'#bd7444');
+    ell(-5,-3,8,4,'#d78f58');
     ell(4,-9,4,5,'#713c31');
+    ell(4,-9,2,3,'#e7a28a');
     ell(11,2,5,4,'#eeb887');
     ell(13,1,1.5,1.5,'#683929');
-    ell(6,-3,3,3,'#fff4dd');
-    ell(7,-3,1.5,1.5,'#262029');
+    ell(6,-3,3.4,3.7,'#fff4dd');
+    ell(7,-3,1.7,2.4,'#262029');
+    ell(7.5,-4,0.7,0.7,'#fff');
+    ell(4,3,2.8,1.5,'#ee9a8a');
     x.fillStyle='#fff4dd';x.beginPath();x.moveTo(9,5);x.lineTo(14,5);x.lineTo(13,0);x.closePath();x.fill();
     x.restore();
   }else if(e.type==='hop'){
-    x.strokeStyle='#245f30';x.lineWidth=3;const legY=e.grounded?e.y+e.h:e.y+e.h+5;
-    x.beginPath();x.moveTo(e.x+9,e.y+22);x.lineTo(e.x+5,e.y+27);x.lineTo(e.x+10,legY);x.moveTo(e.x+23,e.y+22);x.lineTo(e.x+27,e.y+27);x.lineTo(e.x+22,legY);x.stroke();
-    ell(e.x+e.w/2,e.y+13,e.w/2,13,'#3e9e52');
-    x.fillStyle='#fff';x.fillRect(e.x+7,e.y+7,6,7);x.fillRect(e.x+19,e.y+7,6,7);
-    x.fillStyle='#222';x.fillRect(e.x+(e.dir>0?10:7),e.y+10,3,4);x.fillRect(e.x+(e.dir>0?22:19),e.y+10,3,4);
+    const cx=e.x+16,cy=e.y+16;
+    const footY=e.grounded?e.y+29:e.y+26;
+    ell(cx-9,footY,5,2.8,'#266f68');
+    ell(cx+9,footY,5,2.8,'#266f68');
+    ell(cx,cy+3,15,12,'#3d9f79');
+    ell(cx,cy+6,11,7,'#a4e1a1');
+    for(const dx of[-7,7]){
+      ell(cx+dx,cy-9,6,6,'#3d9f79');
+      ell(cx+dx,cy-9,4.3,4.7,'#fff9db');
+      ell(cx+dx+e.dir,cy-8,2,2.7,'#20323b');
+      ell(cx+dx+e.dir+.5,cy-9,.7,.8,'#fff');
+      ell(cx+dx*1.5,cy+1,2.8,1.6,'#f1a692');
+    }
+    x.strokeStyle='#245d56';x.lineWidth=1.5;x.beginPath();
+    x.arc(cx,cy+1,4,0,Math.PI);x.stroke();
   }else{
-    x.fillStyle='#b64b65';x.fillRect(e.x,e.y+8,e.w,e.h-8);x.fillStyle='#fff';x.fillRect(e.x+6,e.y+14,6,7);x.fillRect(e.x+20,e.y+14,6,7);x.fillStyle='#222';x.fillRect(e.x+9,e.y+17,3,4);x.fillRect(e.x+23,e.y+17,3,4);
+    const cx=e.x+16,cy=e.y+18;
+    const step=e.grounded?Math.sin(e.x*.35)*2:0;
+    ell(cx-7-step,cy+11,5,3,'#8b4266');
+    ell(cx+7+step,cy+11,5,3,'#8b4266');
+    ell(cx,cy+1,15,12,'#cf6490');
+    ell(cx-4,cy-4,8,5,'#e681a7');
+    ell(cx-7,cy-9,4.1,4.5,'#cf6490');
+    ell(cx+7,cy-9,4.1,4.5,'#cf6490');
+    for(const dx of[-5,5]){
+      const eyeX=cx+dx+e.dir*2;
+      ell(eyeX,cy-1,3.1,4,'#fff6eb');
+      ell(eyeX+e.dir,cy,1.6,2.5,'#492a44');
+      ell(eyeX+e.dir+.4,cy-1,.6,.7,'#fff');
+    }
+    ell(cx-10,cy+4,2.5,1.5,'#ffa7ba');
+    ell(cx+10,cy+4,2.5,1.5,'#ffa7ba');
+    x.strokeStyle='#864463';x.lineWidth=1.5;x.beginPath();
+    x.arc(cx+e.dir*2,cy+3,3,0,Math.PI);x.stroke();
   }
 }
 function drawBoss(b){
