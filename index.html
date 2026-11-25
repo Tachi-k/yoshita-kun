@@ -1713,14 +1713,47 @@ camera=followCamera(p.x);}
 function ell(cx,cy,rx,ry,col,context=x){context.fillStyle=col;context.beginPath();context.ellipse(cx,cy,rx,ry,0,0,7);context.fill()}
 function drawCrown(cx,y,s){x.fillStyle='#ffcf28';x.beginPath();x.moveTo(cx-20*s,y);x.lineTo(cx-20*s,y-14*s);x.lineTo(cx-10*s,y-5*s);x.lineTo(cx,y-18*s);x.lineTo(cx+10*s,y-5*s);x.lineTo(cx+20*s,y-14*s);x.lineTo(cx+20*s,y);x.closePath();x.fill();x.fillStyle='#e64040';x.fillRect(cx-3*s,y-7*s,6*s,5*s)}
 // ソラ姫（オリジナルキャラ）：黒髪・水色のドレス・花かんむり
-function drawPartner(px,py,facing){const f=facing;
-  x.fillStyle='#3fc1c9';x.beginPath();x.moveTo(px+6,py+18);x.lineTo(px+28,py+18);x.lineTo(px+36,py+46);x.lineTo(px-2,py+46);x.closePath();x.fill();   // ドレス
-  x.fillStyle='#fff';x.fillRect(px+4,py+40,26,4);
-  x.fillStyle='#2b1d1a';x.beginPath();x.ellipse(px+17,py+12,14,13,0,0,7);x.fill();x.fillRect(px+(f>0?3:20),py+12,11,20);   // 髪
-  x.fillStyle='#ffd1a0';x.fillRect(px+8,py+8,18,15);                                              // 顔
-  x.fillStyle='#222';x.fillRect(px+(f===-1?11:20),py+13,3,4);x.fillStyle='#ff9bb0';x.fillRect(px+(f===-1?9:22),py+18,4,2);
-  for(let k=0;k<5;k++){x.fillStyle=['#ff6b8a','#ffd84d','#ffffff','#ff9ad5','#7fe3ff'][k];x.beginPath();x.arc(px+5+k*6,py+2,3.2,0,7);x.fill();}   // 花かんむり
-  x.fillStyle='#ff6b8a';x.beginPath();x.arc(px+17+f*14,py+30,5,0,7);x.fill();x.fillStyle='#5fbf5f';x.fillRect(px+16+f*14,py+33,2,8);}   // ブーケ
+// ソラ姫：大きな目と丸い顔のちびキャラ。ティアラとふんわりドレス（足もと＝py+46、幅は34の枠におさまる）
+function drawPartner(px,py,facing){const f=facing>=0?1:-1,t=typeof endT==='number'?endT:0;
+  const hair='#7a4330',hairLight='#a0603f',skin='#ffe4cc',gown='#ff9fcf',gownLight='#ffd6ec',gownShade='#ef77b4';
+  const o=(cx,cy,rx,ry,col)=>ell(cx,cy,rx,ry,col);
+  x.save();x.translate(px+17,py+46);x.rotate(Math.sin(t*.05)*.025);   // ゆらゆら
+  // 後ろ髪（腰まで届くロングヘア）
+  x.fillStyle=hair;x.beginPath();x.moveTo(-12,-31);x.quadraticCurveTo(-15,-16,-11,-12);x.quadraticCurveTo(0,-9,11,-12);x.quadraticCurveTo(15,-16,12,-31);x.closePath();x.fill();
+  // ドレス：すそが広がるベル型＋フリル
+  x.fillStyle=gown;x.beginPath();x.moveTo(-5,-20);x.quadraticCurveTo(-7,-9,-16,-2);x.lineTo(16,-2);x.quadraticCurveTo(7,-9,5,-20);x.closePath();x.fill();
+  x.fillStyle=gownShade;x.beginPath();x.moveTo(1,-14);x.quadraticCurveTo(4,-8,9,-2);x.lineTo(12,-2);x.quadraticCurveTo(6,-8,3,-15);x.closePath();x.fill();
+  for(let k=-4;k<=4;k++)o(k*3.8,-1.5,2.4,2,gownLight);   // すそのフリル
+  o(0,-19,6,5,gown);                                        // 胸もと
+  o(0,-15.5,6.5,1.8,'#fff');o(-2.6,-15.5,2.2,1.7,'#fff');o(2.6,-15.5,2.2,1.7,'#fff');o(0,-15.5,1.2,1.2,'#ff6b9a');   // 腰のリボン
+  o(-7,-20,3.4,3,gownLight);o(7,-20,3.4,3,gownLight);       // ふくらんだ袖
+  o(-8,-13.5,2,2,skin);o(8,-13.5,2,2,skin);                 // 手
+  // ブーケ（顔を向けている側の手に）
+  const bx=f*8,by=-12;x.fillStyle='#5fbf5f';x.fillRect(bx-.7,by,1.4,5);
+  o(bx-2.4,by-1.4,2,2,'#ff6b8a');o(bx+2.4,by-1.4,2,2,'#ffd84d');o(bx,by-3.4,2,2,'#fff');o(bx,by-1,1.4,1.4,'#ff9ad5');
+  // 顔
+  o(0,-31,10.5,10,skin);
+  // 前髪とサイドの髪
+  x.fillStyle=hair;x.beginPath();x.moveTo(-11.5,-30);x.quadraticCurveTo(-12,-43.5,0,-43.5);x.quadraticCurveTo(12,-43.5,11.5,-30);
+  x.quadraticCurveTo(9,-36,6,-34.5);x.quadraticCurveTo(4,-38,1.5,-35);x.quadraticCurveTo(-1,-38.5,-4,-35);x.quadraticCurveTo(-7,-37.5,-9.5,-32);x.closePath();x.fill();
+  o(-10.8,-25,2.4,6.5,hair);o(10.8,-25,2.4,6.5,hair);
+  x.strokeStyle=hairLight;x.lineWidth=1;x.lineCap='round';x.beginPath();x.arc(-2,-38,6,Math.PI*1.15,Math.PI*1.55);x.stroke();   // つや
+  // 目：大きな目とキラキラのハイライト。ときどきまばたき
+  const blink=t%170<6,ex=f*.8;
+  for(const side of[-1,1]){const cx=side*4.2+ex;
+    if(blink){x.strokeStyle='#3a2340';x.lineWidth=1.2;x.beginPath();x.arc(cx,-30.5,2.2,.15*Math.PI,.85*Math.PI);x.stroke();continue;}
+    o(cx,-30,2.2,3,'#3a2340');o(cx,-29,1.6,1.8,'#7a4fa0');o(cx+.7,-31.2,.9,1,'#fff');o(cx-.6,-28.4,.45,.45,'#fff');
+    x.strokeStyle='#3a2340';x.lineWidth=.9;x.beginPath();x.moveTo(cx+side*2,-32);x.lineTo(cx+side*3.2,-33.3);x.stroke();   // まつげ
+  }
+  x.globalAlpha=.7;o(-6.8,-26.5,2.3,1.3,'#ff9bb5');o(6.8,-26.5,2.3,1.3,'#ff9bb5');x.globalAlpha=1;   // ほっぺ
+  x.strokeStyle='#c2506e';x.lineWidth=1;x.beginPath();x.arc(ex*.6,-26,1.4,.15*Math.PI,.85*Math.PI);x.stroke();   // にっこり口
+  // ティアラ
+  x.fillStyle='#ffd24a';x.beginPath();x.moveTo(-6,-42);x.lineTo(-5,-46);x.lineTo(-2.5,-43.5);x.lineTo(0,-48);x.lineTo(2.5,-43.5);x.lineTo(5,-46);x.lineTo(6,-42);x.closePath();x.fill();
+  o(0,-44.3,1.3,1.3,'#ff5f9e');o(-5,-46,.8,.8,'#7fe3ff');o(5,-46,.8,.8,'#7fe3ff');
+  if(t%90<12){x.fillStyle='#fff';x.fillRect(-.3,-51,.6,4);x.fillRect(-2,-49.3,4,.6);}   // ティアラがキラッ
+  // 髪かざりのお花
+  const hx=-f*9,hy=-38;for(let k=0;k<5;k++){const a=k*Math.PI*2/5;o(hx+Math.cos(a)*1.8,hy+Math.sin(a)*1.8,1.4,1.4,'#fff');}o(hx,hy,1.1,1.1,'#ffd84d');
+  x.restore();}
 function drawHeart(cx,cy,r,col){x.fillStyle=col;x.beginPath();x.arc(cx-r/2,cy,r/2,0,7);x.arc(cx+r/2,cy,r/2,0,7);x.fill();x.beginPath();x.moveTo(cx-r,cy+r*.15);x.lineTo(cx,cy+r*1.1);x.lineTo(cx+r,cy+r*.15);x.closePath();x.fill()}
 function drawPlayerAt(px,py,facing,pose,stride=0,context=x){
   const x=context;
