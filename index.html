@@ -65,6 +65,14 @@ canvas{display:block;background:#17283c}
 #arcade button:disabled{opacity:.5}
 #arcade canvas{display:block;background:#102035;margin:6px auto;max-width:100%;height:auto;object-fit:contain}
 #mazeBoard{width:min(390px,100%,49dvh)}
+#mazeDirections{display:grid;grid-template-columns:repeat(3, minmax(42px,58px)) auto;grid-template-rows:repeat(2,auto);justify-content:center;align-items:center;touch-action:none}
+#mazeDirections [data-dir]{font-size:22px;min-height:42px;padding:0;touch-action:none}
+#mazeDirections [data-dir="up"]{grid-area:1/2}
+#mazeDirections [data-dir="left"]{grid-area:2/1}
+#mazeDirections [data-dir="down"]{grid-area:2/2}
+#mazeDirections [data-dir="right"]{grid-area:2/3}
+#mazeRetry{grid-area:2/4}
+#mazeDirections [data-dir].held{background:#ffdf50}
 #slotBoard{width:min(330px,100%)}
 .arcadeStatus{min-height:1.5em;color:#ffdf70}
 @media (max-height:450px) and (orientation:landscape){
@@ -93,7 +101,7 @@ canvas{display:block;background:#17283c}
   </div>
   <section id="mazePanel" hidden>
     <h3>きらきら迷路</h3>
-    <p>敵をかわして、迷路の星を全部集めよう。</p>
+    <p>方向ボタンを長押しで移動。星を全部集めよう。</p>
     <canvas id="mazeBoard" width="416" height="288" aria-label="迷路"></canvas>
     <div id="mazeDirections" aria-label="方向ボタン">
       <button type="button" data-dir="left" aria-label="左">←</button>
@@ -803,7 +811,11 @@ function drawQuestDoor(){
   x.beginPath();if(x.roundRect)x.roundRect(left-5,top-5,60,81,[25,25,3,3]);else x.rect(left-5,top-5,60,81);x.fill();
   x.fillStyle='#2a1948';
   x.beginPath();if(x.roundRect)x.roundRect(left,top,50,76,[20,20,0,0]);else x.rect(left,top,50,76);x.fill();
-  ell(QUEST_DOOR_X+13,ground-31,3.5,3.5,'#ffe178');
+  const open=Math.min(1,(endP?.doorFrame||0)/16),panelWidth=50*(1-open*.86);
+  x.fillStyle='#56346d';
+  x.beginPath();x.moveTo(left,top);x.lineTo(left+panelWidth,top+open*10);
+  x.lineTo(left+panelWidth,ground-open*6);x.lineTo(left,ground);x.closePath();x.fill();
+  ell(left+panelWidth*.78,ground-31,Math.max(1.2,3.5*(1-open)),3.3,'#ffe178');
   x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#fff0ba';
   x.fillText('ひみつのドア',QUEST_DOOR_X,top-30);
   x.font='bold 12px system-ui';
@@ -825,15 +837,27 @@ function launchEndingHearts(cx,cy){
 }
 function updateEndPlayer(){
   if(!endP)endP={x:endingRare?W/2-60:endingPair?W/2-48:W/2-17,y:ground-42,vy:0,on:true,f:1,cool:0};
-  const q=endP,vx=(keys.right?4:0)-(keys.left?4:0),oldX=q.x;
+  const q=endP;
+  if(q.doorFrame){
+    if(q.doorFrame>=44)return;
+    q.doorFrame++;
+    if(q.doorFrame>16){
+      const target=QUEST_DOOR_X-17,dx=target-q.x;
+      const step=Math.sign(dx)*Math.min(3,Math.abs(dx));
+      if(step){q.x+=step;q.f=Math.sign(step);q.stride=(q.stride||0)+Math.abs(step);}
+      q.walking=step!==0;
+    }
+    if(q.doorFrame===44)window.location.assign(QUEST_TRIAL_URL);
+    return;
+  }
+  const vx=(keys.right?4:0)-(keys.left?4:0),oldX=q.x;
   q.x=Math.max(0,Math.min(W-34,q.x+vx));
   q.walking=q.x!==oldX;
   if(q.walking){q.f=Math.sign(vx);q.stride=(q.stride||0)+Math.abs(q.x-oldX);}
   if((keys.jump||padJump)&&q.on){q.vy=-14;q.on=false;sound('jump');}
   q.vy=Math.min(16,q.vy+.65);q.y+=q.vy;if(q.y>=ground-42){q.y=ground-42;q.vy=0;q.on=true;}
-  if(q.walking&&q.on&&Math.abs(q.x+17-QUEST_DOOR_X)<12&&!q.enteredDoor){
-    q.enteredDoor=true;
-    window.location.assign(QUEST_TRIAL_URL);
+  if(q.walking&&q.on&&Math.abs(q.x+17-QUEST_DOOR_X)<=48){
+    q.doorFrame=1;q.walking=false;sound('treasure');
     return;
   }
   if(q.cool>0)q.cool--;
@@ -846,7 +870,14 @@ function updateEndPlayer(){
   q.overlapsPrincess=overlaps;
   if(endingRare&&near(W/2+50,80)&&!q.cool){q.cool=60;popup(W/2+90,ground-110,'なかよし！','#ffdf50',24,60);sound('coin');}
 }
-function drawEndPlayer(){if(!endP)return;drawPlayerAt(endP.x,endP.y,endP.f,!endP.on?'jump':endP.walking?'walk':'front',endP.stride);
+function drawEndPlayer(){
+  if(!endP)return;
+  const pose=!endP.on?'jump':endP.walking?'walk':'front';
+  if(endP.doorFrame>28){
+    const depth=(endP.doorFrame-28)/16;
+    x.save();x.translate(endP.x+17,ground-4);x.scale(1-depth*.6,1-depth*.6);
+    x.globalAlpha=1-depth;drawPlayerAt(-17,-42,endP.f,pose,endP.stride);x.restore();
+  }else drawPlayerAt(endP.x,endP.y,endP.f,pose,endP.stride);
   if(endT<360&&Math.floor(endT/30)%2){x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#ffffffcc';x.fillText('← → で うごける・ジャンプもできる',W/2,H-14);x.textAlign='left';}}
 // 秘密のはしごの先。ミニゲーム中は本編の時計を止める。
 const arcade=document.getElementById('arcade');
@@ -871,7 +902,7 @@ const MAZE_START=[1,1],MAZE_ENEMY_STARTS=[[11,1],[11,7]];
 const SLOT_SYMBOLS=['よし太くん','さくらんぼ','ダイヤ','ベル','錦鯉'];
 const SLOT_ICONS=['','🍒','💎','🔔'];
 const SLOT_STOPS=[0,0,0,1,2,3,4];
-let arcadeHole=null,arcadeGame=null,maze=null,slotTimer=null;
+let arcadeHole=null,arcadeGame=null,maze=null,slotTimer=null,mazeHold=null;
 
 function enterArcade(h){
   state='arcade';arcadeHole=h;
@@ -881,6 +912,7 @@ function enterArcade(h){
 function exitArcade(){
   if(state!=='arcade')return;
   stopSlotSpin();
+  stopMazeHold();
   const h=arcadeHole;
   holes=holes.filter(other=>other!==h);
   player.x=h.x+h.w+6;player.y=ground-player.h;
@@ -897,6 +929,7 @@ function selectArcadeGame(game){
 }
 
 function resetMaze(){
+  stopMazeHold();
   const stars=new Set();
   MAZE.forEach((row,y)=>Array.from(row).forEach((cell,x)=>{
     if(cell==='.'&&(x!==MAZE_START[0]||y!==MAZE_START[1]))stars.add(x+','+y);
@@ -1034,16 +1067,51 @@ function startSlotSpin(){
 }
 document.getElementById('arcadeExit').addEventListener('click',exitArcade);
 document.getElementById('mazeRetry').addEventListener('click',resetMaze);
-document.getElementById('mazeDirections').addEventListener('click',event=>{
-  if(event.target.dataset.dir)mazeMove(event.target.dataset.dir);
+const mazeDirections=document.getElementById('mazeDirections');
+const MAZE_KEYS={arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'up',w:'up',arrowdown:'down',s:'down'};
+function stopMazeHold(){
+  mazeHold?.button?.classList.remove('held');
+  mazeHold=null;
+}
+function beginMazeHold(dir,source,button=null){
+  stopMazeHold();
+  mazeHold={dir,source,button,wait:13};
+  button?.classList.add('held');
+  mazeMove(dir);
+}
+function updateMazeHold(){
+  if(!mazeHold||maze.done)return;
+  if(--mazeHold.wait<=0){
+    mazeHold.wait=8;
+    mazeMove(mazeHold.dir);
+  }
+}
+mazeDirections.addEventListener('pointerdown',event=>{
+  const dir=event.target.dataset.dir;
+  if(!dir||event.button!==0)return;
+  event.preventDefault();
+  event.target.setPointerCapture(event.pointerId);
+  beginMazeHold(dir,event.pointerId,event.target);
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture']){
+  mazeDirections.addEventListener(type,event=>{if(mazeHold?.source===event.pointerId)stopMazeHold();});
+}
+mazeDirections.addEventListener('click',event=>{
+  if(event.detail===0&&event.target.dataset.dir)mazeMove(event.target.dataset.dir);
 });
 slotSpin.addEventListener('click',startSlotSpin);
 arcade.addEventListener('cancel',event=>{event.preventDefault();exitArcade();});
+window.addEventListener('blur',stopMazeHold);
 document.addEventListener('keydown',event=>{
   if(state!=='arcade')return;
   event.stopImmediatePropagation();
-  const dir={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'}[event.key];
-  if(dir&&arcadeGame==='maze'){event.preventDefault();mazeMove(dir);}
+  const key=event.key.toLowerCase(),dir=MAZE_KEYS[key];
+  if(!dir||arcadeGame!=='maze')return;
+  event.preventDefault();
+  if(!event.repeat)beginMazeHold(dir,key);
+},true);
+document.addEventListener('keyup',event=>{
+  if(mazeHold?.source===event.key.toLowerCase())stopMazeHold();
 },true);
 
 // ===== 大砲の弾：ときどき画面の右から飛んでくる =====
@@ -1235,6 +1303,7 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
+if(state==='arcade'){if(arcadeGame==='maze')updateMazeHold();return;}
 if(mode==='title'){
   demoT++;
   if(demoBossShownAt){
@@ -1738,6 +1807,7 @@ function drawEnding(){
   for(const s of STARS){x.globalAlpha=.35+.65*Math.abs(Math.sin(endT*.03+s.p));x.fillStyle='#fff';x.fillRect(s.x,s.y,s.s,s.s)}x.globalAlpha=1;
   drawParts();
   x.fillStyle='#2d5a3a';x.fillRect(0,ground,W,H-ground);x.fillStyle='#3f7a4f';x.fillRect(0,ground,W,10);
+  drawQuestDoor();
   const princess=endingPrincessPosition();
   if(endingRare){drawRainbow();const jump=k=>Math.abs(Math.sin(endT*.13+k))*18;
     drawEndPlayer();
@@ -1749,7 +1819,6 @@ function drawEnding(){
     x.strokeStyle='#fff8';x.lineWidth=6;x.beginPath();x.arc(W/2,ground,120,Math.PI,0);x.stroke();for(let k=0;k<=12;k++){const a=Math.PI+k*Math.PI/12;x.fillStyle=['#ff9ad5','#fff','#ffd84d'][k%3];x.beginPath();x.arc(W/2+Math.cos(a)*120,ground+Math.sin(a)*120,6,0,7);x.fill();}
     drawEndPlayer();drawPartner(princess.x,princess.y,endP&&endP.x>princess.x?1:-1);
   }else{drawEndPlayer();}
-  drawQuestDoor();
   drawParts(true);
   x.textAlign='center';x.fillStyle='#fff';x.shadowColor='#000';x.shadowBlur=6;
   const sy=creditsY();
@@ -1788,7 +1857,7 @@ function holdButton(el,down,up){let id=null;el.addEventListener('pointerdown',e=
 holdButton(document.getElementById('jump'),()=>keys.jump=true,()=>keys.jump=false);
 holdButton(document.getElementById('dig'),()=>{dig();},()=>{}); // 1タップにつき1回だけ掘る。デモAIの自動掘削は維持
 
-c.addEventListener('pointerdown',()=>{if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone())toTitle();else if(canPause())setPause(true);});
+c.addEventListener('pointerdown',()=>{if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
 
 // スクロール・ズーム・長押しメニューを防止
 document.addEventListener('touchmove',e=>{if(!arcade.open)e.preventDefault();},{passive:false});
