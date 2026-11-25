@@ -1763,9 +1763,15 @@ function drawPartner(px,py,facing){const f=facing>=0?1:-1,t=typeof endT==='numbe
   const o=(cx,cy,rx,ry,col)=>ell(cx,cy,rx,ry,col);
   x.save();x.translate(px+17,py+46);x.rotate(Math.sin(t*.05)*.025);   // ゆらゆら
   // 後ろ髪（腰まで届くロングヘア）
-  x.fillStyle=hair;x.beginPath();x.moveTo(-12,-31);x.quadraticCurveTo(-15,-16,-11,-12);x.quadraticCurveTo(0,-9,11,-12);x.quadraticCurveTo(15,-16,12,-31);x.closePath();x.fill();
+  const hg=x.createLinearGradient(0,-44,0,-10);hg.addColorStop(0,'#8a4c34');hg.addColorStop(1,'#5a2e1e');
+  x.fillStyle=hg;x.beginPath();x.moveTo(-12,-31);x.quadraticCurveTo(-16,-16,-11,-11);x.quadraticCurveTo(-6,-9,-3,-11);x.quadraticCurveTo(0,-8.5,3,-11);x.quadraticCurveTo(6,-9,11,-11);x.quadraticCurveTo(16,-16,12,-31);x.closePath();x.fill();
+  x.strokeStyle='#4a2414';x.lineWidth=.6;x.beginPath();for(const sx of[-9,-5,5,9]){x.moveTo(sx*1.05,-28);x.quadraticCurveTo(sx*1.25,-19,sx*.95,-12);}x.stroke();   // 髪の流れ
   // ドレス：すそが広がるベル型＋フリル
-  x.fillStyle=gown;x.beginPath();x.moveTo(-5,-20);x.quadraticCurveTo(-7,-9,-16,-2);x.lineTo(16,-2);x.quadraticCurveTo(7,-9,5,-20);x.closePath();x.fill();
+  const dg=x.createLinearGradient(-16,0,16,0);dg.addColorStop(0,'#e86aa8');dg.addColorStop(.35,'#ffb8dc');dg.addColorStop(.7,gown);dg.addColorStop(1,'#d65a9a');
+  x.fillStyle=dg;x.beginPath();x.moveTo(-5,-20);x.quadraticCurveTo(-7,-9,-16,-2);x.lineTo(16,-2);x.quadraticCurveTo(7,-9,5,-20);x.closePath();x.fill();
+  x.strokeStyle='#d0609a';x.lineWidth=.8;x.beginPath();for(const fx of[-9,-4,3,8]){x.moveTo(fx*.35,-16);x.quadraticCurveTo(fx*.8,-9,fx*1.3,-2.5);}x.stroke();   // ドレスのひだ
+  x.globalAlpha=.55;x.fillStyle='#fff';x.beginPath();x.moveTo(-3,-17);x.quadraticCurveTo(-6,-9,-10,-3);x.lineTo(-8,-3);x.quadraticCurveTo(-4.5,-9,-2,-17);x.closePath();x.fill();x.globalAlpha=1;   // つや
+  for(let k=0;k<9;k++){x.globalAlpha=.8;ell(-12+k*3,-6+Math.abs(k-4)*.4,.6,.6,'#fff');}x.globalAlpha=1;   // ドレスのきらきら
   x.fillStyle=gownShade;x.beginPath();x.moveTo(1,-14);x.quadraticCurveTo(4,-8,9,-2);x.lineTo(12,-2);x.quadraticCurveTo(6,-8,3,-15);x.closePath();x.fill();
   for(let k=-4;k<=4;k++)o(k*3.8,-1.5,2.4,2,gownLight);   // すそのフリル
   o(0,-19,6,5,gown);                                        // 胸もと
@@ -1776,21 +1782,28 @@ function drawPartner(px,py,facing){const f=facing>=0?1:-1,t=typeof endT==='numbe
   const bx=f*8,by=-12;x.fillStyle='#5fbf5f';x.fillRect(bx-.7,by,1.4,5);
   o(bx-2.4,by-1.4,2,2,'#ff6b8a');o(bx+2.4,by-1.4,2,2,'#ffd84d');o(bx,by-3.4,2,2,'#fff');o(bx,by-1,1.4,1.4,'#ff9ad5');
   // 顔
-  o(0,-31,10.5,10,skin);
+  o(0,-21.5,2.2,2,'#f2cfb2');   // 首
+  const sg=x.createRadialGradient(-2.5,-34,1,0,-31,11);sg.addColorStop(0,'#fff1e2');sg.addColorStop(.75,skin);sg.addColorStop(1,'#f0c8a8');
+  x.fillStyle=sg;x.beginPath();x.ellipse(0,-31,10.5,10,0,0,7);x.fill();
   // 前髪とサイドの髪
-  x.fillStyle=hair;x.beginPath();x.moveTo(-11.5,-30);x.quadraticCurveTo(-12,-43.5,0,-43.5);x.quadraticCurveTo(12,-43.5,11.5,-30);
+  x.fillStyle=hg;x.beginPath();x.moveTo(-11.5,-30);x.quadraticCurveTo(-12,-43.5,0,-43.5);x.quadraticCurveTo(12,-43.5,11.5,-30);
   x.quadraticCurveTo(9,-36,6,-34.5);x.quadraticCurveTo(4,-38,1.5,-35);x.quadraticCurveTo(-1,-38.5,-4,-35);x.quadraticCurveTo(-7,-37.5,-9.5,-32);x.closePath();x.fill();
   o(-10.8,-25,2.4,6.5,hair);o(10.8,-25,2.4,6.5,hair);
+  for(const sx of[-1,1]){x.strokeStyle=hairLight;x.lineWidth=.7;x.beginPath();x.moveTo(sx*10.6,-30);x.quadraticCurveTo(sx*11.6,-25,sx*10.4,-19.5);x.stroke();}   // 横髪のつや
   x.strokeStyle=hairLight;x.lineWidth=1;x.lineCap='round';x.beginPath();x.arc(-2,-38,6,Math.PI*1.15,Math.PI*1.55);x.stroke();   // つや
   // 目：大きな目とキラキラのハイライト。ときどきまばたき
   const blink=t%170<6,ex=f*.8;
   for(const side of[-1,1]){const cx=side*4.2+ex;
     if(blink){x.strokeStyle='#3a2340';x.lineWidth=1.2;x.beginPath();x.arc(cx,-30.5,2.2,.15*Math.PI,.85*Math.PI);x.stroke();continue;}
-    o(cx,-30,2.2,3,'#3a2340');o(cx,-29,1.6,1.8,'#7a4fa0');o(cx+.7,-31.2,.9,1,'#fff');o(cx-.6,-28.4,.45,.45,'#fff');
+    o(cx,-30,2.3,3.1,'#2a1630');
+    const ig=x.createLinearGradient(0,-32.5,0,-27.5);ig.addColorStop(0,'#5a3a8a');ig.addColorStop(1,'#b48ae0');x.fillStyle=ig;x.beginPath();x.ellipse(cx,-29.6,1.75,2.3,0,0,7);x.fill();
+    o(cx,-29.4,.8,1.1,'#1a0c20');o(cx+.75,-31.2,.95,1.05,'#fff');o(cx-.6,-28.3,.5,.5,'#fff');
+    x.strokeStyle='#2a1630';x.lineWidth=1.1;x.beginPath();x.arc(cx,-30,2.4,Math.PI*1.1,Math.PI*1.9);x.stroke();   // 上まぶた
     x.strokeStyle='#3a2340';x.lineWidth=.9;x.beginPath();x.moveTo(cx+side*2,-32);x.lineTo(cx+side*3.2,-33.3);x.stroke();   // まつげ
   }
   x.globalAlpha=.7;o(-6.8,-26.5,2.3,1.3,'#ff9bb5');o(6.8,-26.5,2.3,1.3,'#ff9bb5');x.globalAlpha=1;   // ほっぺ
-  x.strokeStyle='#c2506e';x.lineWidth=1;x.beginPath();x.arc(ex*.6,-26,1.4,.15*Math.PI,.85*Math.PI);x.stroke();   // にっこり口
+  x.fillStyle='#e8708e';x.beginPath();x.arc(ex*.6,-26.2,1.5,.05*Math.PI,.95*Math.PI);x.closePath();x.fill();o(ex*.6-.4,-25.4,.4,.25,'#ffd0da');   // にっこり口
+  o(ex*.6,-28.2,.5,.35,'#e8b898');   // 鼻
   // ティアラ
   x.fillStyle='#ffd24a';x.beginPath();x.moveTo(-6,-42);x.lineTo(-5,-46);x.lineTo(-2.5,-43.5);x.lineTo(0,-48);x.lineTo(2.5,-43.5);x.lineTo(5,-46);x.lineTo(6,-42);x.closePath();x.fill();
   o(0,-44.3,1.3,1.3,'#ff5f9e');o(-5,-46,.8,.8,'#7fe3ff');o(5,-46,.8,.8,'#7fe3ff');
@@ -2445,11 +2458,40 @@ function drawMoleFriend(cx,y,s,t){const d=-1;
   x.fillStyle='#fffaf0';for(const fx of[-16,-8]){x.beginPath();x.moveTo(fx-2,44.5);x.lineTo(fx+2,44.5);x.lineTo(fx,48.5);x.closePath();x.fill();}
   x.restore();drawBossCrown(cx-4*s,y+12*s,1.15*s,false);}
 function drawRainbow(){const cols=['#ff5a5a','#ffa43c','#ffe14d','#6fdc6f','#4fc3ff','#7a7aff','#c86bff'];x.globalAlpha=.55;cols.forEach((c,i)=>{x.strokeStyle=c;x.lineWidth=12;x.beginPath();x.arc(W/2,ground+60,330-i*12,Math.PI,0);x.stroke();});x.globalAlpha=1}
+// エンディングの夜景：天の川・月・空の国のお城・遠くの山・花の咲く丘・ホタル
+const END_FLOWERS=Array.from({length:46},(_,i)=>({x:(i*211.7)%W,y:ground+8+(i*37)%60,c:['#ff9ad5','#fff','#ffd84d','#9fd8ff'][i%4],s:2+(i%3)}));
+function drawEndingBg(){
+  const g=x.createLinearGradient(0,0,0,ground);g.addColorStop(0,'#060a26');g.addColorStop(.55,'#1c1f5a');g.addColorStop(.85,'#4a3a7a');g.addColorStop(1,'#8a5a8a');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  // 天の川
+  x.save();x.translate(W*.5,120);x.rotate(-.35);const mw=x.createLinearGradient(0,-70,0,70);mw.addColorStop(0,'#ffffff00');mw.addColorStop(.5,'#b8c4ff2a');mw.addColorStop(1,'#ffffff00');x.fillStyle=mw;x.fillRect(-700,-70,1400,140);x.restore();
+  for(const s of STARS){const tw=.35+.65*Math.abs(Math.sin(endT*.03+s.p));x.globalAlpha=tw;x.fillStyle=s.p%7===0?'#ffe8b0':s.p%5===0?'#b8d4ff':'#fff';x.fillRect(s.x,s.y,s.s,s.s);
+    if(s.s===3&&tw>.9){x.fillRect(s.x-3,s.y+1,9,1);x.fillRect(s.x+1,s.y-3,1,9);}}x.globalAlpha=1;
+  // 月
+  const mx=150,my=95;const mg=x.createRadialGradient(mx,my,20,mx,my,120);mg.addColorStop(0,'#fff6d055');mg.addColorStop(1,'#fff6d000');x.fillStyle=mg;x.fillRect(mx-120,my-120,240,240);
+  ell(mx,my,30,30,'#fff4cf');ell(mx-8,my-6,6,5,'#eadfb4');ell(mx+9,my+8,4,3.5,'#eadfb4');ell(mx+4,my-12,3,3,'#eadfb4');
+  // 遠くの山
+  x.fillStyle='#2a2558';x.beginPath();x.moveTo(0,ground);for(let k=0;k<=16;k++){const px=k*W/16;x.lineTo(px,ground-90-Math.sin(k*1.3)*40-Math.sin(k*.7)*30);}x.lineTo(W,ground);x.closePath();x.fill();
+  // 空の国のお城（遠くの丘の上）
+  const cx0=W-230,cy0=ground-150;x.fillStyle='#3a3170';
+  x.fillRect(cx0-50,cy0,100,70);for(const [tx,tw,th] of[[-58,18,95],[40,18,95],[-14,28,120]]){x.fillRect(cx0+tx,cy0+70-th,tw,th);x.beginPath();x.moveTo(cx0+tx-4,cy0+70-th);x.lineTo(cx0+tx+tw/2,cy0+70-th-26);x.lineTo(cx0+tx+tw+4,cy0+70-th);x.closePath();x.fill();}
+  x.fillStyle='#ffd88a';for(const [wx,wy] of[[-48,-5],[46,-5],[-4,-30],[-30,30],[20,30],[0,45]])if(Math.sin(endT*.02+wx)>-.7)x.fillRect(cx0+wx,cy0+wy,5,8);   // 明かりのともる窓
+  x.fillStyle='#ff7aa8';x.beginPath();x.moveTo(cx0,cy0-76);x.lineTo(cx0+16,cy0-70+Math.sin(endT*.1)*2);x.lineTo(cx0,cy0-64);x.closePath();x.fill();x.fillStyle='#3a3170';x.fillRect(cx0-1,cy0-78,2,28);   // 旗
+  // 近くの丘
+  const hill=x.createLinearGradient(0,ground-60,0,ground);hill.addColorStop(0,'#2f5a52');hill.addColorStop(1,'#1f3f3a');
+  x.fillStyle=hill;x.beginPath();x.moveTo(0,ground);x.quadraticCurveTo(W*.25,ground-70,W*.5,ground-20);x.quadraticCurveTo(W*.75,ground-60,W,ground-10);x.lineTo(W,ground);x.closePath();x.fill();
+  // 地面と花
+  const gr=x.createLinearGradient(0,ground,0,H);gr.addColorStop(0,'#3f7a4f');gr.addColorStop(1,'#1d3a28');x.fillStyle=gr;x.fillRect(0,ground,W,H-ground);
+  x.fillStyle='#5a9a62';x.fillRect(0,ground,W,6);
+  x.fillStyle='#4a8a56';x.beginPath();for(let gx=0;gx<W;gx+=6){const h=3+Math.abs(Math.sin(gx*.9))*5;x.moveTo(gx,ground+2);x.lineTo(gx+2,ground-h);x.lineTo(gx+4,ground+2);}x.fill();
+  for(const f of END_FLOWERS){for(let k=0;k<5;k++){const a=k*Math.PI*2/5;ell(f.x+Math.cos(a)*f.s,f.y+Math.sin(a)*f.s,f.s*.8,f.s*.8,f.c);}ell(f.x,f.y,f.s*.6,f.s*.6,'#ffcf40');}
+  // ホタル
+  for(let k=0;k<14;k++){const fx=(k*97+Math.sin(endT*.01+k)*60+endT*.2)%W,fy=ground-40-((k*53)%160)+Math.sin(endT*.03+k*2)*14,a=.4+.6*Math.abs(Math.sin(endT*.05+k));
+    const fg=x.createRadialGradient(fx,fy,0,fx,fy,9);fg.addColorStop(0,`rgba(240,255,140,${a})`);fg.addColorStop(1,'rgba(200,255,100,0)');x.fillStyle=fg;x.fillRect(fx-9,fy-9,18,18);ell(fx,fy,1.8,1.8,'#ffffd0');}
+}
 function drawEnding(){
-  const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b1030');g.addColorStop(1,'#3a2a5a');x.fillStyle=g;x.fillRect(0,0,W,H);
-  for(const s of STARS){x.globalAlpha=.35+.65*Math.abs(Math.sin(endT*.03+s.p));x.fillStyle='#fff';x.fillRect(s.x,s.y,s.s,s.s)}x.globalAlpha=1;
+  drawEndingBg();
   drawParts();
-  x.fillStyle='#2d5a3a';x.fillRect(0,ground,W,H-ground);x.fillStyle='#3f7a4f';x.fillRect(0,ground,W,10);
   if(endingDone())drawQuestDoor();
   const princess=endingPrincessPosition();
   if(endingRare){drawRainbow();const jump=k=>Math.abs(Math.sin(endT*.13+k))*18;
