@@ -889,14 +889,62 @@ function drawBonusPlatform(b){
     x.fillStyle='#ffdf50';x.fillRect(b.x,b.y,b.w,3);x.globalAlpha=.4+.3*Math.sin(Date.now()*.004);x.fillStyle='#ffe98a';x.fillRect(b.x,b.y-2,b.w,2);x.globalAlpha=1;
   }
 }
+// 隠し地下室：石の壁・木の柱・たいまつの明かり・天井の穴から差しこむ光・はしご
 function drawBasementBg(){
-  x.fillStyle='#2a2030';x.fillRect(0,0,W,H);
-  x.strokeStyle='#3a2e44';x.lineWidth=2;for(let yy=40,r=0;yy<ground;yy+=32,r++)for(let xx=(r%2?-32:0);xx<W;xx+=64)x.strokeRect(xx,yy,64,32);
-  x.fillStyle='#1a131f';x.fillRect(0,0,W,40);x.fillStyle='#0a0710';x.fillRect(20,0,64,40);   // 天井と入ってきた穴
-  for(const tx of[110,480,850]){x.fillStyle='#5a4030';x.fillRect(tx-4,150,8,26);const f=Math.sin(Date.now()*.02+tx)*3;ell(tx,142,9,14+f,'#ff9a3c');ell(tx,146,5,8,'#ffe27a');x.fillStyle='#ff9a3c22';x.beginPath();x.arc(tx,150,70,0,7);x.fill();}
-  // 出口のはしご
-  const lx=W-72;x.fillStyle='#ffdf5022';x.fillRect(lx-12,40,64,ground-40);x.strokeStyle='#c8913c';x.lineWidth=5;x.beginPath();x.moveTo(lx,40);x.lineTo(lx,ground);x.moveTo(lx+40,40);x.lineTo(lx+40,ground);for(let yy=60;yy<ground;yy+=28){x.moveTo(lx,yy);x.lineTo(lx+40,yy)}x.stroke();
-  x.fillStyle='#ffdf50';x.font='bold 16px system-ui';x.textAlign='center';x.fillText('↑ 地上へ',lx+20,ground-150);x.textAlign='left';}
+  const t=Date.now();
+  const wall=x.createLinearGradient(0,40,0,ground);wall.addColorStop(0,'#2e2436');wall.addColorStop(1,'#1c1522');
+  x.fillStyle=wall;x.fillRect(0,0,W,H);
+  // 石のブロック（1つずつ明るさ・大きさを変える）
+  for(let yy=40,r=0;yy<ground;yy+=32,r++)for(let xx=(r%2?-32:0);xx<W;xx+=64){
+    const k=Math.abs(Math.sin(xx*1.7+yy*3.3))%1,inset=2;
+    x.fillStyle=`rgb(${58+k*22},${46+k*16},${66+k*18})`;x.beginPath();if(x.roundRect)x.roundRect(xx+inset,yy+inset,64-inset*2,32-inset*2,5);else x.rect(xx+inset,yy+inset,60,28);x.fill();
+    x.fillStyle='#ffffff10';x.fillRect(xx+4,yy+3,56,3);x.fillStyle='#00000030';x.fillRect(xx+4,yy+25,56,4);
+    if(k>.82){x.strokeStyle='#18111d';x.lineWidth=1;x.beginPath();x.moveTo(xx+18,yy+6);x.lineTo(xx+26,yy+16);x.lineTo(xx+22,yy+26);x.stroke();}   // ひび
+    if(k<.12){ell(xx+12,yy+28,10,3,'#3f6a3a');ell(xx+20,yy+29,6,2,'#4f7a46');}}   // こけ
+  // 木の柱とはり
+  for(const bx of[300,660]){const wg=x.createLinearGradient(bx-10,0,bx+10,0);wg.addColorStop(0,'#4a3020');wg.addColorStop(.5,'#7a5434');wg.addColorStop(1,'#3a2416');
+    x.fillStyle=wg;x.fillRect(bx-10,40,20,ground-40);x.strokeStyle='#2a1a10';x.lineWidth=1;for(let k=0;k<4;k++){x.beginPath();x.moveTo(bx-5+k*3,50);x.lineTo(bx-6+k*3,ground-10);x.stroke();}}
+  const bg=x.createLinearGradient(0,40,0,58);bg.addColorStop(0,'#7a5434');bg.addColorStop(1,'#3a2416');x.fillStyle=bg;x.fillRect(0,40,W,18);
+  for(const bx of[300,660])for(const sx of[-1,1]){x.fillStyle='#5a3a24';x.beginPath();x.moveTo(bx+sx*10,58);x.lineTo(bx+sx*40,58);x.lineTo(bx+sx*10,88);x.closePath();x.fill();}   // ななめの支え
+  // 土の天井と、根っこ
+  const cg=x.createLinearGradient(0,0,0,40);cg.addColorStop(0,'#120d16');cg.addColorStop(1,'#2a1e24');x.fillStyle=cg;x.fillRect(0,0,W,40);
+  x.strokeStyle='#4a3424';x.lineWidth=2;x.lineCap='round';for(const rx of[150,420,560,780]){x.beginPath();x.moveTo(rx,40);x.quadraticCurveTo(rx+8,62,rx-2,80+(rx%3)*8);x.moveTo(rx+3,52);x.lineTo(rx+12,64);x.stroke();}
+  // クモの巣
+  x.strokeStyle='#ffffff30';x.lineWidth=1;x.beginPath();for(let k=0;k<5;k++){const a=k*Math.PI/8;x.moveTo(W,58);x.lineTo(W-Math.cos(a)*60,58+Math.sin(a)*60);}for(const r of[20,38,56]){x.moveTo(W-r,58);x.quadraticCurveTo(W-r*.8,58+r*.5,W-r*.0,58+r);}x.stroke();
+  // 入ってきた穴から差しこむ光
+  x.fillStyle='#0a0710';x.fillRect(20,0,64,40);
+  const shaft=x.createLinearGradient(0,0,0,ground);shaft.addColorStop(0,'#fff6c066');shaft.addColorStop(1,'#fff6c000');
+  x.fillStyle=shaft;x.beginPath();x.moveTo(22,0);x.lineTo(82,0);x.lineTo(150,ground);x.lineTo(-30,ground);x.closePath();x.fill();
+  for(let k=0;k<10;k++){const dx=((t*.01+k*37)%140)-40+k*6,dy=((t*.02+k*53)%(ground-40))+40;x.globalAlpha=.5;ell(30+dx*.8,dy,1.2,1.2,'#fff6c0');}x.globalAlpha=1;   // ただよう ほこり
+  // たいまつ：揺れる炎と壁を照らす光
+  for(const tx of[110,480,850]){const f=Math.sin(t*.02+tx)*3;
+    const lg=x.createRadialGradient(tx,150,8,tx,150,170);lg.addColorStop(0,'#ffab4a55');lg.addColorStop(1,'#ffab4a00');x.fillStyle=lg;x.fillRect(tx-170,0,340,ground);
+    x.fillStyle='#5a4030';x.fillRect(tx-4,150,8,26);x.fillStyle='#8a8a96';x.fillRect(tx-8,170,16,4);x.fillStyle='#3a2a20';x.fillRect(tx-7,148,14,5);
+    ell(tx,142+f*.3,10,15+f,'#ff7a2a');ell(tx,144,7,10,'#ffb04a');ell(tx,147,4,6,'#fff0b0');
+    x.fillStyle='#ffd08a';for(let k=0;k<2;k++){const sy=((t*.06+k*30+tx)%40);x.globalAlpha=1-sy/40;x.fillRect(tx-2+Math.sin(t*.01+k+tx)*4,128-sy,2,2);}x.globalAlpha=1;}   // 火の粉
+  // 出口のはしご（上から地上の光）
+  const lx=W-72;
+  const up=x.createLinearGradient(0,40,0,ground);up.addColorStop(0,'#ffe9a066');up.addColorStop(1,'#ffe9a000');x.fillStyle=up;x.fillRect(lx-20,0,80,ground);
+  x.fillStyle='#fff6c8';x.fillRect(lx-6,0,52,40);
+  const rail=x.createLinearGradient(lx-3,0,lx+3,0);rail.addColorStop(0,'#7a5230');rail.addColorStop(.5,'#c8913c');rail.addColorStop(1,'#6a4428');
+  for(const rx of[lx,lx+40]){x.fillStyle=rail;x.save();x.translate(rx-lx,0);x.fillRect(lx-3,0,6,ground);x.restore();}
+  for(let yy=24;yy<ground;yy+=28){x.fillStyle='#a8743a';x.fillRect(lx,yy-2,40,5);x.fillStyle='#00000040';x.fillRect(lx,yy+3,40,2);}
+  x.fillStyle='#ffdf50';x.font='bold 18px system-ui';x.textAlign='center';x.shadowColor='#000a';x.shadowBlur=4;x.fillText('↑ 地上へ',lx+20,ground-150);x.shadowBlur=0;x.textAlign='left';}
+// 地下室の浮いた足場：木の支えつきの石の棚
+function drawStoneLedge(b){
+  for(const sx of[b.x+16,b.x+b.w-16]){x.fillStyle='#5a3a24';x.beginPath();x.moveTo(sx-5,b.y+b.h);x.lineTo(sx+5,b.y+b.h);x.lineTo(sx,b.y+b.h+22);x.closePath();x.fill();}
+  const g=x.createLinearGradient(0,b.y,0,b.y+b.h);g.addColorStop(0,'#7a6a84');g.addColorStop(1,'#3e3248');
+  x.fillStyle=g;x.beginPath();if(x.roundRect)x.roundRect(b.x,b.y,b.w,b.h,4);else x.rect(b.x,b.y,b.w,b.h);x.fill();
+  x.fillStyle='#ffffff26';x.fillRect(b.x+3,b.y+1,b.w-6,3);x.fillStyle='#1c1522';for(let px=b.x+40;px<b.x+b.w-10;px+=40)x.fillRect(px,b.y+3,2,b.h-5);
+  x.fillStyle='#00000040';x.fillRect(b.x+4,b.y+b.h,b.w-8,4);
+}
+// 地下室の床：石だたみ
+function drawBasementFloor(b){
+  const g=x.createLinearGradient(0,b.y,0,b.y+b.h);g.addColorStop(0,'#5a4a62');g.addColorStop(1,'#2a2030');x.fillStyle=g;x.fillRect(b.x,b.y,b.w,b.h);
+  for(let px=b.x,k=0;px<b.x+b.w;px+=46,k++){const w=Math.min(46,b.x+b.w-px);x.fillStyle=k%2?'#665670':'#5e4e68';x.fillRect(px+1,b.y,w-2,10);x.fillStyle='#ffffff18';x.fillRect(px+1,b.y,w-2,2);x.fillStyle='#1c1522';x.fillRect(px+w-1,b.y,2,b.h);}
+  x.fillStyle='#1c1522';x.fillRect(b.x,b.y+10,b.w,2);
+  for(let px=b.x+20;px<b.x+b.w;px+=90){ell(px,b.y+30,6,2.5,'#3a2e42');ell(px+40,b.y+46,4,2,'#3a2e42');}
+}
 // ===== 時間制限 =====
 const TIME_LIMIT={1:150,2:195},BOSS_TIME=180;   // 秒（ボス戦は時間切れなし・残り時間がボーナス）
 let timeLeft=150*60,timeBonus=0,hurryShown=false;
@@ -2382,7 +2430,7 @@ function draw(){
       x.fillStyle=stage===2?'#a88ac022':'#ffffff33';x.beginPath();x.arc(hx-20,ground+50,100,Math.PI*1.15,Math.PI*1.55);x.lineTo(hx-20,ground+50);x.closePath();x.fill();
       if(stage===1)for(const bx of[-60,40]){ell(hx+bx,ground-4,16,10,'#4e9a52');ell(hx+bx+10,ground-8,12,9,'#5fb062');}}}   // 丘と茂み
   if(stage===2&&!inBasement)drawArenaBg();
-  for(const b of platforms){if(!inBasement){drawTerrain(b);continue;}if(roomKind!=='basement'){drawBonusPlatform(b);continue;}x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
+  for(const b of platforms){if(!inBasement){drawTerrain(b);continue;}if(roomKind!=='basement'){drawBonusPlatform(b);continue;}if(b.y>=ground-1){drawBasementFloor(b);continue;}drawStoneLedge(b);continue;x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
   if(vaultVisible()){
     const open=diamonds>=VAULT_DIAMONDS,dx=VAULT_X;
     x.fillStyle=open?'#3d627a':'#372b48';x.fillRect(dx-22,ground-59,44,59);
