@@ -89,6 +89,12 @@ canvas{display:block;background:#17283c}
   #mazeStatus{grid-column:2}
 }
 #slotBoard{width:min(330px,100%)}
+#slotPlay{position:relative}
+#slotPlay.reach #slotBoard{animation:slotReach .25s steps(2) infinite}
+@keyframes slotReach{50%{box-shadow:0 0 0 4px #ff5d8f,0 0 18px #ff5d8f}}
+.slotConfetti{position:absolute;top:30%;left:50%;width:8px;height:12px;border-radius:2px;pointer-events:none;animation:slotConfetti 1.6s ease-out forwards}
+@keyframes slotConfetti{from{transform:translate(0,0) rotate(0)}to{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
+@media (prefers-reduced-motion:reduce){#slotPlay.reach #slotBoard{animation:none;box-shadow:0 0 0 4px #ff5d8f}.slotConfetti{display:none}}
 #slotPayout{margin:8px auto;width:min(310px,100%);color:#ffe384;font:800 18px system-ui}
 #slotPayout progress{display:block;width:100%;height:12px;margin-top:5px;accent-color:#ffd74b}
 #slotPayoutCount{font-variant-numeric:tabular-nums}
@@ -1004,7 +1010,7 @@ function exitArcade(){
   clearInput();state='play';arcade.close();
 }
 function selectArcadeGame(game){
-  stopSlotSpin();
+  stopSlotSpin();document.getElementById('slotPlay').classList.remove('reach');
   arcadeGame=game;arcade.classList.toggle('maze-open',game==='maze');arcade.classList.toggle('slots-open',game==='slots');mazePanel.hidden=game!=='maze';slotsPanel.hidden=game!=='slots';
   document.getElementById('arcadeTitle').textContent=game==='maze'?'きらきら迷路':'はしごの先のあそび場';
   if(game==='maze')resetMaze();
@@ -1017,7 +1023,7 @@ function resetMaze(){
   MAZE.forEach((row,y)=>Array.from(row).forEach((cell,x)=>{
     if(cell==='.'&&(x!==MAZE_START[0]||y!==MAZE_START[1]))stars.add(x+','+y);
   }));
-  maze={hero:MAZE_START,heroNext:null,heroT:0,dir:null,want:null,stars,missed:false,facing:1,done:false};
+  maze={hero:MAZE_START,heroNext:null,heroT:0,dir:null,want:null,stars,missed:false,facing:1,done:false,time:0,sparks:[],reward:0};
   spawnMazeFoes();
   drawMaze();
 }
@@ -1070,8 +1076,8 @@ function updateMazeHero(frames){
     maze.heroT+=used;budget-=used;
     if(maze.heroT>=1){
       maze.hero=maze.heroNext;maze.heroNext=null;maze.heroT=0;
-      if(maze.stars.delete(maze.hero.join(',')))sound('coin');
-      if(maze.stars.size===0){maze.done=true;sound('oneup');leaveArcadeSoon(2500);}
+      if(maze.stars.delete(maze.hero.join(','))){sound('coin');maze.sparks.push({x:maze.hero[0],y:maze.hero[1],t:0});}
+      if(maze.stars.size===0)mazeClear();
     }
   }
 }
@@ -1110,15 +1116,24 @@ function updateMazeFoe(foe,frames){
 // 60fps固定の更新に合わせると、画面の更新タイミングとずれてカクついて見えるため。
 function updateMazeMotion(frames){
   if(maze.done)return;
+  maze.time+=frames;
+  maze.sparks=maze.sparks.filter(spark=>(spark.t+=frames)<24);
   updateMazeHero(frames);
+  if(maze.done)return;
   maze.foes.forEach(foe=>updateMazeFoe(foe,frames));
   const [hx,hy]=mazeHeroPosition();
   if(maze.foes.some(foe=>{const [fx,fy]=mazeFoePosition(foe);return Math.hypot(fx-hx,fy-hy)<MAZE_HIT_DISTANCE;}))mazeHit();
   drawMaze();
 }
+const MAZE_CLEAR_COINS=20;   // 星を全部集めたごほうび
+function mazeClear(){
+  maze.done=true;maze.reward=MAZE_CLEAR_COINS;sound('oneup');
+  collectCoins(MAZE_CLEAR_COINS,player.x+17,player.y-20);
+  drawMaze();leaveArcadeSoon(3000);
+}
 function mazeHit(){
   maze.dir=maze.want=null;
-  maze.missed=true;maze.done=true;sound('hurt');
+  maze.missed=true;maze.done=true;sound('hurt');drawMaze();
   leaveArcadeSoon(1800);
 }
 function mazeMove(dir){
@@ -1135,21 +1150,45 @@ function drawMaze(){
       mazeCtx.fillStyle='#3c6181';mazeCtx.fillRect(px+1,py+1,size-2,size-2);
       mazeCtx.fillStyle='#527b9c';mazeCtx.fillRect(px+5,py+5,size-10,3);
     }else if(maze.stars.has(x+','+y)){
-      mazeCtx.fillStyle='#ffe391';mazeCtx.save();mazeCtx.translate(px+16,py+16);
-      mazeCtx.rotate(Math.PI/4);mazeCtx.fillRect(-3,-3,6,6);mazeCtx.restore();
+      // 星はそれぞれ違うタイミングでキラキラまたたく
+      const twinkle=.5+.5*Math.sin(maze.time*.09+x*1.7+y*2.3),r=2.6+twinkle*1.6;
+      mazeCtx.save();mazeCtx.translate(px+16,py+16);
+      mazeCtx.globalAlpha=.65+twinkle*.35;mazeCtx.fillStyle='#ffe391';
+      mazeCtx.rotate(Math.PI/4);mazeCtx.fillRect(-r,-r,r*2,r*2);
+      if(twinkle>.85){mazeCtx.rotate(-Math.PI/4);mazeCtx.fillStyle='#fff';mazeCtx.fillRect(-.7,-7,1.4,14);mazeCtx.fillRect(-7,-.7,14,1.4);}
+      mazeCtx.restore();
     }
   }));
+  for(const spark of maze.sparks){   // 星を取ったときのはじける光
+    const k=spark.t/24;mazeCtx.save();mazeCtx.globalAlpha=1-k;mazeCtx.fillStyle='#fff3a6';
+    for(let a=0;a<6;a++){const ang=a*Math.PI/3,d=4+k*14;mazeCtx.fillRect(spark.x*size+16+Math.cos(ang)*d-1.5,spark.y*size+16+Math.sin(ang)*d-1.5,3,3);}
+    mazeCtx.restore();
+  }
   const [heroX,heroY]=mazeHeroPosition();
   maze.foes.forEach((foe,i)=>{
     const [fx,fy]=mazeFoePosition(foe);
     const bounce=(1-Math.cos(foe.phase*Math.PI*2))*.6;
     const blink=foe.wait>0&&Math.floor(foe.wait/6)%2;
     if(!blink)drawMazeCritter(fx*size+16,fy*size+16-bounce,i,foe.look);
+    // 近くまで来たら「！」で知らせる
+    if(!maze.done&&foe.wait<=0&&Math.hypot(fx-heroX,fy-heroY)<2.3){
+      mazeCtx.fillStyle='#ff5d5d';mazeCtx.font='900 14px system-ui';mazeCtx.textAlign='center';
+      mazeCtx.fillText('！',fx*size+16,fy*size-2-bounce);mazeCtx.textAlign='left';
+    }
   });
   mazeCtx.save();mazeCtx.translate(heroX*size+16,heroY*size+31);mazeCtx.scale(.68,secondRound?.49:.61);
   const walking=maze.heroNext&&maze.heroNext[0]!==maze.hero[0];
   drawPlayerAt(-17,-42,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
-  const status=maze.done?(maze.missed?'ミス！ 地上へ戻ります…':'クリア！ 星を全部集めた！ 地上へ戻ります…'):
+  if(maze.done){   // 結果を迷路の上に大きく出す
+    mazeCtx.fillStyle='#071322bb';mazeCtx.fillRect(0,104,416,80);
+    mazeCtx.textAlign='center';mazeCtx.font='900 34px system-ui';
+    mazeCtx.fillStyle=maze.missed?'#ff8080':'#ffe05a';
+    mazeCtx.fillText(maze.missed?'ミス！':'クリア！',208,148);
+    mazeCtx.font='700 14px system-ui';mazeCtx.fillStyle='#fff';
+    mazeCtx.fillText(maze.missed?'敵につかまった…':'ごほうび コイン '+maze.reward+'枚',208,172);
+    mazeCtx.textAlign='left';
+  }
+  const status=maze.done?(maze.missed?'ミス！ 地上へ戻ります…':'クリア！ コイン '+maze.reward+'枚ゲット！ 地上へ戻ります…'):
     '残りの星 '+maze.stars.size+'　ミスしたら地上へ戻る！';
   if(mazeStatus.textContent!==status)mazeStatus.textContent=status;
   const lit=maze.done?null:maze.want||maze.dir;
@@ -1170,11 +1209,13 @@ function drawMazeCritter(cx,cy,i,look){
   mazeCtx.arc(cx,cy+3,2,0,Math.PI);mazeCtx.stroke();
 }
 function randomSlotSymbol(){return SLOT_STOPS[Math.floor(Math.random()*SLOT_STOPS.length)];}
-function drawSlots(reels){
+// glow: 光らせるリール（当たった絵柄）。spinning: まだ回っているリール
+function drawSlots(reels,glow=[],spinning=[]){
   slotCtx.fillStyle='#102035';slotCtx.fillRect(0,0,330,104);
   reels.forEach((symbol,i)=>{
     const left=8+i*108;
-    slotCtx.fillStyle='#ffefd1';slotCtx.fillRect(left,6,98,92);
+    if(glow[i]){slotCtx.fillStyle='#ffd84a';slotCtx.fillRect(left-4,2,106,100);}
+    slotCtx.fillStyle=spinning[i]?'#f3e2c2':'#ffefd1';slotCtx.fillRect(left,6,98,92);
     if(symbol===0){
       slotCtx.save();slotCtx.translate(left+32,20);
       drawPlayerAt(0,0,1,'front',0,slotCtx);slotCtx.restore();
@@ -1186,7 +1227,31 @@ function drawSlots(reels){
     }
     slotCtx.font='bold 13px system-ui';slotCtx.textAlign='center';slotCtx.fillStyle='#283620';
     slotCtx.fillText(SLOT_SYMBOLS[symbol],left+49,83);
+    if(spinning[i]){   // 回転中は流れる線を重ねて、回っている感じを出す
+      slotCtx.fillStyle='#ffffff55';
+      for(let y=(Date.now()/12)%18;y<92;y+=18)slotCtx.fillRect(left,6+y,98,4);
+    }
   });
+}
+function slotWinningReels(reels,prize){
+  if(!prize)return [];
+  if(prize.rank<=2)return reels.map(()=>true);
+  if(prize.rank===3)return reels.map(symbol=>symbol===0);
+  const pair=reels.find((symbol,i)=>reels.indexOf(symbol)!==i);
+  return reels.map(symbol=>symbol===pair);
+}
+function slotConfetti(count){
+  const box=document.getElementById('slotPlay'),colors=['#ffd84a','#ff7aa8','#7fe3ff','#9dea7a','#fff'];
+  for(let i=0;i<count;i++){
+    const piece=document.createElement('span');piece.className='slotConfetti';
+    const angle=Math.random()*Math.PI*2,dist=60+Math.random()*120;
+    piece.style.setProperty('--dx',Math.cos(angle)*dist*1.6+'px');
+    piece.style.setProperty('--dy',Math.sin(angle)*dist+60+'px');
+    piece.style.setProperty('--rot',(Math.random()*720-360)+'deg');
+    piece.style.background=colors[i%colors.length];
+    piece.style.animationDelay=Math.random()*.15+'s';
+    box.appendChild(piece);setTimeout(()=>piece.remove(),1900);
+  }
 }
 function drawSlotKoi(cx,cy){
   slotCtx.save();slotCtx.translate(cx,cy);slotCtx.rotate(-.16);
@@ -1244,15 +1309,26 @@ function startSlotSpin(){
   if(arcadeGame!=='slots'||slotTimer!==null||slotSpun)return;
   slotSpun=true;
   const result=Array.from({length:3},randomSlotSymbol);
-  let tick=0;
+  const stopAt=[10,15,20],play=document.getElementById('slotPlay');
+  let tick=0,reach=false;
   slotPayout.hidden=true;slotSpin.disabled=true;slotStatus.textContent='回転中…';
   slotTimer=setInterval(()=>{
     tick++;
-    drawSlots(result.map((symbol,i)=>tick>=8+i*4?symbol:randomSlotSymbol()));
-    if(tick<16)return;
-    stopSlotSpin();
+    const spinning=stopAt.map(at=>tick<at);
+    drawSlots(result.map((symbol,i)=>spinning[i]?randomSlotSymbol():symbol),[],spinning);
+    if(stopAt.includes(tick))tone(330,.07,'square',.07,0,160);   // リールが止まる「カチッ」
+    else if(reach)tone(700+(tick-stopAt[1])*35,.05,'triangle',.04);
+    // 2つそろったらリーチ！ 3つ目をじらしてゆっくり止める
+    if(tick===stopAt[1]&&result[0]===result[1]){
+      reach=true;stopAt[2]=36;play.classList.add('reach');
+      slotStatus.textContent='リーチ！';tone(880,.12,'square',.07);tone(1175,.16,'square',.07,.12);
+    }
+    if(tick<stopAt[2])return;
+    stopSlotSpin();play.classList.remove('reach');
     const prize=slotPrize(result);
+    drawSlots(result,slotWinningReels(result,prize));
     showSlotRank(prize);
+    if(prize)slotConfetti(prize.rank===1?60:prize.rank===2?36:16);
     if(!prize){slotStatus.textContent='また挑戦してね。地上へ戻ります…';leaveArcadeSoon(2200);return;}
     const oldLives=lives;
     collectCoins(prize.coins,player.x+17,player.y-20);
