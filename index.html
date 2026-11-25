@@ -65,6 +65,8 @@ canvas{display:block;background:#17283c}
 #arcade button:disabled{opacity:.5}
 #arcade canvas{display:block;background:#102035;margin:6px auto;max-width:100%;height:auto;object-fit:contain}
 #arcade.maze-open{width:min(1120px,97vw);max-height:97dvh;padding:12px}
+#arcade.maze-open .arcadeHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+#arcade.maze-open .arcadeHeader h2{margin:0;font-size:clamp(16px,3vw,23px)}
 #mazeLayout{display:grid;justify-items:center;align-items:center;gap:8px}
 #mazeBoard{width:100%;margin:0!important;image-rendering:pixelated}
 #mazeControls{display:grid;justify-items:center;gap:4px}
@@ -104,12 +106,11 @@ canvas{display:block;background:#17283c}
 <div class="topbtns"><button id="changeBgm" aria-label="BGM変更。現在：ファミコン風。アレンジ曲に切り替える" aria-pressed="false"><small>現在：ファミコン風</small>♫ BGM変更</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
 <dialog id="arcade" aria-labelledby="arcadeTitle">
-  <h2 id="arcadeTitle">はしごの先のあそび場</h2>
-  <div>
+  <div class="arcadeHeader">
+    <h2 id="arcadeTitle">はしごの先のあそび場</h2>
     <button id="arcadeExit" type="button">地上へ戻る</button>
   </div>
   <section id="mazePanel" hidden>
-    <h3>きらきら迷路</h3>
     <div id="mazeLayout">
       <canvas id="mazeBoard" width="416" height="288" aria-label="迷路"></canvas>
       <div id="mazeControls">
@@ -936,6 +937,7 @@ function exitArcade(){
 function selectArcadeGame(game){
   stopSlotSpin();
   arcadeGame=game;arcade.classList.toggle('maze-open',game==='maze');mazePanel.hidden=game!=='maze';slotsPanel.hidden=game!=='slots';
+  document.getElementById('arcadeTitle').textContent=game==='maze'?'きらきら迷路':'はしごの先のあそび場';
   if(game==='maze')resetMaze();
   else{drawSlots([1,0,3]);slotStatus.textContent='まわすを押してスタート';}
 }
