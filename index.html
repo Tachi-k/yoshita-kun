@@ -257,12 +257,14 @@ function drawSignpost(sx,text){
   x.fillStyle='#fff8e0';x.textAlign='center';x.fillText(text,sx,ground-65);x.textAlign='left';
 }
 function goalBX(){return westSide?120:world-120}   // 気球（ゴール）の位置
+// 西の道は、入ってすぐは地面だけが続く何もない場所（WEST_EMPTY）。そのあと看板があって、ひみつの道が始まる
+const WEST_ROUTE=2640,WEST_EMPTY=1200;
 function buildWestArea(){
-  const w=2640,plats=[],cs=[],es=[],sp=[];
+  const w=WEST_ROUTE+WEST_EMPTY,plats=[],cs=[],es=[],sp=[];
   for(let i=0;i<w/240;i++){if(i!==3&&i!==7)plats.push({x:i*240,y:ground,w:240,h:75});}   // 2か所の崖
   [[300,330],[560,290],[820,330],[1250,300],[1520,260],[1800,320],[2150,290]].forEach(([px,py])=>plats.push({x:px,y:py,w:120,h:18}));
   for(let i=0;i<22;i++)cs.push({x:260+i*105,y:250+(i%4)*36,taken:false});
-  [[420,'walk'],[980,'hop'],[1350,'walk'],[1650,'boar'],[2000,'hop'],[2300,'walk']].forEach(([ex,t],i)=>es.push(makeEnemy(ex,t,i+40)));
+  [[420,'walk'],[980,'hop'],[1350,'walk'],[1650,'boar'],[2000,'hop'],[2150,'walk']].forEach(([ex,t],i)=>es.push(makeEnemy(ex,t,i+40)));
   es.push(makeEnemy(1520+60-16,'walk',50,plats.find(b=>b.x===1520)));
   [[1,'gem'],[5,'coins'],[9,'chest']].forEach(([k,t])=>sp.push({x:k*240+120,type:t,found:false}));
   return {platforms:plats,coins:cs,enemies:es,holes:[],items:[],spots:sp,world:w};
@@ -274,7 +276,6 @@ function swapStage1Side(toWest){
   platforms=a.platforms;coins=a.coins;enemies=a.enemies;holes=a.holes;items=a.items;spots=a.spots;world=a.world;
   westSide=toWest;parts=[];balls=[];cannonWarn=null;cannonShot=null;
   const p=player;p.hole=null;p.x=toWest?world-p.w-8:8;p.facing=toWest?-1:1;lastSafeX=p.x;camera=followCamera(p.x);
-  if(toWest&&!westVisited){westVisited=true;banner('西のひみつの道','左はしの気球からも 2面へ行ける！',150);}
 }
 function followCamera(px){
   if(arenaOn)return AX;
@@ -1864,6 +1865,7 @@ p.x=Math.max(arenaOn?AX:0,Math.min(world-p.w,p.x+p.vx));
 if(mode==='game'&&stage===1&&!inBasement&&p.on&&!p.hole){
   if(!westSide&&keys.left&&p.x<=0){swapStage1Side(true);return;}
   if(westSide&&keys.right&&p.x>=world-p.w-1){swapStage1Side(false);return;}
+  if(westSide&&!westVisited&&p.x<WEST_ROUTE-40){westVisited=true;banner('西のひみつの道','左はしの気球からも 2面へ行ける！',150);}   // 看板を通りすぎたら知らせる
 }
 if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!bonusUsed[2]&&p.x<=STAGE2_BONUS_X&&keys.left&&p.on){
   enterBonus('sky',STAGE2_START);return;
@@ -2568,7 +2570,7 @@ function draw(){
     // もうすぐ踏み台から降りる敵は「！」
     if(e.grounded&&e.y+e.h<ground-1&&e.perchT>0&&e.perchT<75){x.fillStyle='#ff4d4d';x.font='bold 22px system-ui';x.fillText('!',e.x+12,e.y-6-Math.abs(Math.sin(e.perchT*.3))*5);}}
   for(const e of enemies){if(!e.alive)continue;if(e.trapHole){x.save();x.beginPath();x.rect(e.trapHole.x,ground,e.trapHole.w,36);x.clip();}drawScaled(e.x+e.w/2,e.y+e.h,()=>drawEnemy(e));if(e.trapHole)x.restore();}
-  if(stage===1&&!inBasement&&mode==='game')drawSignpost(westSide?world-60:40,westSide?'もどる →':'← ひみつの道');
+  if(stage===1&&!inBasement&&westSide)drawSignpost(WEST_ROUTE,'← 西のひみつの道');   // 何もない地面のあとに出てくる看板
   if(stage===1&&!inBasement)drawBalloon('back');
   if(boss)drawBoss(boss);
   drawCannon();
@@ -2595,7 +2597,7 @@ function draw(){
     const bx0=arenaOn?445:610,by0=6,bw=arenaOn?140:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
     x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
     x.fillStyle='#fff';x.font='900 38px system-ui';x.textAlign='right';x.fillText(String(sec),bx0+bw-12,by0+43);x.textAlign='left';x.restore();}
-  if(!arenaOn&&!inBasement){x.font='bold 26px system-ui';x.fillText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42);}
+  if(!arenaOn&&!inBasement&&!(westSide&&!westVisited)){x.font='bold 26px system-ui';x.fillText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42);}   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='bold 18px system-ui';
   const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':'ボーナス！ 時間内に たくさん集めよう'):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())x.fillText(hint,22,mode==='game'?98:72);
