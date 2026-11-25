@@ -22,10 +22,12 @@ canvas{display:block;background:#17283c}
 .topbtns{position:absolute;top:calc(env(safe-area-inset-top) + 8px);right:calc(env(safe-area-inset-right) + 8px);display:flex;gap:8px;z-index:5}
 .topbtns button{width:44px;height:44px;border-radius:12px;border:0;background:rgba(23,40,60,.55);color:#fff;font-size:22px;padding:0;touch-action:none}
 #music.off{opacity:.6}
-.topbtns #changeBgm{width:auto;min-height:52px;height:auto;padding:6px 14px;background:#ffdf50;color:#17283c;border:2px solid #fff8;box-shadow:0 3px 0 #b58b18,0 4px 12px #0004;font:800 15px system-ui;touch-action:manipulation;line-height:1.3}
-#changeBgm small{display:block;font:600 11px system-ui;margin-bottom:2px}
-#changeBgm:active{transform:translateY(2px);box-shadow:0 1px 0 #b58b18}
-#changeBgm:focus-visible{outline:3px solid #fff;outline-offset:3px}
+/* BGMの切りかえ：2つのうち、いま流れている方が黄色く光る。押した方に切りかわる */
+#bgmSwitch{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;border-radius:12px;background:rgba(23,40,60,.72);color:#fff}
+#bgmSwitch span{grid-column:1/-1;text-align:center;font:700 11px system-ui;opacity:.85;line-height:1.3}
+.topbtns #bgmSwitch button{width:auto;height:36px;padding:0 8px;border-radius:9px;background:transparent;color:#fff;font:800 13px system-ui;touch-action:manipulation;white-space:nowrap}
+.topbtns #bgmSwitch button[aria-pressed="true"]{background:#ffdf50;color:#17283c;box-shadow:0 2px 0 #b58b18}
+.topbtns #bgmSwitch button:focus-visible{outline:3px solid #fff;outline-offset:1px}
 #startBtn{position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;font:900 22px system-ui;letter-spacing:2px;padding:9px 28px;border-radius:44px;border:0;background:#ffdf50;color:#20304a;box-shadow:0 6px 0 #c9971e,0 10px 24px #0006;touch-action:manipulation;animation:pulse 1.1s ease-in-out infinite}
 #startBtn:active{transform:translateX(-50%) translateY(4px);box-shadow:0 2px 0 #c9971e}
 @keyframes pulse{50%{scale:1.07}}
@@ -45,7 +47,13 @@ canvas{display:block;background:#17283c}
   .btn{width:min(80px,10vw,22vh);height:min(80px,10vw,22vh)}
   #jump{width:min(94px,12vw,26vh);height:min(94px,12vw,26vh)}
   .hint{display:none}
+  .topbtns{left:calc(env(safe-area-inset-left) + 8px);right:auto;width:min(160px,19vw);flex-wrap:wrap;justify-content:center;gap:6px}   /* 横画面：左上（方向パッドの上）に置いて、ゲーム画面にかぶらない */
+  .topbtns #bgmSwitch{width:100%}
+  .topbtns #bgmSwitch button{padding:0 4px;font-size:clamp(10px,1.5vw,13px)}
   .help{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 6px);left:50%;transform:translateX(-50%);margin:0}
+}
+@media (orientation:landscape) and (max-height:380px){
+  .controls .pad:first-child{align-self:end;padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}   /* 背の低い画面：方向パッドを下へ寄せて、上のBGMボタンと重ならない */
 }
 @media (orientation:portrait){
   #stage > canvas{width:100%;height:auto;aspect-ratio:16/9;margin-top:env(safe-area-inset-top)}
@@ -138,7 +146,7 @@ canvas{display:block;background:#17283c}
 </div>
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
 <button id="startBtn">▶ START</button>
-<div class="topbtns"><button id="changeBgm" aria-label="BGM変更。現在：ファミコン風。アレンジ曲に切り替える" aria-pressed="false"><small>現在：ファミコン風</small>♫ BGM変更</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
+<div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGM</span><button type="button" data-bgm="chip" aria-pressed="true">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false">アレンジ</button></div><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
 <dialog id="arcade" aria-labelledby="arcadeTitle">
   <div class="arcadeHeader">
@@ -2567,20 +2575,15 @@ mb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();unl
 setMusic(musicOn);
 
 // あらかじめ用意したMP3とオリジナルBGMを切り替える。
-const changeBgm=document.getElementById('changeBgm');
+const bgmSwitch=document.getElementById('bgmSwitch');
 function updateBgmButton(){
-  const current=mp3Enabled?'アレンジ曲':'ファミコン風',next=mp3Enabled?'ファミコン風':'アレンジ曲';
-  changeBgm.replaceChildren();
-  const status=document.createElement('small');status.textContent='現在：'+current;
-  changeBgm.append(status,document.createTextNode('♫ BGM変更'));
-  changeBgm.setAttribute('aria-label','BGM変更。現在：'+current+'。'+next+'に切り替える');
-  changeBgm.title=next+'に切り替える';
-  changeBgm.setAttribute('aria-pressed',String(mp3Enabled));
+  for(const b of bgmSwitch.querySelectorAll('button'))b.setAttribute('aria-pressed',String((b.dataset.bgm==='mp3')===mp3Enabled));
 }
-changeBgm.addEventListener('click',e=>{
-  e.stopPropagation();unlockAudio();
+function setBgmMode(useMp3){
+  unlockAudio();
+  if(useMp3===mp3Enabled){updateBgmButton();return;}
   if(mp3Cur){mp3Halt(mp3Cur);mp3Cur=null}
-  mp3Enabled=!mp3Enabled;
+  mp3Enabled=useMp3;
   curSong=null;bgmNext=0;bgmStep=0;
   if(mp3Enabled){
     setMusic(true);
@@ -2593,6 +2596,12 @@ changeBgm.addEventListener('click',e=>{
     }
   }
   updateBgmButton();bgmTick();
+}
+bgmSwitch.addEventListener('pointerdown',e=>e.stopPropagation());
+bgmSwitch.addEventListener('click',e=>{
+  e.stopPropagation();
+  const b=e.target.closest('button[data-bgm]');
+  if(b)setBgmMode(b.dataset.bgm==='mp3');
 });
 updateBgmButton();
 
