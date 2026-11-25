@@ -1415,7 +1415,7 @@ function updateCannon(p,oldY){
       else if(p.inv<=0&&!p.hole)die('大砲の弾に当たった！');}}
   balls=balls.filter(b=>b.x>camera-60&&b.y<H+60);}
 // 鉄の砲弾：光沢のある球と、燃える導火線・後ろに流れる風の線
-function drawCannonball(b){const r=b.r,now=Date.now();
+function drawCannonball(b){const r=b.r*1.4,now=Date.now();   // 見た目だけ大きく（当たり判定は b.r のまま）
   if(!b.dead){x.save();x.globalAlpha=.35;x.strokeStyle='#fff';x.lineWidth=2;x.lineCap='round';
     for(const [dy,len] of[[-r*.55,34],[0,48],[r*.55,30]]){const off=(now*.25+dy*7)%14;x.beginPath();x.moveTo(b.x+r+6+off,b.y+dy);x.lineTo(b.x+r+6+off+len,b.y+dy);x.stroke();}
     x.restore();}
@@ -1424,6 +1424,14 @@ function drawCannonball(b){const r=b.r,now=Date.now();
   x.fillStyle=g;x.beginPath();x.arc(b.x,b.y,r,0,7);x.fill();
   x.strokeStyle='#0008';x.lineWidth=1.2;x.beginPath();x.arc(b.x,b.y,r*.98,Math.PI*.15,Math.PI*.85);x.stroke();
   x.globalAlpha=.8;ell(b.x-r*.38,b.y-r*.42,r*.22,r*.14,'#fff');x.globalAlpha=1;   // 反射
+  // 弾の顔：進む向き（左）をにらむ。ふまれたら目を回す
+  const fx=b.x-r*.25,fy=b.y;
+  if(b.dead){x.strokeStyle='#fff';x.lineWidth=1.6;x.lineCap='round';x.beginPath();for(const ex of[fx-r*.32,fx+r*.32]){x.moveTo(ex-2.5,fy-r*.3-2.5);x.lineTo(ex+2.5,fy-r*.3+2.5);x.moveTo(ex+2.5,fy-r*.3-2.5);x.lineTo(ex-2.5,fy-r*.3+2.5);}x.stroke();
+    x.beginPath();x.arc(fx,fy+r*.35,r*.16,0,7);x.stroke();}
+  else{for(const ex of[fx-r*.34,fx+r*.3]){ell(ex,fy-r*.22,r*.22,r*.26,'#fffbe8');ell(ex-r*.08,fy-r*.18,r*.12,r*.16,'#15161c');ell(ex-r*.12,fy-r*.24,r*.04,r*.04,'#fff');}
+    x.strokeStyle='#fff';x.lineWidth=2;x.lineCap='round';x.beginPath();x.moveTo(fx-r*.6,fy-r*.62);x.lineTo(fx-r*.18,fy-r*.48);x.moveTo(fx+r*.1,fy-r*.48);x.lineTo(fx+r*.5,fy-r*.62);x.stroke();   // 怒りまゆ
+    x.fillStyle='#fff';x.beginPath();x.moveTo(fx-r*.34,fy+r*.3);x.quadraticCurveTo(fx,fy+r*.12,fx+r*.3,fy+r*.3);x.quadraticCurveTo(fx,fy+r*.52,fx-r*.34,fy+r*.3);x.fill();   // 歯を見せる口
+    x.strokeStyle='#15161c';x.lineWidth=1;x.beginPath();for(const tx of[-.12,.08])x.moveTo(fx+r*tx,fy+r*.22),x.lineTo(fx+r*tx,fy+r*.42);x.stroke();}
 }
 // 画面の右はしに出てくる大砲：予告中に出てきて、撃つと反動で下がり炎と煙が出る
 function drawCannonGun(){
@@ -1437,13 +1445,8 @@ function drawCannonGun(){
   const g=x.createLinearGradient(0,y-13,0,y+13);g.addColorStop(0,'#5b6070');g.addColorStop(.35,'#a9b0c0');g.addColorStop(1,'#22252e');
   x.fillStyle=g;x.beginPath();x.moveTo(mx,y-11);x.lineTo(mx+80,y-15);x.lineTo(mx+80,y+15);x.lineTo(mx,y+11);x.closePath();x.fill();   // 砲身
   x.fillStyle='#3a3e4a';x.fillRect(mx-4,y-14,8,28);   // 砲口のリング
-  x.fillStyle='#c9a34a';x.fillRect(mx+8,y-12,4,24);x.fillRect(mx+58,y-15,4,30);   // 金の帯
+  x.fillStyle='#c9a34a';x.fillRect(mx+26,y-14,4,28);x.fillRect(mx+50,y-15,4,30);   // 金の帯
   x.fillStyle='#111';ell(mx-3,y,3,8,'#111');
-  // 大砲の顔：にらむ目とへの字口（左を向いている）
-  for(const ex of[mx+24,mx+40]){ell(ex,y-4,5,5.5,'#fffbe8');ell(ex-1.8,y-3.5,2.6,3.2,'#1a1a22');ell(ex-2.6,y-4.6,.9,.9,'#fff');}
-  x.strokeStyle='#15161c';x.lineWidth=3;x.lineCap='round';x.beginPath();x.moveTo(mx+18,y-12);x.lineTo(mx+29,y-9);x.moveTo(mx+35,y-9);x.lineTo(mx+46,y-12);x.stroke();
-  x.lineWidth=2.2;x.beginPath();x.moveTo(mx+26,y+8);x.quadraticCurveTo(mx+32,y+4,mx+38,y+8);x.stroke();
-  x.globalAlpha=.5;ell(mx+16,y+3,3,1.8,'#ff8a8a');ell(mx+48,y+3,3,1.8,'#ff8a8a');x.globalAlpha=1;
   if(flash>0){   // 発射の炎
     x.globalAlpha=flash;ell(mx-22,y,26,14,'#ff8a2a');ell(mx-14,y,16,9,'#ffe27a');ell(mx-8,y,7,5,'#fff');x.globalAlpha=1;}
   if(cannonShot&&!flash){x.globalAlpha=Math.min(.5,cannonShot.t/40);for(let k=0;k<3;k++)ell(mx-8-k*10,y-6-k*7-(40-cannonShot.t)*.4,10+k*4,8+k*3,'#d8d8e0');x.globalAlpha=1;}   // 煙
