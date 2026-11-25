@@ -1001,7 +1001,7 @@ function resetMaze(){
   MAZE.forEach((row,y)=>Array.from(row).forEach((cell,x)=>{
     if(cell==='.'&&(x!==MAZE_START[0]||y!==MAZE_START[1]))stars.add(x+','+y);
   }));
-  maze={hero:MAZE_START,stars,missed:false,facing:1,done:false};
+  maze={hero:MAZE_START,heroNext:null,heroT:0,dir:null,want:null,stars,missed:false,facing:1,done:false};
   spawnMazeFoes();
   drawMaze();
 }
@@ -1022,7 +1022,7 @@ function mazeEnemyStep(from,target){
   }
   return from;
 }
-const MAZE_GLIDE_FRAMES=8;
+const MAZE_GLIDE_FRAMES=10;   // 主人公が1マス進むフレーム数
 // 敵は主人公の操作とは関係なく、一定の速さで毎フレームなめらかに進む（1フレームあたりのマス数）
 const MAZE_FOE_SPEEDS=[1/24,1/32],MAZE_FOE_WAIT=45,MAZE_HIT_DISTANCE=.6;
 // 分かれ道で主人公を追いかける確率。残りは気ままにうろうろする
@@ -1030,10 +1030,34 @@ const MAZE_FOE_CHASE=[.55,.35];
 function spawnMazeFoes(){
   maze.foes=MAZE_ENEMY_STARTS.map((pos,i)=>({pos,prev:null,next:null,t:0,speed:MAZE_FOE_SPEEDS[i],chase:MAZE_FOE_CHASE[i],wait:MAZE_FOE_WAIT,look:-1,phase:0}));
 }
-function mazeVisualPosition(target,motion){
-  if(!motion)return target;
-  const progress=motion.frame/motion.duration;
-  return target.map((value,i)=>motion.from[i]+(value-motion.from[i])*progress);
+function mazeHeroPosition(){
+  if(!maze.heroNext)return maze.hero;
+  return maze.hero.map((value,i)=>value+(maze.heroNext[i]-value)*maze.heroT);
+}
+const MAZE_OPPOSITE={up:'down',down:'up',left:'right',right:'left'};
+// 主人公は押した方向へ壁にぶつかるまで進み続ける。
+// 先に押しておいた方向（want）は、曲がれるマスに着いたところで自動的に曲がる
+function updateMazeHero(frames){
+  if(maze.heroNext&&maze.want&&maze.want===MAZE_OPPOSITE[maze.dir]){
+    [maze.hero,maze.heroNext]=[maze.heroNext,maze.hero];maze.heroT=1-maze.heroT;maze.dir=maze.want;
+  }
+  let budget=frames/MAZE_GLIDE_FRAMES;
+  while(budget>0&&!maze.done){
+    if(!maze.heroNext){
+      if(maze.want&&mazeWalk(maze.hero,MAZE_MOVES[maze.want]))maze.dir=maze.want;
+      const next=maze.dir&&mazeWalk(maze.hero,MAZE_MOVES[maze.dir]);
+      if(!next){maze.dir=null;return;}
+      maze.heroNext=next;maze.heroT=0;
+      if(maze.dir==='left'||maze.dir==='right')maze.facing=maze.dir==='left'?-1:1;
+    }
+    const used=Math.min(budget,1-maze.heroT);
+    maze.heroT+=used;budget-=used;
+    if(maze.heroT>=1){
+      maze.hero=maze.heroNext;maze.heroNext=null;maze.heroT=0;
+      if(maze.stars.delete(maze.hero.join(',')))sound('coin');
+      if(maze.stars.size===0){maze.done=true;sound('oneup');leaveArcadeSoon(2500);}
+    }
+  }
 }
 function mazeFoePosition(foe){
   if(!foe.next)return foe.pos;
@@ -1070,29 +1094,21 @@ function updateMazeFoe(foe,frames){
 // 60fps固定の更新に合わせると、画面の更新タイミングとずれてカクついて見えるため。
 function updateMazeMotion(frames){
   if(maze.done)return;
-  if(maze.motion&&(maze.motion.frame+=frames)>=maze.motion.duration)maze.motion=null;
+  updateMazeHero(frames);
   maze.foes.forEach(foe=>updateMazeFoe(foe,frames));
-  const [hx,hy]=mazeVisualPosition(maze.hero,maze.motion);
+  const [hx,hy]=mazeHeroPosition();
   if(maze.foes.some(foe=>{const [fx,fy]=mazeFoePosition(foe);return Math.hypot(fx-hx,fy-hy)<MAZE_HIT_DISTANCE;}))mazeHit();
   drawMaze();
 }
 function mazeHit(){
-  maze.motion=null;stopMazeHold();
+  maze.dir=maze.want=null;
   maze.missed=true;maze.done=true;sound('hurt');
   leaveArcadeSoon(1800);
 }
 function mazeMove(dir){
   if(arcadeGame!=='maze'||maze.done)return;
-  const next=mazeWalk(maze.hero,MAZE_MOVES[dir]);
-  if(!next)return;
-  const fromHero=mazeVisualPosition(maze.hero,maze.motion);
-  maze.hero=next;
-  if(dir==='left'||dir==='right')maze.facing=dir==='left'?-1:1;
-  maze.motion={from:fromHero,frame:0,duration:MAZE_GLIDE_FRAMES};
-  if(maze.stars.delete(next.join(',')))sound('coin');
-  maze.done=maze.stars.size===0;
-  if(maze.done){sound('oneup');leaveArcadeSoon(2500);}
-  drawMaze();
+  maze.want=dir;
+  if(!maze.heroNext&&!maze.dir&&mazeWalk(maze.hero,MAZE_MOVES[dir]))maze.dir=dir;
 }
 function drawMaze(){
   const size=32;
@@ -1107,7 +1123,7 @@ function drawMaze(){
       mazeCtx.rotate(Math.PI/4);mazeCtx.fillRect(-3,-3,6,6);mazeCtx.restore();
     }
   }));
-  const [heroX,heroY]=mazeVisualPosition(maze.hero,maze.motion);
+  const [heroX,heroY]=mazeHeroPosition();
   maze.foes.forEach((foe,i)=>{
     const [fx,fy]=mazeFoePosition(foe);
     const bounce=(1-Math.cos(foe.phase*Math.PI*2))*.6;
@@ -1115,11 +1131,13 @@ function drawMaze(){
     if(!blink)drawMazeCritter(fx*size+16,fy*size+16-bounce,i,foe.look);
   });
   mazeCtx.save();mazeCtx.translate(heroX*size+16,heroY*size+31);mazeCtx.scale(.68,secondRound?.49:.61);
-  const walking=maze.motion&&heroX!==maze.hero[0];
+  const walking=maze.heroNext&&maze.heroNext[0]!==maze.hero[0];
   drawPlayerAt(-17,-42,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
   const status=maze.done?(maze.missed?'ミス！ 地上へ戻ります…':'クリア！ 星を全部集めた！ 地上へ戻ります…'):
     '残りの星 '+maze.stars.size+'　ミスしたら地上へ戻る！';
   if(mazeStatus.textContent!==status)mazeStatus.textContent=status;
+  const lit=maze.done?null:maze.want||maze.dir;
+  for(const button of mazeDirections.children)button.classList.toggle('held',button.dataset.dir===lit);
 }
 function drawMazeCritter(cx,cy,i,look){
   const body=i?'#e781a8':'#8c9eee',shade=i?'#ac4e80':'#5268bf';
@@ -1231,51 +1249,43 @@ function startSlotSpin(){
 document.getElementById('arcadeExit').addEventListener('click',exitArcade);
 const mazeDirections=document.getElementById('mazeDirections');
 const MAZE_KEYS={arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'up',w:'up',arrowdown:'down',s:'down'};
-function stopMazeHold(){
-  mazeHold?.button?.classList.remove('held');
-  mazeHold=null;
-}
-function beginMazeHold(dir,source,button=null){
-  stopMazeHold();
-  mazeHold={dir,source,button,wait:13};
-  button?.classList.add('held');
-  mazeMove(dir);
-}
-function updateMazeHold(){
-  if(!mazeHold||maze.done)return;
-  if(--mazeHold.wait<=0){
-    mazeHold.wait=8;
-    mazeMove(mazeHold.dir);
-  }
-}
+function stopMazeHold(){if(maze){maze.want=null;}}
+// ボタンはタップするだけでOK（押しっぱなし不要）。押した瞬間に反応するよう pointerdown で受ける
 mazeDirections.addEventListener('pointerdown',event=>{
-  const dir=event.target.dataset.dir;
-  if(!dir||event.button!==0)return;
+  const dir=event.target.closest('[data-dir]')?.dataset.dir;
+  if(!dir)return;
   event.preventDefault();
-  event.target.setPointerCapture(event.pointerId);
-  beginMazeHold(dir,event.pointerId,event.target);
+  mazeMove(dir);
 });
-for(const type of ['pointerup','pointercancel','lostpointercapture']){
-  mazeDirections.addEventListener(type,event=>{
-    if(mazeHold?.source===event.pointerId)stopMazeHold();
-  });
-}
 mazeDirections.addEventListener('click',event=>{
-  if(event.detail===0&&event.target.dataset.dir)mazeMove(event.target.dataset.dir);
+  const dir=event.target.closest('[data-dir]')?.dataset.dir;
+  if(event.detail===0&&dir)mazeMove(dir);
 });
+// 迷路の上をスワイプしても方向を変えられる
+const mazeBoard=document.getElementById('mazeBoard');
+let mazeSwipe=null;
+mazeBoard.style.touchAction='none';
+mazeBoard.addEventListener('pointerdown',event=>{
+  mazeSwipe={id:event.pointerId,x:event.clientX,y:event.clientY};
+  mazeBoard.setPointerCapture(event.pointerId);event.preventDefault();
+});
+mazeBoard.addEventListener('pointermove',event=>{
+  if(mazeSwipe?.id!==event.pointerId)return;
+  const dx=event.clientX-mazeSwipe.x,dy=event.clientY-mazeSwipe.y;
+  if(Math.hypot(dx,dy)<16)return;
+  mazeMove(Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down'));
+  mazeSwipe.x=event.clientX;mazeSwipe.y=event.clientY;
+});
+for(const type of ['pointerup','pointercancel'])mazeBoard.addEventListener(type,()=>{mazeSwipe=null;});
 slotSpin.addEventListener('click',startSlotSpin);
 arcade.addEventListener('cancel',event=>{event.preventDefault();exitArcade();});
-window.addEventListener('blur',stopMazeHold);
 document.addEventListener('keydown',event=>{
   if(state!=='arcade')return;
   event.stopImmediatePropagation();
   const key=event.key.toLowerCase(),dir=MAZE_KEYS[key];
   if(!dir||arcadeGame!=='maze')return;
   event.preventDefault();
-  if(!event.repeat)beginMazeHold(dir,key);
-},true);
-document.addEventListener('keyup',event=>{
-  if(mazeHold?.source===event.key.toLowerCase())stopMazeHold();
+  mazeMove(dir);
 },true);
 
 // ===== 大砲の弾：ときどき画面の右から飛んでくる =====
@@ -1471,7 +1481,7 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
-if(state==='arcade'){if(arcadeGame==='maze')updateMazeHold();return;}
+if(state==='arcade')return;
 if(mode==='title'){
   demoT++;
   if(demoBossShownAt){
