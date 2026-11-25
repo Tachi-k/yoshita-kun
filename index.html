@@ -10,9 +10,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#17283c;color:#fff;fon
 canvas{display:block;background:#17283c}
 .controls{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
 .pad{display:flex;gap:14px;align-items:center}
-#dpad{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:54px 1fr;width:176px;height:146px;border-radius:30px;background:rgba(233,240,255,.88);overflow:hidden;touch-action:none}
-#dpad span{display:grid;place-items:center;font-size:30px;color:#17283c;pointer-events:none}
-#dpad span:nth-child(-n+2){font-size:22px;background:rgba(23,40,60,.08);border-bottom:2px solid rgba(23,40,60,.15)}
+#dpad{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr;width:200px;height:120px;border-radius:30px;background:rgba(233,240,255,.88);overflow:hidden;touch-action:none}
+#dpad span{display:grid;place-items:center;font-size:44px;color:#17283c;pointer-events:none}
 #dpad span:nth-child(odd){border-right:2px solid rgba(23,40,60,.15)}
 #dpad span.on{background:#ffdf50}
 .btn{width:84px;height:84px;border-radius:50%;border:0;background:rgba(233,240,255,.88);color:#17283c;font:700 14px system-ui;display:grid;place-content:center;line-height:1.15;touch-action:none;padding:0}
@@ -44,7 +43,8 @@ canvas{display:block;background:#17283c}
   .pad{grid-row:1;padding:0 10px}
   .controls .pad:first-child{grid-column:1}
   .controls .pad:last-child{grid-column:3;flex-direction:column-reverse;gap:12px}   /* 上：ジャンプ　下：掘る */
-  #dpad{width:min(150px,19vw);height:min(140px,36vh);grid-template-rows:42% 1fr}
+  #dpad{width:min(170px,20vw);height:min(150px,40vh)}
+  #dpad span{font-size:min(44px,6vw,11vh)}
   .btn{width:min(80px,10vw,22vh);height:min(80px,10vw,22vh)}
   #jump{width:min(94px,12vw,26vh);height:min(94px,12vw,26vh)}
   .hint{display:none}
@@ -59,8 +59,10 @@ canvas{display:block;background:#17283c}
   #stage > canvas{width:100%;height:auto;aspect-ratio:16/9;margin-top:env(safe-area-inset-top)}
   .controls{flex:1;align-items:center;gap:8px;padding:16px 12px calc(env(safe-area-inset-bottom) + 20px)}
   .pad{gap:10px}
-  #dpad{width:min(184px,40vw);height:min(160px,36vw)}
-  .topbtns{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px)}
+  #dpad{width:min(210px,42vw);height:min(130px,28vw)}
+  .topbtns{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px);left:8px;right:8px;justify-content:center;align-items:center}   /* はみ出さないよう画面の幅に収める */
+  .topbtns #bgmSwitch button{font-size:min(16px,4vw);padding:0 min(10px,1.5vw)}
+  .topbtns #bgmSwitch span{font-size:min(16px,4vw)}
   #startBtn{top:calc(env(safe-area-inset-top) + 56.25vw*.6 - 22px);font-size:19px;padding:9px 22px}
   .btn{width:min(92px,21vw);height:min(92px,21vw)}#jump{width:min(110px,25vw);height:min(110px,25vw)}
 }
@@ -139,9 +141,9 @@ canvas{display:block;background:#17283c}
 </style></head><body>
 <div id="stage">
 <canvas id="game" width="960" height="540"></canvas>
-<p class="hint">📱 横向きにすると大きく遊べます ・ 方向パッドの上段 ↖↗ でジャンプしながら移動</p>
+<p class="hint">📱 横向きにすると大きく遊べます</p>
 <div class="controls">
-  <div class="pad"><div id="dpad"><span>↖</span><span>↗</span><span>◀</span><span>▶</span></div></div>
+  <div class="pad"><div id="dpad"><span>◀</span><span>▶</span></div></div>
   <div class="pad"><button class="btn" id="dig"><b>⛏</b>掘る</button><button class="btn" id="jump"><b>⬆</b>ジャンプ</button></div>
 </div>
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
@@ -2689,9 +2691,9 @@ requestAnimationFrame(loop);
 document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(mode==='title'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose')retry();else reset()}});
 document.addEventListener('keyup',e=>{let k=e.key.toLowerCase();if(['arrowleft','a'].includes(k))keys.left=false;if(['arrowright','d'].includes(k))keys.right=false;if([' ','arrowup','w'].includes(k))keys.jump=false});
 
-// 方向パッド：下段で移動、上段（↖↗）でジャンプしながら移動。指を離さずスライドで切り替え
-const dpad=document.getElementById('dpad'),[dul,dur,dl,dr]=dpad.children;let dpadId=null;
-function dpadSet(e){const r=dpad.getBoundingClientRect(),right=e.clientX>r.left+r.width/2,up=e.clientY<dul.getBoundingClientRect().bottom;keys.left=!right;keys.right=right;padJump=up;dl.classList.toggle('on',!right&&!up);dr.classList.toggle('on',right&&!up);dul.classList.toggle('on',!right&&up);dur.classList.toggle('on',right&&up)}
+// 方向パッド：大きな ◀ ▶ の2つ。指を離さずスライドで左右を切り替え（ジャンプは右のジャンプボタンで）
+const dpad=document.getElementById('dpad'),[dl,dr]=dpad.children;let dpadId=null;
+function dpadSet(e){const r=dpad.getBoundingClientRect(),right=e.clientX>r.left+r.width/2;keys.left=!right;keys.right=right;padJump=false;dl.classList.toggle('on',!right);dr.classList.toggle('on',right);}
 function dpadEnd(e){if(e.pointerId!==dpadId)return;dpadId=null;keys.left=keys.right=false;padJump=false;for(const s of dpad.children)s.classList.remove('on')}
 dpad.addEventListener('pointerdown',e=>{e.preventDefault();if(mode==='title')return;unlockAudio();dpadId=e.pointerId;try{dpad.setPointerCapture(e.pointerId)}catch(_){}dpadSet(e)});
 dpad.addEventListener('pointermove',e=>{if(e.pointerId===dpadId)dpadSet(e)});
