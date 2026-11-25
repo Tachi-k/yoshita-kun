@@ -204,7 +204,8 @@ let endingPair=false;   // true：お姫様と2人のエンディング（50%の
 // レアエンディング（10%）：ドリモグが心を入れかえて友だちに
 const CREDITS_RARE=['モグラ大王 ドリモグを たおした！','','……と 思ったら','ドリモグは 心を入れかえ','みんなの 友だちになった！','','ソラ姫も いっしょに','空の国で 大パーティー！','','','★ RARE ENDING ★','','— よし太くんの大冒険 —','','HERO　よし太くん','PRINCESS　ソラ姫','FRIEND　ドリモグ','','','これを見られたあなたは','とってもラッキー！','','THANK YOU FOR PLAYING!'];
 let endingRare=false;
-function credits(){return endingRare?CREDITS_RARE:endingPair?CREDITS_PAIR:CREDITS}
+const CREDITS_PRINCESS=['モグラ大王 ドリモグを たおした！','','……と 思ったら','ドリモグは 心を入れかえ','みんなの 友だちになった！','','よし太くんも いっしょに','空の国で 大パーティー！','','','★ RARE ENDING ★','','— ソラ姫の大冒険 —','','HERO　ソラ姫','FRIEND　よし太くん','FRIEND　ドリモグ','','','3周目まで あそんでくれて','ほんとうに ありがとう！','','THANK YOU FOR PLAYING!'];
+function credits(){return princessRound&&endingRare?CREDITS_PRINCESS:endingRare?CREDITS_RARE:endingPair?CREDITS_PAIR:CREDITS}
 
 // ===== ステージ =====
 function newPlayer(inv){return {x:60,y:300,w:34,h:42,vx:0,vy:0,on:false,inv:inv,facing:1,hole:null}}
@@ -266,7 +267,7 @@ function loadStage(n){
     for(let i=0;i<11;i++)enemies.push(makeEnemy(450+i*330,i%3===2?'hop':'walk',i));
     addPerchEnemies([1,4,7,10]);
     [[2,'gem'],[4,'coins'],[7,'heart'],[9,'gem'],[13,'chest'],[16,'gem']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
-    banner('STAGE 1','そよかぜの丘');
+    banner('STAGE 1',princessRound&&mode==='game'?'ソラ姫の冒険がはじまる！':'そよかぜの丘');
   }else{
     AX=STAGE2_OFFSET+3840;world=AX+960;
     platforms.push({x:0,y:ground,w:STAGE2_OFFSET,h:75});
@@ -982,7 +983,7 @@ const QUEST_TRIAL_URL='https://tachi-k.github.io/ojiya-quest/?from=ending';
 const QUEST_ENDING_KEY='yoshita-quest-return';
 function openQuestTrial(){
   try{
-    sessionStorage.setItem(QUEST_ENDING_KEY,JSON.stringify({score,endingPair,endingRare,secondRound}));
+    sessionStorage.setItem(QUEST_ENDING_KEY,JSON.stringify({score,endingPair,endingRare,secondRound,clearCount,princessRound}));
   }catch(_){}
   window.location.assign(QUEST_TRIAL_URL);
 }
@@ -994,6 +995,7 @@ function restoreQuestEnding(){
   mode='game';Math.random=realRandom;
   score=ending.score;loadStage(2);state='ending';clearedAdventure=true;
   secondRound=ending.secondRound===true;
+  clearCount=Number(ending.clearCount)||1;princessRound=ending.princessRound===true;
   endingRare=ending.endingRare===true;endingPair=!endingRare&&ending.endingPair===true;
   endT=Math.ceil((H+40+credits().length*46-110)/.75)+1;
   endP=null;
@@ -1077,8 +1079,8 @@ function drawEndPlayer(){
   if(endP.doorFrame>28){
     const depth=(endP.doorFrame-28)/16;
     x.save();x.translate(endP.x+17,ground-4);x.scale(1-depth*.6,1-depth*.6);
-    x.globalAlpha=1-depth;x.scale(END_SCALE,END_SCALE);drawPlayerAt(-17,-42,endP.f,pose,endP.stride);x.restore();
-  }else drawEndScaled(endP.x+17,endP.y+42,()=>drawPlayerAt(endP.x,endP.y,endP.f,pose,endP.stride));
+    x.globalAlpha=1-depth;x.scale(END_SCALE,END_SCALE);drawHero(-17,-42,endP.f,pose,endP.stride);x.restore();
+  }else drawEndScaled(endP.x+17,endP.y+42,()=>drawHero(endP.x,endP.y,endP.f,pose,endP.stride));
   if(endT<360&&Math.floor(endT/30)%2){x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#ffffffcc';x.fillText('← → で うごける・ジャンプもできる',W/2,H-14);x.textAlign='left';}}
 // 秘密のはしごの先。ミニゲーム中は本編の時計を止める。
 const arcade=document.getElementById('arcade');
@@ -1297,9 +1299,9 @@ function drawMaze(){
       mazeCtx.fillText('！',fx*size+16,fy*size-2-bounce);mazeCtx.textAlign='left';
     }
   });
-  mazeCtx.save();mazeCtx.translate(heroX*size+16,heroY*size+31);mazeCtx.scale(.68,secondRound?.49:.61);
+  mazeCtx.save();mazeCtx.translate(heroX*size+16,heroY*size+31);mazeCtx.scale(.68,princessRound?.58:secondRound?.49:.61);
   const walking=maze.heroNext&&maze.heroNext[0]!==maze.hero[0];
-  drawPlayerAt(-17,-42,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
+  drawHero(-17,-42,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
   if(maze.done){   // 結果を迷路の上に大きく出す
     mazeCtx.fillStyle='#071322bb';mazeCtx.fillRect(0,104,416,80);
     mazeCtx.textAlign='center';mazeCtx.font='900 34px system-ui';
@@ -1604,8 +1606,9 @@ function startDemo(){
   if(demoScene!=='stage2')bannerT=0;
 }
 function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
-let clearedAdventure=false,secondRound=false;
-function startGame(){mode='game';secondRound=clearedAdventure;Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
+// clearCount：クリアした回数。2周目はよし太くんの色が変わり、3周目からはソラ姫が冒険する
+let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
+function startGame(){mode='game';secondRound=clearedAdventure;princessRound=clearCount>=2;Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
 // デモ用の自動操作
 function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=false;   // デモも無敵ではない（ぶつかればミス）
   if(demoScene==='miss'||demoScene==='enemyMiss'||demoScene==='goal'){keys.right=true;return;}
@@ -1733,6 +1736,7 @@ function drawTitle(){
 
 // ボス撃破後、よし太くんが画面上へ飛び去ってからエンディングへ。
 function chooseEndingSong(){
+  if(princessRound)return 'rare';   // 3周目（ソラ姫の冒険）はレアエンディングだけ
   const roll=Math.random();
   return roll<.1?'rare':roll<.75?'wedding':'ending';
 }
@@ -1752,6 +1756,7 @@ function updateVictoryFlight(){
   if(f.t%3===0)boom(p.x+17,p.y+42,3,['#ffe57a','#fff','#9fe6ff'],2);
   if(f.t<VICTORY_FLIGHT_FRAMES)return;
   victoryFlight=null;
+  if(mode==='game')clearCount++;
   clearedAdventure=true;
   state='ending';bonusUsed={};roomT=0;endT=0;parts=[];
   addTimeBonus();score+=lives*1000;
@@ -1904,60 +1909,66 @@ function ell(cx,cy,rx,ry,col,context=x){context.fillStyle=col;context.beginPath(
 function drawCrown(cx,y,s){x.fillStyle='#ffcf28';x.beginPath();x.moveTo(cx-20*s,y);x.lineTo(cx-20*s,y-14*s);x.lineTo(cx-10*s,y-5*s);x.lineTo(cx,y-18*s);x.lineTo(cx+10*s,y-5*s);x.lineTo(cx+20*s,y-14*s);x.lineTo(cx+20*s,y);x.closePath();x.fill();x.fillStyle='#e64040';x.fillRect(cx-3*s,y-7*s,6*s,5*s)}
 // ソラ姫（オリジナルキャラ）：黒髪・水色のドレス・花かんむり
 // ソラ姫：大きな目と丸い顔のちびキャラ。ティアラとふんわりドレス（足もと＝py+46、幅は34の枠におさまる）
-function drawPartner(px,py,facing){const f=facing>=0?1:-1,t=typeof endT==='number'?endT:0;
+function drawPartner(px,py,facing,X=x){const f=facing>=0?1:-1,t=state==='ending'?endT:Math.floor(performance.now()/16.7);
   const hair='#7a4330',hairLight='#a0603f',skin='#ffe4cc',gown='#ff9fcf',gownLight='#ffd6ec',gownShade='#ef77b4';
-  const o=(cx,cy,rx,ry,col)=>ell(cx,cy,rx,ry,col);
-  x.save();x.translate(px+17,py+46);x.rotate(Math.sin(t*.05)*.025);   // ゆらゆら
+  const o=(cx,cy,rx,ry,col)=>ell(cx,cy,rx,ry,col,X);
+  X.save();X.translate(px+17,py+46);X.rotate(Math.sin(t*.05)*.025);   // ゆらゆら
   // 後ろ髪（腰まで届くロングヘア）
-  const hg=x.createLinearGradient(0,-44,0,-10);hg.addColorStop(0,'#8a4c34');hg.addColorStop(1,'#5a2e1e');
-  x.fillStyle=hg;x.beginPath();x.moveTo(-12,-31);x.quadraticCurveTo(-16,-16,-11,-11);x.quadraticCurveTo(-6,-9,-3,-11);x.quadraticCurveTo(0,-8.5,3,-11);x.quadraticCurveTo(6,-9,11,-11);x.quadraticCurveTo(16,-16,12,-31);x.closePath();x.fill();
-  x.strokeStyle='#4a2414';x.lineWidth=.6;x.beginPath();for(const sx of[-9,-5,5,9]){x.moveTo(sx*1.05,-28);x.quadraticCurveTo(sx*1.25,-19,sx*.95,-12);}x.stroke();   // 髪の流れ
+  const hg=X.createLinearGradient(0,-44,0,-10);hg.addColorStop(0,'#8a4c34');hg.addColorStop(1,'#5a2e1e');
+  X.fillStyle=hg;X.beginPath();X.moveTo(-12,-31);X.quadraticCurveTo(-16,-16,-11,-11);X.quadraticCurveTo(-6,-9,-3,-11);X.quadraticCurveTo(0,-8.5,3,-11);X.quadraticCurveTo(6,-9,11,-11);X.quadraticCurveTo(16,-16,12,-31);X.closePath();X.fill();
+  X.strokeStyle='#4a2414';X.lineWidth=.6;X.beginPath();for(const sx of[-9,-5,5,9]){X.moveTo(sx*1.05,-28);X.quadraticCurveTo(sx*1.25,-19,sx*.95,-12);}X.stroke();   // 髪の流れ
   // ドレス：すそが広がるベル型＋フリル
-  const dg=x.createLinearGradient(-16,0,16,0);dg.addColorStop(0,'#e86aa8');dg.addColorStop(.35,'#ffb8dc');dg.addColorStop(.7,gown);dg.addColorStop(1,'#d65a9a');
-  x.fillStyle=dg;x.beginPath();x.moveTo(-5,-20);x.quadraticCurveTo(-7,-9,-16,-2);x.lineTo(16,-2);x.quadraticCurveTo(7,-9,5,-20);x.closePath();x.fill();
-  x.strokeStyle='#d0609a';x.lineWidth=.8;x.beginPath();for(const fx of[-9,-4,3,8]){x.moveTo(fx*.35,-16);x.quadraticCurveTo(fx*.8,-9,fx*1.3,-2.5);}x.stroke();   // ドレスのひだ
-  x.globalAlpha=.55;x.fillStyle='#fff';x.beginPath();x.moveTo(-3,-17);x.quadraticCurveTo(-6,-9,-10,-3);x.lineTo(-8,-3);x.quadraticCurveTo(-4.5,-9,-2,-17);x.closePath();x.fill();x.globalAlpha=1;   // つや
-  for(let k=0;k<9;k++){x.globalAlpha=.8;ell(-12+k*3,-6+Math.abs(k-4)*.4,.6,.6,'#fff');}x.globalAlpha=1;   // ドレスのきらきら
-  x.fillStyle=gownShade;x.beginPath();x.moveTo(1,-14);x.quadraticCurveTo(4,-8,9,-2);x.lineTo(12,-2);x.quadraticCurveTo(6,-8,3,-15);x.closePath();x.fill();
+  const dg=X.createLinearGradient(-16,0,16,0);dg.addColorStop(0,'#e86aa8');dg.addColorStop(.35,'#ffb8dc');dg.addColorStop(.7,gown);dg.addColorStop(1,'#d65a9a');
+  X.fillStyle=dg;X.beginPath();X.moveTo(-5,-20);X.quadraticCurveTo(-7,-9,-16,-2);X.lineTo(16,-2);X.quadraticCurveTo(7,-9,5,-20);X.closePath();X.fill();
+  X.strokeStyle='#d0609a';X.lineWidth=.8;X.beginPath();for(const fx of[-9,-4,3,8]){X.moveTo(fx*.35,-16);X.quadraticCurveTo(fx*.8,-9,fx*1.3,-2.5);}X.stroke();   // ドレスのひだ
+  X.globalAlpha=.55;X.fillStyle='#fff';X.beginPath();X.moveTo(-3,-17);X.quadraticCurveTo(-6,-9,-10,-3);X.lineTo(-8,-3);X.quadraticCurveTo(-4.5,-9,-2,-17);X.closePath();X.fill();X.globalAlpha=1;   // つや
+  for(let k=0;k<9;k++){X.globalAlpha=.8;ell(-12+k*3,-6+Math.abs(k-4)*.4,.6,.6,'#fff');}X.globalAlpha=1;   // ドレスのきらきら
+  X.fillStyle=gownShade;X.beginPath();X.moveTo(1,-14);X.quadraticCurveTo(4,-8,9,-2);X.lineTo(12,-2);X.quadraticCurveTo(6,-8,3,-15);X.closePath();X.fill();
   for(let k=-4;k<=4;k++)o(k*3.8,-1.5,2.4,2,gownLight);   // すそのフリル
   o(0,-19,6,5,gown);                                        // 胸もと
   o(0,-15.5,6.5,1.8,'#fff');o(-2.6,-15.5,2.2,1.7,'#fff');o(2.6,-15.5,2.2,1.7,'#fff');o(0,-15.5,1.2,1.2,'#ff6b9a');   // 腰のリボン
   o(-7,-20,3.4,3,gownLight);o(7,-20,3.4,3,gownLight);       // ふくらんだ袖
   o(-8,-13.5,2,2,skin);o(8,-13.5,2,2,skin);                 // 手
   // ブーケ（顔を向けている側の手に）
-  const bx=f*8,by=-12;x.fillStyle='#5fbf5f';x.fillRect(bx-.7,by,1.4,5);
+  const bx=f*8,by=-12;X.fillStyle='#5fbf5f';X.fillRect(bx-.7,by,1.4,5);
   o(bx-2.4,by-1.4,2,2,'#ff6b8a');o(bx+2.4,by-1.4,2,2,'#ffd84d');o(bx,by-3.4,2,2,'#fff');o(bx,by-1,1.4,1.4,'#ff9ad5');
   // 顔
   o(0,-21.5,2.2,2,'#f2cfb2');   // 首
-  const sg=x.createRadialGradient(-2.5,-34,1,0,-31,11);sg.addColorStop(0,'#fff1e2');sg.addColorStop(.75,skin);sg.addColorStop(1,'#f0c8a8');
-  x.fillStyle=sg;x.beginPath();x.ellipse(0,-31,10.5,10,0,0,7);x.fill();
+  const sg=X.createRadialGradient(-2.5,-34,1,0,-31,11);sg.addColorStop(0,'#fff1e2');sg.addColorStop(.75,skin);sg.addColorStop(1,'#f0c8a8');
+  X.fillStyle=sg;X.beginPath();X.ellipse(0,-31,10.5,10,0,0,7);X.fill();
   // 前髪とサイドの髪
-  x.fillStyle=hg;x.beginPath();x.moveTo(-11.5,-30);x.quadraticCurveTo(-12,-43.5,0,-43.5);x.quadraticCurveTo(12,-43.5,11.5,-30);
-  x.quadraticCurveTo(9,-36,6,-34.5);x.quadraticCurveTo(4,-38,1.5,-35);x.quadraticCurveTo(-1,-38.5,-4,-35);x.quadraticCurveTo(-7,-37.5,-9.5,-32);x.closePath();x.fill();
+  X.fillStyle=hg;X.beginPath();X.moveTo(-11.5,-30);X.quadraticCurveTo(-12,-43.5,0,-43.5);X.quadraticCurveTo(12,-43.5,11.5,-30);
+  X.quadraticCurveTo(9,-36,6,-34.5);X.quadraticCurveTo(4,-38,1.5,-35);X.quadraticCurveTo(-1,-38.5,-4,-35);X.quadraticCurveTo(-7,-37.5,-9.5,-32);X.closePath();X.fill();
   o(-10.8,-25,2.4,6.5,hair);o(10.8,-25,2.4,6.5,hair);
-  for(const sx of[-1,1]){x.strokeStyle=hairLight;x.lineWidth=.7;x.beginPath();x.moveTo(sx*10.6,-30);x.quadraticCurveTo(sx*11.6,-25,sx*10.4,-19.5);x.stroke();}   // 横髪のつや
-  x.strokeStyle=hairLight;x.lineWidth=1;x.lineCap='round';x.beginPath();x.arc(-2,-38,6,Math.PI*1.15,Math.PI*1.55);x.stroke();   // つや
+  for(const sx of[-1,1]){X.strokeStyle=hairLight;X.lineWidth=.7;X.beginPath();X.moveTo(sx*10.6,-30);X.quadraticCurveTo(sx*11.6,-25,sx*10.4,-19.5);X.stroke();}   // 横髪のつや
+  X.strokeStyle=hairLight;X.lineWidth=1;X.lineCap='round';X.beginPath();X.arc(-2,-38,6,Math.PI*1.15,Math.PI*1.55);X.stroke();   // つや
   // 目：大きな目とキラキラのハイライト。ときどきまばたき
   const blink=t%170<6,ex=f*.8;
   for(const side of[-1,1]){const cx=side*4.2+ex;
-    if(blink){x.strokeStyle='#3a2340';x.lineWidth=1.2;x.beginPath();x.arc(cx,-30.5,2.2,.15*Math.PI,.85*Math.PI);x.stroke();continue;}
+    if(blink){X.strokeStyle='#3a2340';X.lineWidth=1.2;X.beginPath();X.arc(cx,-30.5,2.2,.15*Math.PI,.85*Math.PI);X.stroke();continue;}
     o(cx,-30,2.3,3.1,'#2a1630');
-    const ig=x.createLinearGradient(0,-32.5,0,-27.5);ig.addColorStop(0,'#5a3a8a');ig.addColorStop(1,'#b48ae0');x.fillStyle=ig;x.beginPath();x.ellipse(cx,-29.6,1.75,2.3,0,0,7);x.fill();
+    const ig=X.createLinearGradient(0,-32.5,0,-27.5);ig.addColorStop(0,'#5a3a8a');ig.addColorStop(1,'#b48ae0');X.fillStyle=ig;X.beginPath();X.ellipse(cx,-29.6,1.75,2.3,0,0,7);X.fill();
     o(cx,-29.4,.8,1.1,'#1a0c20');o(cx+.75,-31.2,.95,1.05,'#fff');o(cx-.6,-28.3,.5,.5,'#fff');
-    x.strokeStyle='#2a1630';x.lineWidth=1.1;x.beginPath();x.arc(cx,-30,2.4,Math.PI*1.1,Math.PI*1.9);x.stroke();   // 上まぶた
-    x.strokeStyle='#3a2340';x.lineWidth=.9;x.beginPath();x.moveTo(cx+side*2,-32);x.lineTo(cx+side*3.2,-33.3);x.stroke();   // まつげ
+    X.strokeStyle='#2a1630';X.lineWidth=1.1;X.beginPath();X.arc(cx,-30,2.4,Math.PI*1.1,Math.PI*1.9);X.stroke();   // 上まぶた
+    X.strokeStyle='#3a2340';X.lineWidth=.9;X.beginPath();X.moveTo(cx+side*2,-32);X.lineTo(cx+side*3.2,-33.3);X.stroke();   // まつげ
   }
-  x.globalAlpha=.7;o(-6.8,-26.5,2.3,1.3,'#ff9bb5');o(6.8,-26.5,2.3,1.3,'#ff9bb5');x.globalAlpha=1;   // ほっぺ
-  x.fillStyle='#e8708e';x.beginPath();x.arc(ex*.6,-26.2,1.5,.05*Math.PI,.95*Math.PI);x.closePath();x.fill();o(ex*.6-.4,-25.4,.4,.25,'#ffd0da');   // にっこり口
+  X.globalAlpha=.7;o(-6.8,-26.5,2.3,1.3,'#ff9bb5');o(6.8,-26.5,2.3,1.3,'#ff9bb5');X.globalAlpha=1;   // ほっぺ
+  X.fillStyle='#e8708e';X.beginPath();X.arc(ex*.6,-26.2,1.5,.05*Math.PI,.95*Math.PI);X.closePath();X.fill();o(ex*.6-.4,-25.4,.4,.25,'#ffd0da');   // にっこり口
   o(ex*.6,-28.2,.5,.35,'#e8b898');   // 鼻
   // ティアラ
-  x.fillStyle='#ffd24a';x.beginPath();x.moveTo(-6,-42);x.lineTo(-5,-46);x.lineTo(-2.5,-43.5);x.lineTo(0,-48);x.lineTo(2.5,-43.5);x.lineTo(5,-46);x.lineTo(6,-42);x.closePath();x.fill();
+  X.fillStyle='#ffd24a';X.beginPath();X.moveTo(-6,-42);X.lineTo(-5,-46);X.lineTo(-2.5,-43.5);X.lineTo(0,-48);X.lineTo(2.5,-43.5);X.lineTo(5,-46);X.lineTo(6,-42);X.closePath();X.fill();
   o(0,-44.3,1.3,1.3,'#ff5f9e');o(-5,-46,.8,.8,'#7fe3ff');o(5,-46,.8,.8,'#7fe3ff');
-  if(t%90<12){x.fillStyle='#fff';x.fillRect(-.3,-51,.6,4);x.fillRect(-2,-49.3,4,.6);}   // ティアラがキラッ
+  if(t%90<12){X.fillStyle='#fff';X.fillRect(-.3,-51,.6,4);X.fillRect(-2,-49.3,4,.6);}   // ティアラがキラッ
   // 髪かざりのお花
   const hx=-f*9,hy=-38;for(let k=0;k<5;k++){const a=k*Math.PI*2/5;o(hx+Math.cos(a)*1.8,hy+Math.sin(a)*1.8,1.4,1.4,'#fff');}o(hx,hy,1.1,1.1,'#ffd84d');
-  x.restore();}
+  X.restore();}
 function drawHeart(cx,cy,r,col){x.fillStyle=col;x.beginPath();x.arc(cx-r/2,cy,r/2,0,7);x.arc(cx+r/2,cy,r/2,0,7);x.fill();x.beginPath();x.moveTo(cx-r,cy+r*.15);x.lineTo(cx,cy+r*1.1);x.lineTo(cx+r,cy+r*.15);x.closePath();x.fill()}
+// 主人公を描く：3周目からはソラ姫（足もとの位置をそろえる。当たり判定はよし太くんと同じ）
+function drawHero(px,py,facing,pose,stride=0,context=x){
+  if(!princessRound)return drawPlayerAt(px,py,facing,pose,stride,context);
+  const bob=pose==='walk'?Math.abs(Math.sin(stride*.19))*2.5:pose==='jump'?-2:0;
+  drawPartner(px,py-4-bob,facing,context);
+}
 function drawPlayerAt(px,py,facing,pose,stride=0,context=x){
   const x=context;
   const oval=(cx,cy,rx,ry,color)=>ell(cx,cy,rx,ry,color,x);
@@ -2530,7 +2541,7 @@ function draw(){
   if(p.climb)p.facing=Math.floor(p.climb.t/14)%2?1:-1;   // 手足を交互に動かして登る
   const pose=p.climb?'jump':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
-  drawScaled(p.x+p.w/2,p.y+p.h,()=>drawPlayerAt(p.x,p.y,p.facing,pose,p.stride));
+  drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHero(p.x,p.y,p.facing,pose,p.stride));
   x.globalAlpha=1;
   if(stage===1&&!inBasement)drawBalloon('front');
   drawParts();drawPopups();
@@ -2655,7 +2666,7 @@ function drawEnding(){
   const princess=endingPrincessPosition();
   if(endingRare){drawRainbow();const jump=k=>Math.abs(Math.sin(endT*.13+k))*18;
     drawEndPlayer();
-    drawEndScaled(princess.x+17,princess.y+46,()=>drawPartner(princess.x,princess.y,endP&&endP.x<princess.x?-1:1));
+    drawEndScaled(princess.x+17,princess.y+46,()=>princessRound?drawPlayerAt(princess.x,princess.y+4,endP&&endP.x<princess.x?-1:1,'front'):drawPartner(princess.x,princess.y,endP&&endP.x<princess.x?-1:1));   // ソラ姫が主人公のときは、となりによし太くん
     drawMoleFriend(W/2+150,ground-88*.75*END_SCALE-jump(2),.75*END_SCALE,endT);
     x.textAlign='center';const on=Math.floor(endT/20)%2;x.font='900 30px system-ui';x.lineWidth=6;x.strokeStyle='#7a4a00';x.fillStyle=on?'#ffe14d':'#fff6a8';x.strokeText('★ RARE ENDING ★',W/2,48);x.fillText('★ RARE ENDING ★',W/2,48);x.textAlign='left';
   }else if(endingPair){
