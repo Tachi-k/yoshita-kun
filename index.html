@@ -70,15 +70,15 @@ canvas{display:block;background:#17283c}
 #mazeLayout{display:grid;justify-items:center;align-items:center;gap:8px}
 #mazeBoard{width:100%;margin:0!important;image-rendering:pixelated}
 #mazeControls{display:grid;justify-items:center;gap:4px}
-#mazeDirections{display:grid;grid-template-columns:repeat(3,minmax(28px,44px));grid-template-rows:repeat(3,minmax(28px,44px));gap:3px;touch-action:none}
-#arcade #mazeDirections button{margin:0;min-height:0;padding:0;font-size:20px;touch-action:none}
+#mazeDirections{display:grid;grid-template-columns:repeat(3,minmax(32px,50px));grid-template-rows:repeat(3,minmax(32px,50px));gap:3px;touch-action:none}
+#arcade #mazeDirections button{margin:0;min-height:0;padding:0;font-size:23px;touch-action:none}
 #mazeDirections [data-dir="up"]{grid-area:1/2}
 #mazeDirections [data-dir="left"]{grid-area:2/1}
 #mazeDirections [data-dir="right"]{grid-area:2/3}
 #mazeDirections [data-dir="down"]{grid-area:3/2}
 #arcade #mazeDirections button.held{background:#ffdf50}
 @media (orientation:landscape){
-  #mazeLayout{grid-template-columns:clamp(105px,20vw,164px) minmax(0,1fr)}
+  #mazeLayout{grid-template-columns:clamp(112px,22vw,174px) minmax(0,1fr)}
   #mazeControls{grid-area:1/1}
   #mazeBoard{grid-area:1/2}
   #mazeBoard{width:min(100%,calc((100dvh - 117px)*1.44))}
@@ -95,7 +95,7 @@ canvas{display:block;background:#17283c}
   #arcade h2,#arcade h3{font-size:16px;margin:0}
   #arcade p{margin:3px 0}
   #mazeBoard{width:min(100%,calc((100dvh - 88px)*1.44))}
-  #mazeDirections{grid-template-columns:repeat(3,minmax(28px,11dvh));grid-template-rows:repeat(3,minmax(28px,11dvh))}
+  #mazeDirections{grid-template-columns:repeat(3,minmax(32px,12dvh));grid-template-rows:repeat(3,minmax(32px,12dvh))}
   #arcade button{min-height:30px;padding:4px 10px}
 }
 </style></head><body>
@@ -1060,9 +1060,9 @@ function drawMaze(){
     const bounce=motion?Math.sin(motion.frame/motion.duration*Math.PI):0;
     drawMazeCritter(fx*size+16,fy*size+16-bounce,i,Math.sign(heroX-fx));
   });
-  mazeCtx.save();mazeCtx.translate(heroX*size+6,heroY*size+5);mazeCtx.scale(.6,.6);
+  mazeCtx.save();mazeCtx.translate(heroX*size+16,heroY*size+31);mazeCtx.scale(.68,secondRound?.49:.61);
   const walking=maze.motion&&heroX!==maze.hero[0];
-  drawPlayerAt(0,0,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
+  drawPlayerAt(-17,-42,maze.facing,walking?'walk':'front',heroX*size,mazeCtx);mazeCtx.restore();
   const status=maze.done?(maze.lives?'クリア！ 星を全部集めた！':'ミス！ やり直すと再挑戦できます。'):
     '残りの星 '+maze.stars.size+'　ライフ '+maze.lives;
   if(mazeStatus.textContent!==status)mazeStatus.textContent=status;
