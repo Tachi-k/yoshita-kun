@@ -1846,6 +1846,9 @@ function drawBalloon(part){const bx=world-120,lift=state==='goal'||state==='clea
     x.fillStyle='#a8743a';x.fillRect(bx-30,top,60,38);x.strokeStyle='#7a5226';x.lineWidth=2;for(let k=1;k<4;k++){x.beginPath();x.moveTo(bx-30,top+k*9.5);x.lineTo(bx+30,top+k*9.5);x.stroke();}for(let k=1;k<6;k++){x.beginPath();x.moveTo(bx-30+k*10,top);x.lineTo(bx-30+k*10,top+38);x.stroke();}
     x.fillStyle='#5a3a1a';x.fillRect(bx-32,top-3,64,6);
   }}
+// キャラクターの見た目の大きさ（当たり判定は変えず、足もとを中心に絵だけ大きくする）
+const CHAR_SCALE=1.25;
+function drawScaled(cx,footY,fn){x.save();x.translate(cx,footY);x.scale(CHAR_SCALE,CHAR_SCALE);x.translate(-cx,-footY);fn();x.restore();}
 function drawEnemy(e){
   if(e.type==='boar'){
     const cx=e.x+16,cy=e.y+20;
@@ -2005,7 +2008,7 @@ function draw(){
     if(!e.grounded&&e.y+e.h<ground-16&&platforms.some(b=>b.y===ground&&e.x+16>b.x&&e.x+16<b.x+b.w)){const s=Math.max(.3,1-(ground-e.y-e.h)/400);x.fillStyle='#0004';x.beginPath();x.ellipse(e.x+16,ground+2,16*s,4*s,0,0,7);x.fill();}
     // もうすぐ踏み台から降りる敵は「！」
     if(e.grounded&&e.y+e.h<ground-1&&e.perchT>0&&e.perchT<75){x.fillStyle='#ff4d4d';x.font='bold 22px system-ui';x.fillText('!',e.x+12,e.y-6-Math.abs(Math.sin(e.perchT*.3))*5);}}
-  for(const e of enemies){if(!e.alive)continue;if(e.trapHole){x.save();x.beginPath();x.rect(e.trapHole.x,ground,e.trapHole.w,36);x.clip();}drawEnemy(e);if(e.trapHole)x.restore();}
+  for(const e of enemies){if(!e.alive)continue;if(e.trapHole){x.save();x.beginPath();x.rect(e.trapHole.x,ground,e.trapHole.w,36);x.clip();}drawScaled(e.x+e.w/2,e.y+e.h,()=>drawEnemy(e));if(e.trapHole)x.restore();}
   if(stage===1&&!inBasement)drawBalloon('back');
   if(boss)drawBoss(boss);
   drawCannon();
@@ -2015,7 +2018,7 @@ function draw(){
   const p=player;
   const pose=state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
-  drawPlayerAt(p.x,p.y,p.facing,pose,p.stride);
+  drawScaled(p.x+p.w/2,p.y+p.h,()=>drawPlayerAt(p.x,p.y,p.facing,pose,p.stride));
   x.globalAlpha=1;
   if(stage===1&&!inBasement)drawBalloon('front');
   drawParts();drawPopups();
