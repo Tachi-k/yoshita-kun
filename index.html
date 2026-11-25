@@ -70,15 +70,13 @@ canvas{display:block;background:#17283c}
 #mazeLayout{display:grid;justify-items:center;align-items:center;gap:8px}
 #mazeBoard{width:100%;margin:0!important;image-rendering:pixelated}
 #mazeControls{display:grid;justify-items:center;gap:4px}
-#mazeJoystick{position:relative;width:clamp(96px,24vw,136px);aspect-ratio:1;border:2px solid #57799b;border-radius:50%;background:#0c1b2f;color:#e8f3ff;touch-action:none;user-select:none;cursor:grab}
-#mazeJoystick:active{cursor:grabbing}
-#mazeJoystick:focus-visible{outline:3px solid #ffdf50;outline-offset:3px}
-#mazeJoystick .arrow{position:absolute;line-height:1;font-size:17px;pointer-events:none}
-#mazeJoystick .up{top:6px;left:50%;translate:-50% 0}
-#mazeJoystick .down{bottom:6px;left:50%;translate:-50% 0}
-#mazeJoystick .left{left:6px;top:50%;translate:0 -50%}
-#mazeJoystick .right{right:6px;top:50%;translate:0 -50%}
-#mazeKnob{position:absolute;width:42%;aspect-ratio:1;top:50%;left:50%;translate:-50% -50%;border:2px solid #fff2ac;border-radius:50%;background:#ffda63;box-shadow:0 3px 0 #9b712e;pointer-events:none}
+#mazeDirections{display:grid;grid-template-columns:repeat(3,minmax(28px,44px));grid-template-rows:repeat(3,minmax(28px,44px));gap:3px;touch-action:none}
+#arcade #mazeDirections button{margin:0;min-height:0;padding:0;font-size:20px;touch-action:none}
+#mazeDirections [data-dir="up"]{grid-area:1/2}
+#mazeDirections [data-dir="left"]{grid-area:2/1}
+#mazeDirections [data-dir="right"]{grid-area:2/3}
+#mazeDirections [data-dir="down"]{grid-area:3/2}
+#arcade #mazeDirections button.held{background:#ffdf50}
 @media (orientation:landscape){
   #mazeLayout{grid-template-columns:clamp(105px,20vw,164px) minmax(0,1fr)}
   #mazeControls{grid-area:1/1}
@@ -87,7 +85,7 @@ canvas{display:block;background:#17283c}
 }
 @media (orientation:portrait){
   #mazeControls{justify-self:start;grid-template-columns:auto auto;align-items:center;gap:3px 14px}
-  #mazeJoystick{grid-row:1/3;grid-column:1}
+  #mazeDirections{grid-row:1/3;grid-column:1}
   #mazeStatus,#mazeRetry{grid-column:2}
 }
 #slotBoard{width:min(330px,100%)}
@@ -97,7 +95,7 @@ canvas{display:block;background:#17283c}
   #arcade h2,#arcade h3{font-size:16px;margin:0}
   #arcade p{margin:3px 0}
   #mazeBoard{width:min(100%,calc((100dvh - 88px)*1.44))}
-  #mazeJoystick{width:clamp(76px,23dvh,110px)}
+  #mazeDirections{grid-template-columns:repeat(3,minmax(28px,11dvh));grid-template-rows:repeat(3,minmax(28px,11dvh))}
   #arcade button{min-height:30px;padding:4px 10px}
 }
 </style></head><body>
@@ -121,10 +119,11 @@ canvas{display:block;background:#17283c}
     <div id="mazeLayout">
       <canvas id="mazeBoard" width="416" height="288" aria-label="迷路"></canvas>
       <div id="mazeControls">
-        <div id="mazeJoystick" tabindex="0" aria-label="ジョイスティック。押したまま動かすか、矢印キーで移動">
-          <span class="arrow up" aria-hidden="true">↑</span><span class="arrow left" aria-hidden="true">←</span>
-          <span class="arrow right" aria-hidden="true">→</span><span class="arrow down" aria-hidden="true">↓</span>
-          <span id="mazeKnob" aria-hidden="true"></span>
+        <div id="mazeDirections" aria-label="方向ボタン">
+          <button type="button" data-dir="up" aria-label="上">↑</button>
+          <button type="button" data-dir="left" aria-label="左">←</button>
+          <button type="button" data-dir="right" aria-label="右">→</button>
+          <button type="button" data-dir="down" aria-label="下">↓</button>
         </div>
         <p id="mazeStatus" class="arcadeStatus" role="status"></p>
         <button id="mazeRetry" type="button">やり直す</button>
@@ -820,7 +819,28 @@ let lastSafeX=60;
 let roomKind='basement',roomT=0,bonusUsed={},rainGapCrossed=false;   // roomKind: basement=隠し地下室 / rain=ボーナス画面 / sky=ボーナスステージ
 function inBonus(){return inBasement&&roomKind!=='basement'}   // 最後に安全な地面に立っていた位置（ミスした時の再開地点）
 // ===== エンディングでも主人公を動かせる =====
-const QUEST_TRIAL_URL='https://tachi-k.github.io/ojiya-quest/';
+const QUEST_TRIAL_URL='https://tachi-k.github.io/ojiya-quest/?from=ending';
+const QUEST_ENDING_KEY='yoshita-quest-return';
+function openQuestTrial(){
+  try{
+    sessionStorage.setItem(QUEST_ENDING_KEY,JSON.stringify({score,endingPair,endingRare,secondRound}));
+  }catch(_){}
+  window.location.assign(QUEST_TRIAL_URL);
+}
+function restoreQuestEnding(){
+  if(window.location?.search!=='?ending=return')return false;
+  let ending;
+  try{ending=JSON.parse(sessionStorage.getItem(QUEST_ENDING_KEY));}catch(_){return false;}
+  if(!ending||!Number.isFinite(ending.score))return false;
+  mode='game';Math.random=realRandom;
+  score=ending.score;loadStage(2);state='ending';clearedAdventure=true;
+  secondRound=ending.secondRound===true;
+  endingRare=ending.endingRare===true;endingPair=!endingRare&&ending.endingPair===true;
+  endT=Math.ceil((H+40+credits().length*46-110)/.75)+1;
+  endP=null;
+  document.getElementById('startBtn').style.display='none';
+  return true;
+}
 const QUEST_DOOR_X=W-100;
 let endP=null;
 function drawQuestDoor(){
@@ -866,7 +886,7 @@ function updateEndPlayer(){
       if(step){q.x+=step;q.f=Math.sign(step);q.stride=(q.stride||0)+Math.abs(step);}
       q.walking=step!==0;
     }
-    if(q.doorFrame===44)window.location.assign(QUEST_TRIAL_URL);
+    if(q.doorFrame===44)openQuestTrial();
     return;
   }
   const vx=(keys.right?4:0)-(keys.left?4:0),oldX=q.x;
@@ -931,7 +951,6 @@ function enterArcade(h){
 function exitArcade(){
   if(state!=='arcade')return;
   stopSlotSpin();
-  releaseMazeJoystick();
   stopMazeHold();
   const h=arcadeHole;
   holes=holes.filter(other=>other!==h);
@@ -1120,14 +1139,16 @@ function startSlotSpin(){
 }
 document.getElementById('arcadeExit').addEventListener('click',exitArcade);
 document.getElementById('mazeRetry').addEventListener('click',resetMaze);
-const mazeJoystick=document.getElementById('mazeJoystick'),mazeKnob=document.getElementById('mazeKnob');
-let mazePointer=null;
+const mazeDirections=document.getElementById('mazeDirections');
 const MAZE_KEYS={arrowleft:'left',a:'left',arrowright:'right',d:'right',arrowup:'up',w:'up',arrowdown:'down',s:'down'};
 function stopMazeHold(){
+  mazeHold?.button?.classList.remove('held');
   mazeHold=null;
 }
-function beginMazeHold(dir,source){
-  mazeHold={dir,source,wait:13};
+function beginMazeHold(dir,source,button=null){
+  stopMazeHold();
+  mazeHold={dir,source,button,wait:13};
+  button?.classList.add('held');
   mazeMove(dir);
 }
 function updateMazeHold(){
@@ -1137,46 +1158,24 @@ function updateMazeHold(){
     mazeMove(mazeHold.dir);
   }
 }
-function joystickDirection(dx,dy,deadZone){
-  if(Math.hypot(dx,dy)<deadZone)return null;
-  if(Math.abs(dx)>=Math.abs(dy))return dx<0?'left':'right';
-  return dy<0?'up':'down';
-}
-function steerMazeJoystick(event){
-  const box=mazeJoystick.getBoundingClientRect();
-  const dx=event.clientX-box.left-box.width/2,dy=event.clientY-box.top-box.height/2;
-  const direction=joystickDirection(dx,dy,box.width*.13);
-  const limit=box.width*.26;
-  const scale=Math.min(1,limit/(Math.hypot(dx,dy)||1));
-  mazeKnob.style.transform='translate('+dx*scale+'px,'+dy*scale+'px)';
-  if(!direction){
-    if(mazeHold?.source===mazePointer)stopMazeHold();
-  }else if(mazeHold?.source!==mazePointer||mazeHold.dir!==direction){
-    beginMazeHold(direction,mazePointer);
-  }
-}
-function releaseMazeJoystick(){
-  if(mazePointer===null)return;
-  if(mazeHold?.source===mazePointer)stopMazeHold();
-  mazePointer=null;
-  mazeKnob.style.transform='';
-}
-mazeJoystick.addEventListener('pointerdown',event=>{
-  if(mazePointer!==null||event.button!==0)return;
+mazeDirections.addEventListener('pointerdown',event=>{
+  const dir=event.target.dataset.dir;
+  if(!dir||event.button!==0)return;
   event.preventDefault();
-  mazePointer=event.pointerId;
-  mazeJoystick.setPointerCapture(mazePointer);
-  steerMazeJoystick(event);
-});
-mazeJoystick.addEventListener('pointermove',event=>{
-  if(mazePointer===event.pointerId)steerMazeJoystick(event);
+  event.target.setPointerCapture(event.pointerId);
+  beginMazeHold(dir,event.pointerId,event.target);
 });
 for(const type of ['pointerup','pointercancel','lostpointercapture']){
-  mazeJoystick.addEventListener(type,event=>{if(mazePointer===event.pointerId)releaseMazeJoystick();});
+  mazeDirections.addEventListener(type,event=>{
+    if(mazeHold?.source===event.pointerId)stopMazeHold();
+  });
 }
+mazeDirections.addEventListener('click',event=>{
+  if(event.detail===0&&event.target.dataset.dir)mazeMove(event.target.dataset.dir);
+});
 slotSpin.addEventListener('click',startSlotSpin);
 arcade.addEventListener('cancel',event=>{event.preventDefault();exitArcade();});
-window.addEventListener('blur',()=>{releaseMazeJoystick();stopMazeHold();});
+window.addEventListener('blur',stopMazeHold);
 document.addEventListener('keydown',event=>{
   if(state!=='arcade')return;
   event.stopImmediatePropagation();
@@ -1912,7 +1911,7 @@ function drawPause(){x.fillStyle='#0009';x.fillRect(0,0,W,H);x.textAlign='center
   x.font='bold 24px system-ui';x.fillText('画面をタップで さいかい',W/2,305);x.font='18px system-ui';x.fillStyle='#cfd8ea';x.fillText('SCORE '+score+'　　♥ × '+lives,W/2,350);x.textAlign='left';}
 const STEP=1000/60;let last=0,acc=0;
 function loop(t){if(!last)last=t;acc+=Math.min(100,t-last)*(mode==='title'?.85:1);last=t;if(paused)acc=0;while(acc>=STEP){update();acc-=STEP;}mp3LoopCheck();draw();if(mode==='title')drawTitle();if(paused)drawPause();requestAnimationFrame(loop)}
-toTitle();
+if(!restoreQuestEnding())toTitle();
 requestAnimationFrame(loop);
 
 // キーボード
