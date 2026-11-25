@@ -1025,8 +1025,10 @@ function mazeEnemyStep(from,target){
 const MAZE_GLIDE_FRAMES=8;
 // 敵は主人公の操作とは関係なく、一定の速さで毎フレームなめらかに進む（1フレームあたりのマス数）
 const MAZE_FOE_SPEEDS=[1/24,1/32],MAZE_FOE_WAIT=45,MAZE_HIT_DISTANCE=.6;
+// 分かれ道で主人公を追いかける確率。残りは気ままにうろうろする
+const MAZE_FOE_CHASE=[.55,.35];
 function spawnMazeFoes(){
-  maze.foes=MAZE_ENEMY_STARTS.map((pos,i)=>({pos,next:null,t:0,speed:MAZE_FOE_SPEEDS[i],wait:MAZE_FOE_WAIT,look:-1,phase:0}));
+  maze.foes=MAZE_ENEMY_STARTS.map((pos,i)=>({pos,prev:null,next:null,t:0,speed:MAZE_FOE_SPEEDS[i],chase:MAZE_FOE_CHASE[i],wait:MAZE_FOE_WAIT,look:-1,phase:0}));
 }
 function mazeVisualPosition(target,motion){
   if(!motion)return target;
@@ -1037,19 +1039,31 @@ function mazeFoePosition(foe){
   if(!foe.next)return foe.pos;
   return foe.pos.map((value,i)=>value+(foe.next[i]-value)*foe.t);
 }
+// 次に進むマスを選ぶ。来た道へは行き止まりのときだけ戻るので、止まらずに歩き続ける
+function mazeFoeChoice(foe){
+  const all=Object.values(MAZE_MOVES).map(move=>mazeWalk(foe.pos,move)).filter(Boolean);
+  if(!all.length)return null;
+  const ahead=all.filter(p=>!foe.prev||p[0]!==foe.prev[0]||p[1]!==foe.prev[1]);
+  const options=ahead.length?ahead:all;
+  if(Math.random()<foe.chase){
+    const chase=mazeEnemyStep(foe.pos,maze.hero);
+    if(options.some(p=>p[0]===chase[0]&&p[1]===chase[1]))return chase;
+  }
+  return options[Math.floor(Math.random()*options.length)];
+}
 function updateMazeFoe(foe,frames){
   if(foe.wait>0){foe.wait-=frames;return;}
   let budget=foe.speed*frames;
   while(budget>0){
     if(!foe.next){
-      const step=mazeEnemyStep(foe.pos,maze.hero);
-      if(step===foe.pos)return;
+      const step=mazeFoeChoice(foe);
+      if(!step)return;
       foe.next=step;foe.t=0;
       if(step[0]!==foe.pos[0])foe.look=Math.sign(step[0]-foe.pos[0]);
     }
     const used=Math.min(budget,1-foe.t);
     foe.t+=used;budget-=used;foe.phase+=used;
-    if(foe.t>=1){foe.pos=foe.next;foe.next=null;foe.t=0;}
+    if(foe.t>=1){foe.prev=foe.pos;foe.pos=foe.next;foe.next=null;foe.t=0;}
   }
 }
 // 画面の描きかえ（requestAnimationFrame）ごとに、実際に経過した時間ぶんだけ進める。
