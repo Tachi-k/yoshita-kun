@@ -508,7 +508,9 @@ function playJingle(audio,done=()=>{},failed=()=>{}){
   });
 }
 function preloadJingles(){for(const audio of [stageClearAudio,bossIntroAudio,bossClearAudio])loadJingle(audio)}
-document.addEventListener('pointerdown',()=>{if(XMAS){try{unlockAudio();XMAS_VOICES.forEach(loadJingle);}catch(_){}}},{capture:true,passive:true});   // クリスマスの声を先に読みこんでおく
+document.addEventListener('pointerdown',()=>{if(XMAS){try{unlockAudio();XMAS_VOICES.forEach(loadJingle);}catch(_){}}},{capture:true,passive:true});
+// クリスマス版：ページを開いたらすぐ声の読みこみ（デコード）を始めておく。音を鳴らすのはタップのあと
+setTimeout(()=>{if(!XMAS)return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();XMAS_VOICES.forEach(loadJingle);}catch(_){}},300);   // クリスマスの声を先に読みこんでおく
 let bossClearDone=true;
 function stopBossSounds(){for(const audio of [bossIntroAudio,bossClearAudio])stopJingle(audio);bossClearDone=true}
 function playBossIntro(){if(mode==='game')playJingle(bossIntroAudio)}
@@ -559,7 +561,7 @@ function unlockAudio(){try{if(mp3Cur){const m=mp3[mp3Cur];if(m&&musicOn&&!paused
   if(!navigator.audioSession&&!silentEl&&/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document){silentEl=new Audio(silentWavUrl());silentEl.loop=true;silentEl.setAttribute('playsinline','');const pr=silentEl.play();if(pr&&pr.catch)pr.catch(()=>{silentEl=null})}
 }catch(e){}}
 ['touchstart','pointerdown','touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
-function tone(hz,duration,type='square',volume=.09,delay=0,endHz=null){if(mode==='title')return;unlockAudio();if(!audioCtx)return;try{let t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,hz),t);if(endHz)o.frequency.exponentialRampToValueAtTime(Math.max(1,endHz),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+duration+.02);}catch(e){}}
+function tone(hz,duration,type='square',volume=.09,delay=0,endHz=null){if(mode==='title'&&!xmasIntro)return;unlockAudio();if(!audioCtx)return;try{let t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,hz),t);if(endHz)o.frequency.exponentialRampToValueAtTime(Math.max(1,endHz),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+duration+.02);}catch(e){}}
 const vib={dig:12,stomp:30,bury:45,chain:[40,30,40,30,80],treasure:30,oneup:[30,30,30],hurt:[70,40,140],slam:40,bosshit:[60,30,90],boom:80};
 function buzz(kind){try{if(vib[kind]&&navigator.vibrate)navigator.vibrate(vib[kind])}catch(e){}}
 function pinSound(n){if(mode==='title')return;tone(420+n*55,.1,'square',.07,0,900+n*70);tone(1600+n*40,.05,'triangle',.04,.03);buzz('stomp');}
@@ -1849,7 +1851,7 @@ let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
 // クリスマス版：スタートを押すと「メリークリスマス！」と叫ぶ（用意した声の2種類から、毎回どちらかを流す＋鈴の音）
 const XMAS_VOICES=['audio/xmas-voice-1.mp3','audio/xmas-voice-2.mp3'].map(src=>{const a=new Audio(src);a.preload='auto';return a;});
 // 声 →（声が終わったら）鈴 → done() の順に進める。声が鳴らない機種でも、決まった時間で先へ進む
-let xmasIntro=null;
+let xmasIntro=null,xmasVoiceNodes=null;
 function shoutMerryXmas(done){
   const v=XMAS_VOICES[Math.floor(realRandom()*XMAS_VOICES.length)];
   let finished=false,started=false;
@@ -1865,10 +1867,11 @@ function shoutMerryXmas(done){
     started=true;
     try{if(audioCtx.state!=='running')audioCtx.resume();
       const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;g.gain.value=1;src.connect(g);g.connect(audioCtx.destination);
-      src.onended=bells;src.start();}catch(_){started=false;viaElement();}
+      xmasVoiceNodes=[src,g];   // iPhoneのSafariは、どこからも参照していない音を途中で止めてしまうことがあるので、終わるまで持っておく
+      src.onended=()=>{xmasVoiceNodes=null;bells();};src.start();}catch(_){started=false;viaElement();}
   });
-  setTimeout(()=>{if(!started)viaElement();},1200);   // 読みこみに時間がかかるとき
-  setTimeout(bells,5500);   // 念のための時間切れ
+  setTimeout(()=>{if(!started)viaElement();},3500);   // 読みこみがおそいときだけ、<audio>で鳴らす（早すぎると、声が鳴らない機種がある）
+  setTimeout(bells,9000);   // 念のための時間切れ
 }
 // クリスマス版：スタートを押したら「メリークリスマス！」と鈴が鳴りおわってから、ゲームを始める
 function startGame(){
