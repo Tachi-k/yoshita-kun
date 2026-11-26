@@ -2634,15 +2634,15 @@ function drawPopups(){x.textAlign='center';for(const q of popups){x.globalAlpha=
 // 気球は主人公に合わせて大きく描く（かごの底を中心に拡大）
 const BALLOON_SCALE=1.3;
 function drawBalloon(part){const bx=goalBX(),lift=state==='goal'||state==='clear'?balloonLift:0,bottom=ground-lift;
-  x.save();x.translate(bx,bottom);x.scale(BALLOON_SCALE,BALLOON_SCALE);x.translate(-bx,-bottom);drawBalloonRaw(part);x.restore();}
-function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=Math.sin(Date.now()*.0015)*3;
+  x.save();x.translate(bx,bottom);x.rotate(Math.sin(Date.now()*.0015)*.012);x.scale(BALLOON_SCALE,BALLOON_SCALE);x.translate(-bx,-bottom);drawBalloonRaw(part);x.restore();}
+function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=0;   // ゆれは気球全体をかたむけて表す（球皮・ワイヤー・かごがずれないように）
   const firing=state==='goal'&&goalTick>28,flame=firing?(.8+Math.random()*.5):(Math.floor(Date.now()/900)%3===0?.35:0);
   if(part==='back'){
     // つなぎとめるロープと杭
     if(!(state==='goal'&&goalTick>45)&&state!=='clear'){x.strokeStyle='#8a6a4a';x.lineWidth=2;x.beginPath();x.moveTo(bx-30,top+30);x.lineTo(bx-70,ground);x.moveTo(bx+30,top+30);x.lineTo(bx+70,ground);x.stroke();x.fillStyle='#5a4030';x.fillRect(bx-74,ground-6,8,8);x.fillRect(bx+66,ground-6,8,8);}
     // 球皮とかごをつなぐロープ
     const by=top-30;   // バーナーの位置：かごと球皮のあいだ
-    x.strokeStyle='#4a3a2e';x.lineWidth=1.4;x.beginPath();for(const [ux,fx] of[[-20,-12],[-7,-4],[7,4],[20,12]]){x.moveTo(bx+ux+sway,cy+82);x.lineTo(bx+fx,by);}x.stroke();   // 球皮からバーナー枠へのワイヤー
+    x.strokeStyle='#4a3a2e';x.lineWidth=1.4;x.beginPath();for(const [ux,fx] of[[-13,-9],[-5,-3],[5,3],[13,9]]){x.moveTo(bx+ux,cy+84);x.lineTo(bx+fx,by-8);}x.stroke();   // 球皮のすその下はしからバーナー枠の上はしへのワイヤー
     x.strokeStyle='#6b5a4a';x.lineWidth=2.6;x.beginPath();for(const sx of[-1,1]){x.moveTo(bx+sx*13,by+4);x.lineTo(bx+sx*28,top);}x.stroke();   // バーナー枠を支える柱
     // 球皮：上がまるく下がすぼまった形
     const ex=bx+sway,shape=()=>{x.beginPath();x.moveTo(ex-20,cy+70);x.bezierCurveTo(ex-58,cy+38,ex-78,cy-10,ex-62,cy-46);x.bezierCurveTo(ex-46,cy-82,ex+46,cy-82,ex+62,cy-46);x.bezierCurveTo(ex+78,cy-10,ex+58,cy+38,ex+20,cy+70);x.closePath();};
