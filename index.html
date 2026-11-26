@@ -114,6 +114,7 @@ canvas{display:block;background:#17283c}
 #videoBox .vb-inner{position:relative;width:min(92vw,calc(86dvh*16/9));aspect-ratio:16/9;border:3px solid #ffd45a;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 0 30px #ffd45a66}
 #videoBox .vb-frame,#videoBox iframe{width:100%;height:100%;border:0;display:block}
 #videoClose{position:absolute;top:6px;right:6px;z-index:2;width:40px;height:40px;border-radius:50%;border:2px solid #fff;background:#000c;color:#fff;font:900 20px system-ui;cursor:pointer}
+@media (orientation:landscape){body.song-on #startBtn{top:52%}}   /* 曲の案内が出ているときは、STARTボタンを少し上に */
 @media (orientation:landscape) and (max-height:500px){#songInfo{max-width:56vw;padding:5px 10px;font-size:12px;gap:2px 8px;bottom:6px}#songLink,#videoBtn{padding:4px 10px;font-size:12px}}
 #arcade{box-sizing:border-box;width:min(560px,94vw);max-height:92dvh;overflow:auto;border:2px solid #79a7cb;border-radius:16px;padding:16px;background:#17283c;color:#fff;text-align:center;touch-action:pan-y}
 #arcade::backdrop{background:#071322c9}
@@ -196,7 +197,7 @@ canvas{display:block;background:#17283c}
 </div>
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
 <button id="startBtn" aria-label="ゲームスタート"><span class="sb-body"><span class="sb-ic" aria-hidden="true">▶</span><span class="sb-tx">START<small>ゲームスタート</small></span></span></button>
-<div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a><button id="videoBtn" type="button">🎬 動画を見る</button></div>
+<div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING　「雪原の気球」</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a><button id="videoBtn" type="button">🎬 動画を見る</button></div>
 <div id="videoBox" hidden><div class="vb-inner"><button id="videoClose" type="button" aria-label="とじる">✕</button><div class="vb-frame"></div></div></div>
 <div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
@@ -431,8 +432,8 @@ function loadStage(n){
   player=newPlayer(120);player.x=stageStartX();camera=followCamera(player.x);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
 }
 function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};hasKey=false;keyDoorUsed=false;loadStage(1)}
-// ゲームオーバーのまま約10秒たつと、デモ画面（タイトル）にもどる
-let loseT=0;const LOSE_TO_TITLE=600;
+// ゲームオーバーのまま約30秒たつと、デモ画面（タイトル）にもどる
+let loseT=0;const LOSE_TO_TITLE=1800;
 function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else reset()}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
@@ -705,10 +706,10 @@ SONGS.basement={len:32,dur:()=>60/128/2/hurryMul(),step(i,t,sd){const bar=i>>3,b
 SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];if(m){bnote(mf(m+5),t,sd*.7,'square',.04);bnote(mf(m+17),t,sd*.3,'sine',.04);}bnote(mf(BS_ROOT[bar]+5+(b%2?12:0)),t,sd*.7,'triangle',.11);if(b%2===0)bnote(150,t,.1,'sine',.18,50);hat(t,.025);if(b===4)hat(t,.06,.1);}};
 // ===== エンディングの最後に流す曲（Web Audioで鳴らす。🎵オフのときは音を出さない）=====
 const END_SONG=new Audio('audio/ending-song.mp3');END_SONG.preload='auto';
-let endSong={on:false,src:null,gain:null};
+let endSong={on:false,src:null,gain:null,where:'ending'};   // where：'ending'＝エンディング／'demo'＝ゲームオーバー後のデモ画面
 function endSongVolume(){return musicOn?.85:0}
-function startEndSong(){if(endSong.on)return;endSong.on=true;
-  const info=document.getElementById('songInfo');if(info)info.hidden=false;
+function startEndSong(where='ending'){if(endSong.on)return;endSong.on=true;endSong.where=where;
+  const info=document.getElementById('songInfo');if(info)info.hidden=false;document.body.classList.add('song-on');
   try{unlockAudio();}catch(_){}
   loadJingle(END_SONG).then(buffer=>{if(!endSong.on)return;
     if(buffer&&audioCtx){try{const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;src.loop=true;
@@ -716,7 +717,7 @@ function startEndSong(){if(endSong.on)return;endSong.on=true;
         src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;return;}catch(_){}}
     try{endSong.el=true;END_SONG.loop=true;END_SONG.volume=endSongVolume();END_SONG.currentTime=0;const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}});}
 function stopEndSong(){if(!endSong.on)return;endSong.on=false;endSong.el=false;try{closeVideo();}catch(_){}
-  const info=document.getElementById('songInfo');if(info)info.hidden=true;
+  const info=document.getElementById('songInfo');if(info)info.hidden=true;document.body.classList.remove('song-on');
   try{if(endSong.src){endSong.src.stop();endSong.src=null;endSong.gain=null;}}catch(_){}
   try{END_SONG.pause();}catch(_){}}
 document.getElementById('songLink').addEventListener('pointerdown',e=>e.stopPropagation());
@@ -1954,7 +1955,7 @@ function shoutMerryXmas(done){
   setTimeout(()=>{if(!started)viaElement();},3500);   // 読みこみがおそいときだけ
 }
 // クリスマス版：スタートを押したら「メリークリスマス！」と鈴が鳴りおわってから、ゲームを始める
-function startGame(){
+function startGame(){stopEndSong();
   if(XMAS&&mode!=='game'){if(xmasIntro)return;xmasIntro={t:0};
     const b=document.getElementById('startBtn');if(b)b.style.display='none';unlockAudio();
     shoutMerryXmas(()=>{xmasIntro=null;beginGame();});return;}
@@ -2091,8 +2092,8 @@ function drawTitle(){
   x.strokeStyle='#ffffff55';x.lineWidth=2;x.stroke();
   x.fillStyle='#fff';x.font='900 30px system-ui';x.fillText((on?'● ':'　')+'デモプレイ中',W/2,55);
   x.strokeStyle='#e64040';x.lineWidth=8;x.strokeRect(4,4,W-8,H-8);
-  x.fillStyle='#0008';x.beginPath();if(x.roundRect)x.roundRect(W/2-170,H-52,340,38,19);else x.rect(W/2-170,H-52,340,38);x.fill();
-  x.font='bold 20px system-ui';x.fillStyle='#fff';x.fillText('STARTボタンで ゲーム開始',W/2,H-26);
+  if(!endSong.on){x.fillStyle='#0008';x.beginPath();if(x.roundRect)x.roundRect(W/2-170,H-52,340,38,19);else x.rect(W/2-170,H-52,340,38);x.fill();
+  x.font='bold 20px system-ui';x.fillStyle='#fff';x.fillText('STARTボタンで ゲーム開始',W/2,H-26);}
   x.textAlign='left';
 }
 
@@ -2167,7 +2168,7 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
-if(endSong.on&&state!=='ending')stopEndSong();   // エンディングから出たら止める
+if(endSong.on&&(endSong.where==='ending'?state!=='ending':mode!=='title'||xmasIntro))stopEndSong();   // エンディング／デモ画面から出たら止める
 if(mode==='opening'){updateOpening();return;}
 if(state==='endingCut'){updateEndingCut();return;}
 if(state==='arcade')return;
@@ -2192,7 +2193,7 @@ if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(sh
 if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT>60)startEndSong();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
-if(state==='lose'&&mode==='game'){if(++loseT>LOSE_TO_TITLE){toTitle();}return;}
+if(state==='lose'&&mode==='game'){if(++loseT>LOSE_TO_TITLE){toTitle();startEndSong('demo');}return;}   // ゲームオーバー後のデモでは「雪原の気球」を流す
 if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
