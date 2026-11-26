@@ -123,6 +123,10 @@ canvas{display:block;background:#17283c}
 .rk-panel li .rk-score{font-variant-numeric:tabular-nums}
 .rk-panel .rk-msg{font:700 15px system-ui;opacity:.85;margin:6px 0 12px}
 .rk-panel input{width:100%;box-sizing:border-box;font:800 22px system-ui;padding:8px 12px;border-radius:10px;border:2px solid #ffd45a;background:#0b1428;color:#fff;text-align:center;margin:4px 0 12px}
+.rk-row{display:flex;gap:8px;align-items:center;margin:4px 0 4px}
+.rk-row input{flex:1;min-width:0;margin:0}
+#nameDice{flex:none;width:50px;height:50px;border-radius:12px;border:2px solid #ffd45a;background:linear-gradient(#3a5078,#18243c);font-size:26px;padding:0;cursor:pointer}
+.rk-tip{font:700 13px system-ui;opacity:.75;margin:0 0 12px}
 .rk-btns{display:flex;gap:10px;justify-content:center}
 .rk-btns button{flex:1;max-width:160px;height:44px;border-radius:12px;font:900 17px system-ui;border:2px solid #fff;cursor:pointer}
 .rk-ok{background:linear-gradient(#fff6b0,#ffd23a 50%,#e0a010);color:#3a2000;box-shadow:0 3px 0 #9a6a10}
@@ -220,7 +224,7 @@ canvas{display:block;background:#17283c}
 <button id="startBtn" aria-label="ゲームスタート"><span class="sb-body"><span class="sb-ic" aria-hidden="true">▶</span><span class="sb-tx">START<small>ゲームスタート</small></span></span></button>
 <div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING　「雪原の気球」</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a><button id="videoBtn" type="button">🎬 動画を見る</button></div>
 <div id="rankBox" hidden><div class="rk-panel"><h2>🏆 みんなのランキング TOP10</h2><ol id="rankList"></ol><div class="rk-msg" id="rankMsg"></div><div class="rk-btns"><button type="button" class="rk-ok" id="rankClose">とじる</button></div></div></div>
-<div id="nameBox" hidden><div class="rk-panel"><h2 id="nameTitle">ランキング入り！</h2><div class="rk-msg" id="nameMsg"></div><input id="nameInput" type="text" maxlength="8" placeholder="なまえ（8文字まで）" autocomplete="nickname" enterkeyhint="done"><div class="rk-btns"><button type="button" class="rk-no2" id="nameSkip">登録しない</button><button type="button" class="rk-ok" id="nameOk">登録する</button></div></div></div>
+<div id="nameBox" hidden><div class="rk-panel"><h2 id="nameTitle">ランキング入り！</h2><div class="rk-msg" id="nameMsg"></div><div class="rk-row"><input id="nameInput" type="text" maxlength="8" placeholder="なまえ（8文字まで）" autocomplete="nickname" enterkeyhint="done"><button type="button" id="nameDice" aria-label="ほかの名前にする" title="ほかの名前にする">🎲</button></div><div class="rk-tip">そのまま登録しても、自由に書きかえてもOK！</div><div class="rk-btns"><button type="button" class="rk-no2" id="nameSkip">登録しない</button><button type="button" class="rk-ok" id="nameOk">登録する</button></div></div></div>
 <div id="videoBox" hidden><div class="vb-inner"><button id="videoClose" type="button" aria-label="とじる">✕</button><div class="vb-frame"></div></div></div>
 <div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="rank" aria-label="ランキング" hidden>🏆</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
@@ -473,6 +477,10 @@ async function loadRanking(){if(!rankOn())return;
     ranking=Object.values(d).filter(v=>v&&typeof v.score==='number'&&typeof v.name==='string').sort((a,b)=>b.score-a.score||(a.at||0)-(b.at||0)).slice(0,10);
   }catch(_){}}
 function rankPlace(sc){if(!ranking||sc<=0)return 0;const n=ranking.filter(v=>v.score>=sc).length+1;return n<=10?n:0}
+// 名前を考えなくてもいいように、ランダムな名前の候補（8文字まで）
+const NAME_A=['はやい','つよい','ひみつの','そらとぶ','げんきな','きらきら','ねむい','ふしぎな','ちいさな','まぼろし','さすらい','のんびり','ゴールド','スーパー'],
+  NAME_B=['モグラ','カエル','ゆうしゃ','ききゅう','ほりや','くも','コイン','ダイヤ','ぼうけん家','ジャンパー','よし太','ひめ','たんけん隊','イノシシ'];
+function randomName(prev){for(let k=0;k<30;k++){const n=NAME_A[Math.floor(Math.random()*NAME_A.length)]+NAME_B[Math.floor(Math.random()*NAME_B.length)];if(n.length<=8&&n!==prev)return n;}return 'ななしのゆうしゃ'}
 function cleanName(t){return String(t||'').replace(/[\u0000-\u001f\u007f<>]/g,'').trim().slice(0,8)}
 function showRanking(msg){const ol=document.getElementById('rankList');ol.textContent='';
   (ranking||[]).forEach((v,i)=>{const li=document.createElement('li');if(rankMine&&v.name===rankMine.name&&v.score===rankMine.score)li.className='me';
@@ -483,8 +491,8 @@ function maybeAskName(){if(!rankOn()||mode!=='game'||nameOpen||rankAsked===score
   rankAsked=score;nameOpen=true;keys={};
   document.getElementById('nameTitle').textContent='🏆 ランキング '+n+'位 に入りました！';
   document.getElementById('nameMsg').textContent='スコア '+score+'　なまえを入れて登録しよう';
-  const inp=document.getElementById('nameInput');let saved='';try{saved=localStorage.getItem('yoshita-name')||''}catch(_){}inp.value=saved;
-  document.getElementById('nameBox').hidden=false;setTimeout(()=>{try{inp.focus()}catch(_){}},50);}
+  const inp=document.getElementById('nameInput');let saved='';try{saved=localStorage.getItem('yoshita-name')||''}catch(_){}inp.value=saved||randomName();
+  document.getElementById('nameBox').hidden=false;}
 async function submitName(){const name=cleanName(document.getElementById('nameInput').value);if(!name){document.getElementById('nameInput').focus();return;}
   const sc=rankAsked;try{localStorage.setItem('yoshita-name',name)}catch(_){}
   document.getElementById('nameOk').disabled=true;let ok=false;
@@ -3519,6 +3527,7 @@ const mb=document.getElementById('music');
   document.getElementById('rankClose').addEventListener('click',()=>{document.getElementById('rankBox').hidden=true;});
   document.getElementById('nameOk').addEventListener('click',submitName);
   document.getElementById('nameSkip').addEventListener('click',closeName);
+  document.getElementById('nameDice').addEventListener('click',()=>{const i=document.getElementById('nameInput');i.value=randomName(i.value);});
   for(const id of ['rankBox','nameBox'])for(const ev of ['pointerdown','touchstart'])document.getElementById(id).addEventListener(ev,e=>e.stopPropagation());
   loadRanking();}
 function setMusic(on){musicOn=on;try{if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(endSongVolume(),audioCtx.currentTime,.05);END_SONG.volume=endSongVolume();}catch(_){}mb.textContent=on?'🎵':'🔇';mb.classList.toggle('off',!on);try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02)}
