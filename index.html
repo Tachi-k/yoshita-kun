@@ -431,6 +431,8 @@ function loadStage(n){
   player=newPlayer(120);player.x=stageStartX();camera=followCamera(player.x);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
 }
 function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};hasKey=false;keyDoorUsed=false;loadStage(1)}
+// ゲームオーバーのまま約10秒たつと、デモ画面（タイトル）にもどる
+let loseT=0;const LOSE_TO_TITLE=600;
 function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else reset()}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
@@ -730,7 +732,9 @@ document.getElementById('videoBtn').addEventListener('click',e=>{e.stopPropagati
 document.getElementById('videoClose').addEventListener('click',e=>{e.stopPropagation();closeVideo();});
 document.getElementById('videoBox').addEventListener('click',e=>{if(e.target.id==='videoBox')closeVideo();});
 function currentSong(){if(endSong.on)return null;   // エンディングの曲が流れている間は、ほかのBGMを止める
-  if(mode==='title'||mode==='opening')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
+  if(mode==='opening'||xmasIntro)return null;
+  if(mode==='title')return 'field';   // デモ画面では、1面の曲を流す（場面が変わっても同じ曲で、とぎれない）
+  if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
 // ===== MP3のBGM =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
 // 未登録の場面ではオリジナルBGMを再生。ループ区間未指定なら曲全体を繰り返す。
@@ -772,7 +776,7 @@ function mp3PlayEl(m){if(!m.el||m.elBad)return;try{m.el.currentTime=mp3Wrap(m,m.
 const BASE_DUR={field:60/140/2,field2:60/118/2};
 function mp3LoopCheck(){const m=mp3Cur&&mp3[mp3Cur];if(!m||m.engine!=='el'||!m.el||m.el.paused)return;const c=m.cfg;if(c.loopEnd&&m.el.currentTime>=c.loopEnd){try{m.el.currentTime-= (c.loopEnd-c.loopStart)}catch(_){}}}
 function mp3Tick(){   // MP3の再生開始を確認してから通常BGMを止める。読み込み中は通常BGMを継続。
-  const s=currentSong(),want=(!paused&&musicOn&&!document.hidden&&mode==='game'&&audioCtx)?mp3Key(s):null;
+  const s=currentSong(),want=(!paused&&musicOn&&!document.hidden&&(mode==='game'||mode==='title')&&audioCtx)?mp3Key(s):null;
   if(want!==mp3Cur){if(mp3Cur)mp3Halt(mp3Cur);mp3Cur=want;if(want){const m=mp3Get(want);if(m){m.started=false;}}}
   if(!want)return false;const m=mp3Get(want);if(!m)return false;
   mp3Load(m);
@@ -2188,7 +2192,8 @@ if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(sh
 if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT>60)startEndSong();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
-if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';gameOverMusic();}}return;}
+if(state==='lose'&&mode==='game'){if(++loseT>LOSE_TO_TITLE){toTitle();}return;}
+if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
   else{if(goalTick>45){balloonVy=Math.min(4.2,balloonVy+.045);balloonLift+=balloonVy;}if(goalTick===32||goalTick%26===0)sound('burner');p.x=bx-17;p.y=ground-38-28-balloonLift;}
