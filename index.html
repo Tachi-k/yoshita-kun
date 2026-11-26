@@ -1849,17 +1849,17 @@ function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.disp
 // clearCount：クリアした回数。3周ごとにくり返す（よし太くん → 初代よし太くん → ソラ姫 → よし太くん …）
 let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
 // クリスマス版：スタートを押すと「メリークリスマス！」と叫ぶ（用意した声の2種類から、毎回どちらかを流す＋鈴の音）
-const XMAS_VOICES=['audio/xmas-voice-1.mp3','audio/xmas-voice-2.mp3'].map(src=>{const a=new Audio(src);a.preload='auto';return a;});
+// 声のあとに鈴の音を入れて1つにした音声（声と鈴が、いつもセットで鳴る）
+const XMAS_VOICES=['audio/xmas-greeting-1.mp3','audio/xmas-greeting-2.mp3'].map(src=>{const a=new Audio(src);a.preload='auto';return a;});
 // 声 →（声が終わったら）鈴 → done() の順に進める。声が鳴らない機種でも、決まった時間で先へ進む
 let xmasIntro=null,xmasVoiceNodes=null;
 function shoutMerryXmas(done){
   const v=XMAS_VOICES[Math.floor(realRandom()*XMAS_VOICES.length)];
   let finished=false,started=false;
-  const bells=()=>{if(finished)return;finished=true;
-    try{unlockAudio();if(audioCtx)[1568,1976,2349,1976,2637,3136].forEach((f,i)=>{tone(f,.22,'triangle',.06,i*.1);tone(f*2,.12,'sine',.025,i*.1);});}catch(_){}   // シャンシャン（鈴）
-    setTimeout(done,900);};
-  // 声はWeb Audioで鳴らす（鈴と同じしくみなので、iPhoneでも同じように鳴る）。読みこめないときは<audio>で鳴らす
-  const viaElement=()=>{if(started)return;started=true;try{v.currentTime=0;v.volume=1;v.onended=bells;const pr=v.play();if(pr&&pr.catch)pr.catch(()=>setTimeout(bells,300));}catch(_){setTimeout(bells,300);}};
+  const finish=()=>{if(finished)return;finished=true;done();};
+  const bellsOnly=()=>{try{if(audioCtx)[1568,1976,2349,1976,2637,3136].forEach((f,i)=>{tone(f,.22,'triangle',.06,i*.1);tone(f*2,.12,'sine',.025,i*.1);});}catch(_){}setTimeout(finish,1300);};
+  // 読みこめなかったときだけ<audio>で鳴らす（この音声にも鈴が入っている）
+  const viaElement=()=>{if(started)return;started=true;try{v.currentTime=0;v.volume=1;v.onended=()=>setTimeout(finish,300);const pr=v.play();if(pr&&pr.catch)pr.catch(bellsOnly);}catch(_){bellsOnly();}setTimeout(finish,6500);};
   try{unlockAudio();}catch(_){}
   loadJingle(v).then(buffer=>{
     if(started||finished)return;
@@ -1868,10 +1868,11 @@ function shoutMerryXmas(done){
     try{if(audioCtx.state!=='running')audioCtx.resume();
       const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;g.gain.value=1;src.connect(g);g.connect(audioCtx.destination);
       xmasVoiceNodes=[src,g];   // iPhoneのSafariは、どこからも参照していない音を途中で止めてしまうことがあるので、終わるまで持っておく
-      src.onended=()=>{xmasVoiceNodes=null;bells();};src.start();}catch(_){started=false;viaElement();}
+      src.start();
+      setTimeout(()=>{xmasVoiceNodes=null;finish();},buffer.duration*1000+300);   // 終わる時間がわかっているので、その時間でスタート
+    }catch(_){started=false;viaElement();}
   });
-  setTimeout(()=>{if(!started)viaElement();},3500);   // 読みこみがおそいときだけ、<audio>で鳴らす（早すぎると、声が鳴らない機種がある）
-  setTimeout(bells,9000);   // 念のための時間切れ
+  setTimeout(()=>{if(!started)viaElement();},3500);   // 読みこみがおそいときだけ
 }
 // クリスマス版：スタートを押したら「メリークリスマス！」と鈴が鳴りおわってから、ゲームを始める
 function startGame(){
