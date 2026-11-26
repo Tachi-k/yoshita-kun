@@ -1845,11 +1845,12 @@ function drawOpening(){const o=opening,t=o.t;
 function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
 // clearCount：クリアした回数。3周ごとにくり返す（よし太くん → 初代よし太くん → ソラ姫 → よし太くん …）
 let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
-// クリスマス版：スタートを押すと「メリークリスマス！」と叫ぶ（ブラウザの読み上げ機能＋鈴の音）
+// クリスマス版：スタートを押すと「メリークリスマス！」と叫ぶ（用意した声の2種類から、毎回どちらかを流す＋鈴の音）
+const XMAS_VOICES=['audio/xmas-voice-1.mp3','audio/xmas-voice-2.mp3'].map(src=>{const a=new Audio(src);a.preload='auto';return a;});
 function shoutMerryXmas(){
-  try{const u=new SpeechSynthesisUtterance('メリークリスマス！');u.lang='ja-JP';u.pitch=1.5;u.rate=1.15;u.volume=1;
-    const v=speechSynthesis.getVoices().find(v=>/ja/i.test(v.lang));if(v)u.voice=v;speechSynthesis.cancel();speechSynthesis.speak(u);}catch(_){}
-  try{unlockAudio();if(audioCtx){const t0=audioCtx.currentTime+.02;[1568,1976,2349,1976,2637].forEach((f,i)=>{tone(f,.18,'triangle',.06,i*.09);tone(f*2,.1,'sine',.025,i*.09);});}}catch(_){}   // シャンシャン（鈴）
+  const v=XMAS_VOICES[Math.floor(realRandom()*XMAS_VOICES.length)];
+  try{v.currentTime=0;v.volume=1;const pr=v.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}
+  try{unlockAudio();if(audioCtx){[1568,1976,2349,1976,2637].forEach((f,i)=>{tone(f,.18,'triangle',.05,i*.09);tone(f*2,.1,'sine',.02,i*.09);});}}catch(_){}   // シャンシャン（鈴）
 }
 function startGame(){if(XMAS)shoutMerryXmas();mode='game';secondRound=clearCount%3===1;princessRound=clearCount%3===2;   // 1周目よし太くん → 2周目 初代よし太くん → 3周目 ソラ姫 → 4周目からまたくり返す
 Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
