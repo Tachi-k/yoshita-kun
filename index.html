@@ -462,7 +462,7 @@ function collectItem(it){const cx=it.x;
     sound('treasure');boom(cx,it.y,30,['#ffdf50','#fff','#ff9a3c']);
   }
   else if(it.type==='heart'){addLife(cx,it.y-20);}
-  else if(it.type==='key'){hasKey=true;popup(cx,it.y-40,'🔑 カギを手に入れた！','#ffdf50',26,120);popup(cx,it.y-14,'2面のドアで つかおう','#fff',18,120);sound('treasure');boom(cx,it.y,24,['#ffdf50','#fff']);}
+  else if(it.type==='key'){hasKey=true;keyCelebrate={t:0};sound('treasure');sound('oneup');boom(cx,it.y,40,['#ffdf50','#fff','#ff9ad5'],8);}
   else if(it.type==='goldHeart'){addLife(cx,it.y-30,GOLD_HEART_LIVES);sound('treasure');boom(cx,it.y,28,['#ffd24a','#fff','#ff9ad5']);popup(cx,it.y-70,'金のハート！ ライフ5人分','#ffd24a',24,110);}
 }
 function updateItems(p){for(const it of items){it.t--;it.vy=Math.min(14,it.vy+.45);it.x+=it.vx;it.y+=it.vy;
@@ -936,8 +936,9 @@ function vaultVisible(){return stage===2&&!inBasement&&!arenaOn&&!diamondVaultUs
 // ===== 雲の面（1面のひみつ）と🔑・2面の鍵つきドア =====
 // 1面の CLOUD_SPOT_X あたり（空にキラキラ光る小さな雲が目印）で二段ジャンプすると、画面の上へ飛んで雲の面へ。
 // 雲の面はタイムが止まる・地面なし。落ちるかゴールの門で1面に戻る。どこかに🔑があり、2面の鍵つきドアで使う。
+const KEY_CELEBRATE_LEN=170;
 const CLOUD_SPOT_X=1950,KEY_DOOR_X=STAGE2_OFFSET+1500;
-let cloudUsed=false,hasKey=false,keyDoorUsed=false;
+let cloudUsed=false,hasKey=false,keyDoorUsed=false,keyCelebrate=null;   // keyCelebrate：カギを取ったときの大きな演出
 function enterCloudWorld(){const p=player;
   bonusResult=null;bonusLoot=mode==='game'?{coins:0,chests:0,gems:0}:null;
   surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX:Math.max(80,p.x)};inBasement=true;roomKind='cloud';cloudUsed=true;
@@ -945,6 +946,7 @@ function enterCloudWorld(){const p=player;
   platforms=[];
   const clouds=[[40,380,200],[300,330,130],[500,260,120],[700,330,110],[880,250,130],[1090,190,120],[1300,280,140],[1500,150,110],[1520,380,130],[1750,300,120],[1960,230,120],[2170,320,130],[2380,260,120],[2590,330,250]];
   for(const [cx,cy,cw] of clouds){platforms.push({x:cx,y:cy,w:cw,h:18});for(let k=cx+18;k<=cx+cw-18;k+=28)coins.push({x:k,y:cy-30,taken:false});}
+  coins=coins.filter(c=>!(c.y<150&&Math.abs(c.x-1555)<45));   // カギのまわりのコインはどけて、カギを目立たせる
   items.push({type:'key',x:1555,y:150-10,vx:0,vy:0,t:1e9});   // 🔑は高い雲の上（二段ジャンプでとどく）
   items.push({type:'chest',x:1140,y:190-10,vx:0,vy:0,t:1e9},{type:'gem',x:2010,y:230-10,vx:0,vy:0,t:1e9});
   for(const [ex,k] of[[720,0],[1320,1],[1780,2],[2190,3]]){const b=platforms.find(q=>q.x===ex-20||q.x===ex);if(b)enemies.push(makeEnemy(b.x+b.w/2-16,k%2?'hop':'walk',k+60,b));}
@@ -2129,6 +2131,7 @@ if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   else{if(goalTick>45){balloonVy=Math.min(4.2,balloonVy+.045);balloonLift+=balloonVy;}if(goalTick===32||goalTick%26===0)sound('burner');p.x=bx-17;p.y=ground-38-28-balloonLift;}
   if(goalTick>230){state='clear';clearT=0;addTimeBonus();victoryMusic();}return;}
 if(state!=='play')return;
+if(keyCelebrate){if(++keyCelebrate.t>KEY_CELEBRATE_LEN)keyCelebrate=null;updateParts();return;}   // カギの演出の間は、ゲームを止める
 const p=player;
 if(mode==='game'&&!bossIntroLong()&&timeLeft>0&&arenaOn&&!inBonus())timeLeft--;   // ボス戦：減るだけでミスにはならない
 else if(mode==='game'&&!bossIntroLong()&&timeLeft>0&&!inBonus()){timeLeft--;
@@ -2561,13 +2564,39 @@ function drawLifeHeart(cx,cy,w,gold){
   }
   x.restore();
 }
-// 🔑：金色のカギ
-function drawKeyIcon(cx,cy,s){x.save();x.translate(cx,cy);x.scale(s,s);
-  const g=x.createLinearGradient(-10,-12,10,12);g.addColorStop(0,'#fff3a0');g.addColorStop(.5,'#ffc928');g.addColorStop(1,'#b87800');
-  x.strokeStyle='#7a4a00';x.lineWidth=2;x.fillStyle=g;
-  x.beginPath();x.arc(-6,-6,7,0,7);x.fill();x.stroke();ell(-6,-6,3,3,'#7a4a00');   // 持つところの輪
-  x.beginPath();x.moveTo(-1,-1);x.lineTo(10,10);x.lineTo(7,13);x.lineTo(5,11);x.lineTo(3,13);x.lineTo(1,11);x.lineTo(-4,4);x.closePath();x.fill();x.stroke();   // 歯
-  ell(-8,-9,1.8,1.2,'#ffffffcc');x.restore();}
+// 🔑：ひみつのカギ（王冠のような飾りの持ち手・まん中に赤い宝石・金の軸と歯）
+function drawKeyIcon(cx,cy,s,spin=0){x.save();x.translate(cx,cy);x.rotate(-.65+spin);x.scale(s,s);
+  const gold=x.createLinearGradient(-6,-14,6,14);gold.addColorStop(0,'#fff6c0');gold.addColorStop(.35,'#ffd23a');gold.addColorStop(.7,'#e09a10');gold.addColorStop(1,'#9a6000');
+  x.lineJoin='round';x.strokeStyle='#5a3400';x.lineWidth=1.4;x.fillStyle=gold;
+  // 持ち手：花のような輪（4つのふくらみ）
+  x.beginPath();for(let k=0;k<4;k++){const a=k*Math.PI/2;x.moveTo(Math.cos(a)*5.2+3.6,-9+Math.sin(a)*5.2);x.arc(Math.cos(a)*5.2,-9+Math.sin(a)*5.2,3.6,0,7);}x.fill();x.stroke();
+  x.beginPath();x.arc(0,-9,6.2,0,7);x.fill();x.stroke();
+  // まん中の宝石
+  const gem=x.createRadialGradient(-1.2,-10.2,.4,0,-9,3.6);gem.addColorStop(0,'#ffd0d8');gem.addColorStop(.5,'#ff3a5a');gem.addColorStop(1,'#8a0a24');
+  x.fillStyle=gem;x.beginPath();x.arc(0,-9,3.4,0,7);x.fill();x.strokeStyle='#5a3400';x.lineWidth=.9;x.stroke();ell(-1.1,-10.2,1,.7,'#ffffffdd');
+  // 軸
+  x.fillStyle=gold;x.strokeStyle='#5a3400';x.lineWidth=1.4;x.beginPath();if(x.roundRect)x.roundRect(-1.9,-3.4,3.8,17.5,1.5);else x.rect(-1.9,-3.4,3.8,17.5);x.fill();x.stroke();
+  x.beginPath();x.ellipse(0,-2.6,3.4,1.4,0,0,7);x.fill();x.stroke();   // 首の輪
+  // 歯（2本）
+  x.beginPath();x.moveTo(1.9,8.5);x.lineTo(6.5,8.5);x.lineTo(6.5,11);x.lineTo(4.4,11);x.lineTo(4.4,12.4);x.lineTo(1.9,12.4);x.closePath();x.fill();x.stroke();
+  x.beginPath();x.moveTo(1.9,4.6);x.lineTo(5.2,4.6);x.lineTo(5.2,7);x.lineTo(1.9,7);x.closePath();x.fill();x.stroke();
+  // つや
+  x.strokeStyle='#ffffffcc';x.lineWidth=.9;x.beginPath();x.moveTo(-.8,-1);x.lineTo(-.8,11);x.stroke();x.beginPath();x.arc(0,-9,5,Math.PI*1.1,Math.PI*1.55);x.stroke();
+  x.restore();}
+// カギを取ったときの演出：画面が暗くなり、光の中から大きなカギがくるくる回って登場
+function drawKeyCelebrate(){const t=keyCelebrate.t,L=KEY_CELEBRATE_LEN,out=Math.max(0,(t-(L-25))/25),inK=Math.min(1,t/22);
+  x.save();x.globalAlpha=1-out;
+  x.fillStyle=`rgba(8,10,30,${.6*inK})`;x.fillRect(0,0,W,H);
+  const cx=W/2,cy=H/2-40;
+  x.save();x.translate(cx,cy);x.rotate(t*.012);for(let k=0;k<16;k++){x.rotate(Math.PI/8);x.fillStyle=k%2?'rgba(255,240,170,.22)':'rgba(255,200,90,.3)';x.beginPath();x.moveTo(0,0);x.lineTo(-30,-480);x.lineTo(30,-480);x.closePath();x.fill();}x.restore();   // 回る光の筋
+  const g=x.createRadialGradient(cx,cy,10,cx,cy,180);g.addColorStop(0,'rgba(255,248,200,.9)');g.addColorStop(1,'rgba(255,248,200,0)');x.fillStyle=g;x.fillRect(cx-180,cy-180,360,360);
+  const pop=t<22?(t/22)*1.25:t<34?1.25-(t-22)/12*.25:1+Math.sin(t*.08)*.04,spin=t<34?(1-t/34)*Math.PI*4:Math.sin(t*.05)*.15;
+  drawKeyIcon(cx,cy,5.2*pop,spin);
+  for(let k=0;k<10;k++){const a=t*.03+k*.628,r=120+Math.sin(t*.07+k)*12,sx=cx+Math.cos(a)*r,sy=cy+Math.sin(a)*r*.6,len=4+Math.abs(Math.sin(t*.1+k))*8;x.fillStyle='#fffbe0';x.beginPath();x.moveTo(sx,sy-len);x.lineTo(sx+len*.25,sy);x.lineTo(sx,sy+len);x.lineTo(sx-len*.25,sy);x.closePath();x.fill();x.beginPath();x.moveTo(sx-len,sy);x.lineTo(sx,sy-len*.25);x.lineTo(sx+len,sy);x.lineTo(sx,sy+len*.25);x.closePath();x.fill();}
+  x.textAlign='center';
+  if(t>18){const k=Math.min(1,(t-18)/14);x.save();x.translate(W/2,cy+150);x.scale(.6+k*.4,.6+k*.4);x.globalAlpha=(1-out)*k;fancyText('ひみつのカギを 手に入れた！',0,0,44,'gold');x.restore();}
+  if(t>40){x.globalAlpha=(1-out)*Math.min(1,(t-40)/15);fancyText('2面の とびらで つかおう',W/2,cy+198,26,'white');}
+  x.textAlign='left';x.restore();}
 // 2面の鍵つきドア（石の枠・木のとびら・金の錠前）
 function drawKeyDoor(){if(stage!==2||inBasement||arenaOn)return;const dx=KEY_DOOR_X,top=ground-78,t=Date.now();
   x.fillStyle='#6a6a78';x.beginPath();x.moveTo(dx-34,ground);x.lineTo(dx-34,top+18);x.quadraticCurveTo(dx,top-14,dx+34,top+18);x.lineTo(dx+34,ground);x.closePath();x.fill();   // 石の枠
@@ -2591,7 +2620,11 @@ function drawItem(it){const ix=it.x,iy=it.y,foot=iy+10;   // 置いてある位�
     if(turn<0){x.globalAlpha=.25*(-turn);heartPath(ix,cy,w);x.fillStyle='#000';x.fill();x.globalAlpha=1;}
     x.restore();
     if(sx<.4){x.globalAlpha=(.4-sx)*2;x.fillStyle=gold?'#fff3a0':'#ffd0dc';x.fillRect(ix-1.5,cy-w*.45,3,w*.85);x.globalAlpha=1;}}}   // 横を向いたときの光る線
-  else if(it.type==='key'){const bob=Math.sin(Date.now()*.005)*3;x.globalAlpha=.35+.2*Math.sin(Date.now()*.008);ell(ix,foot-20+bob,26,26,'#ffe680');x.globalAlpha=1;drawKeyIcon(ix,foot-20+bob,1.5);}
+  else if(it.type==='key'){const t=Date.now(),bob=Math.sin(t*.005)*4,ky=foot-24+bob;
+    const g=x.createRadialGradient(ix,ky,2,ix,ky,40);g.addColorStop(0,`rgba(255,236,140,${.55+.2*Math.sin(t*.008)})`);g.addColorStop(1,'rgba(255,236,140,0)');x.fillStyle=g;x.fillRect(ix-40,ky-40,80,80);
+    x.save();x.translate(ix,ky);x.rotate(t*.0012);x.fillStyle='rgba(255,246,190,.35)';for(let k=0;k<8;k++){x.rotate(Math.PI/4);x.beginPath();x.moveTo(0,0);x.lineTo(-3,-34);x.lineTo(3,-34);x.closePath();x.fill();}x.restore();   // 光の筋
+    drawKeyIcon(ix,ky,1.9,Math.sin(t*.003)*.25);
+    for(let k=0;k<3;k++){const a=t*.004+k*2.1,sx=ix+Math.cos(a)*26,sy=ky+Math.sin(a)*20,len=2+Math.abs(Math.sin(t*.01+k))*5;x.fillStyle='#fff';x.fillRect(sx-.7,sy-len,1.4,len*2);x.fillRect(sx-len,sy-.7,len*2,1.4);}}
   else if(it.type==='chest'){
     const glow=.25+.15*Math.sin(Date.now()*.005);x.globalAlpha=glow;ell(ix,foot-18,38,26,'#ffe680');x.globalAlpha=1;   // ほんのり光る
     drawChest(ix,foot,56);}
@@ -3078,6 +3111,7 @@ function draw(){
   if(bannerT>0&&state==='play'&&!paused&&(bannerText||bannerSub)){x.globalAlpha=Math.min(1,bannerT/30);
     if(bannerText)fancyText(bannerText,W/2,212,58,'gold');
     if(bannerSub)fancyText(bannerSub,W/2,bannerText?262:200,28,'white');x.globalAlpha=1;}
+  if(keyCelebrate)drawKeyCelebrate();
   if(bonusResult&&state==='play'&&!paused){
     const r=bonusResult;
     x.save();x.globalAlpha=Math.min(1,r.t/30);
