@@ -109,6 +109,27 @@ canvas{display:block;background:#17283c}
 @keyframes songIn{from{opacity:0;transform:translate(-50%,20px)}}
 #videoBtn{padding:6px 14px;border-radius:999px;border:0;background:linear-gradient(#ff6a6a,#e8202e 60%,#a8101e);color:#fff;font:900 14px system-ui;box-shadow:0 3px 0 #7a0a14;touch-action:manipulation;cursor:pointer}
 /* 動画の窓（エンディングで「動画を見る」を押すと開く） */
+#rankBox,#nameBox{position:fixed;inset:0;z-index:21;display:grid;place-items:center;background:rgba(0,0,10,.75)}
+#rankBox[hidden],#nameBox[hidden]{display:none}
+.rk-panel{width:min(400px,92vw);max-height:92vh;overflow:auto;box-sizing:border-box;padding:16px 18px 14px;border-radius:18px;border:3px solid #ffd45a;background:linear-gradient(#24365c,#121c34);color:#fff;font-family:system-ui;box-shadow:0 8px 30px #000a,inset 0 2px 0 #ffffff30;text-align:center}
+.rk-panel h2{margin:0 0 10px;font:900 22px system-ui;color:#ffe36a;text-shadow:0 2px 0 #7a4a00}
+.rk-panel ol{list-style:none;margin:0 0 12px;padding:0;text-align:left}
+.rk-panel li{display:flex;gap:10px;align-items:center;padding:5px 10px;border-radius:8px;font:800 17px system-ui}
+.rk-panel li:nth-child(odd){background:#ffffff10}
+.rk-panel li.me{background:linear-gradient(90deg,#ffd23a55,#ffd23a22);outline:2px solid #ffe36a}
+.rk-panel li .rk-no{width:2.2em;color:#ffe36a;font-weight:900}
+.rk-panel li:nth-child(1) .rk-no{color:#ffd700}.rk-panel li:nth-child(2) .rk-no{color:#dfe8f0}.rk-panel li:nth-child(3) .rk-no{color:#e8a060}
+.rk-panel li .rk-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rk-panel li .rk-score{font-variant-numeric:tabular-nums}
+.rk-panel .rk-msg{font:700 15px system-ui;opacity:.85;margin:6px 0 12px}
+.rk-panel input{width:100%;box-sizing:border-box;font:800 22px system-ui;padding:8px 12px;border-radius:10px;border:2px solid #ffd45a;background:#0b1428;color:#fff;text-align:center;margin:4px 0 12px}
+.rk-btns{display:flex;gap:10px;justify-content:center}
+.rk-btns button{flex:1;max-width:160px;height:44px;border-radius:12px;font:900 17px system-ui;border:2px solid #fff;cursor:pointer}
+.rk-ok{background:linear-gradient(#fff6b0,#ffd23a 50%,#e0a010);color:#3a2000;box-shadow:0 3px 0 #9a6a10}
+.rk-no2{background:#ffffff22;color:#fff}
+.topbtns #rank[hidden]{display:none}
+@media (orientation:landscape){.topbtns #rank{position:fixed;top:calc(env(safe-area-inset-top) + 6px);right:calc(env(safe-area-inset-right) + 94px);z-index:6;width:40px;height:40px;font-size:20px}}
+@media (orientation:landscape) and (max-width:620px){.topbtns #rank{right:calc(env(safe-area-inset-right) + 6px);top:calc(env(safe-area-inset-top) + 94px)}}
 #videoBox{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(0,0,0,.8)}
 #videoBox[hidden]{display:none}
 #videoBox .vb-inner{position:relative;width:min(92vw,calc(86dvh*16/9));aspect-ratio:16/9;border:3px solid #ffd45a;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 0 30px #ffd45a66}
@@ -198,8 +219,10 @@ canvas{display:block;background:#17283c}
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
 <button id="startBtn" aria-label="ゲームスタート"><span class="sb-body"><span class="sb-ic" aria-hidden="true">▶</span><span class="sb-tx">START<small>ゲームスタート</small></span></span></button>
 <div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING　「雪原の気球」</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a><button id="videoBtn" type="button">🎬 動画を見る</button></div>
+<div id="rankBox" hidden><div class="rk-panel"><h2>🏆 みんなのランキング TOP10</h2><ol id="rankList"></ol><div class="rk-msg" id="rankMsg"></div><div class="rk-btns"><button type="button" class="rk-ok" id="rankClose">とじる</button></div></div></div>
+<div id="nameBox" hidden><div class="rk-panel"><h2 id="nameTitle">ランキング入り！</h2><div class="rk-msg" id="nameMsg"></div><input id="nameInput" type="text" maxlength="8" placeholder="なまえ（8文字まで）" autocomplete="nickname" enterkeyhint="done"><div class="rk-btns"><button type="button" class="rk-no2" id="nameSkip">登録しない</button><button type="button" class="rk-ok" id="nameOk">登録する</button></div></div></div>
 <div id="videoBox" hidden><div class="vb-inner"><button id="videoClose" type="button" aria-label="とじる">✕</button><div class="vb-frame"></div></div></div>
-<div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
+<div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="rank" aria-label="ランキング" hidden>🏆</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
 <dialog id="arcade" aria-labelledby="arcadeTitle">
   <div class="arcadeHeader">
@@ -438,6 +461,37 @@ function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};
   loadStage(1)}
 // ハイスコア（この端末に記録）
 const HI_KEY='yoshita-hiscore';let hiScore=0,newRecord=false;try{hiScore=Number(localStorage.getItem(HI_KEY))||0}catch(_){}
+// ===== みんなのランキング（Firebase Realtime Database） =====
+// RANK_URL に Firebase の「データ」タブのURLを入れると、🏆ボタンとランキング登録が使えるようになる
+const RANK_URL='';
+let ranking=null,rankAsked=-1,nameOpen=false,rankMine=null;
+function rankOn(){return !!RANK_URL}
+async function loadRanking(){if(!rankOn())return;
+  try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000);
+    const r=await fetch(RANK_URL+'/ranking.json?orderBy=%22score%22&limitToLast=10',{cache:'no-store',signal:ctl.signal});clearTimeout(tm);if(!r.ok)return;
+    const d=await r.json()||{};
+    ranking=Object.values(d).filter(v=>v&&typeof v.score==='number'&&typeof v.name==='string').sort((a,b)=>b.score-a.score||(a.at||0)-(b.at||0)).slice(0,10);
+  }catch(_){}}
+function rankPlace(sc){if(!ranking||sc<=0)return 0;const n=ranking.filter(v=>v.score>=sc).length+1;return n<=10?n:0}
+function cleanName(t){return String(t||'').replace(/[\u0000-\u001f\u007f<>]/g,'').trim().slice(0,8)}
+function showRanking(msg){const ol=document.getElementById('rankList');ol.textContent='';
+  (ranking||[]).forEach((v,i)=>{const li=document.createElement('li');if(rankMine&&v.name===rankMine.name&&v.score===rankMine.score)li.className='me';
+    for(const [c,t] of [['rk-no',(i+1)+'位'],['rk-name',v.name],['rk-score',String(v.score)]]){const sp=document.createElement('span');sp.className=c;sp.textContent=t;li.appendChild(sp);}ol.appendChild(li);});
+  document.getElementById('rankMsg').textContent=msg||(ranking?(ranking.length?'':'まだだれも登録していません。1位をねらおう！'):'ランキングを読みこめませんでした');
+  document.getElementById('rankBox').hidden=false;}
+function maybeAskName(){if(!rankOn()||mode!=='game'||nameOpen||rankAsked===score)return;const n=rankPlace(score);if(!n)return;
+  rankAsked=score;nameOpen=true;keys={};
+  document.getElementById('nameTitle').textContent='🏆 ランキング '+n+'位 に入りました！';
+  document.getElementById('nameMsg').textContent='スコア '+score+'　なまえを入れて登録しよう';
+  const inp=document.getElementById('nameInput');let saved='';try{saved=localStorage.getItem('yoshita-name')||''}catch(_){}inp.value=saved;
+  document.getElementById('nameBox').hidden=false;setTimeout(()=>{try{inp.focus()}catch(_){}},50);}
+async function submitName(){const name=cleanName(document.getElementById('nameInput').value);if(!name){document.getElementById('nameInput').focus();return;}
+  const sc=rankAsked;try{localStorage.setItem('yoshita-name',name)}catch(_){}
+  document.getElementById('nameOk').disabled=true;let ok=false;
+  try{const r=await fetch(RANK_URL+'/ranking.json',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,score:Math.floor(sc),at:{'.sv':'timestamp'}})});ok=r.ok;}catch(_){}
+  document.getElementById('nameOk').disabled=false;closeName();
+  if(ok){rankMine={name,score:Math.floor(sc)};await loadRanking();showRanking('');}else showRanking('登録できませんでした（通信を確認してね）');}
+function closeName(){nameOpen=false;document.getElementById('nameBox').hidden=true;try{document.activeElement.blur()}catch(_){}}
 function noteHiScore(){if(mode!=='game'||score<=hiScore)return;hiScore=score;newRecord=true;try{localStorage.setItem(HI_KEY,String(hiScore))}catch(_){}}
 // ゲームオーバーのまま約10秒たつと、デモ画面（タイトル）にもどる
 let loseT=0,goKind='s1';const LOSE_TO_TITLE=600;   // goKind：'s1'＝1面／'s2'＝2面／'boss'＝ボス戦（それぞれ演出がちがう）
@@ -1942,7 +1996,7 @@ function drawOpening(){const o=opening,t=o.t;
   if(t>OP_LEN-40){x.fillStyle=`rgba(0,0,0,${(t-(OP_LEN-40))/40})`;x.fillRect(0,0,W,H);}   // フェードアウト
   x.font='bold 16px system-ui';x.fillStyle='#ffffffcc';x.textAlign='right';x.fillText('タップで スキップ ▶▶',W-16,H-14);x.textAlign='left';
 }
-function toTitle(){if(mode==='game'){carry=state==='ending'?{score,lives,coinProgress,diamonds}:null;}const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
+function toTitle(){loadRanking();if(mode==='game'){carry=state==='ending'?{score,lives,coinProgress,diamonds}:null;}const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
 // clearCount：クリアした回数。3周ごとにくり返す（よし太くん → 初代よし太くん → ソラ姫 → よし太くん …）
 let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
 // クリスマス版：スタートを押すと「メリークリスマス！」と叫ぶ（用意した声の2種類から、毎回どちらかを流す＋鈴の音）
@@ -1978,7 +2032,7 @@ function startGame(){stopEndSong();
     shoutMerryXmas(()=>{xmasIntro=null;beginGame();});return;}
   beginGame();
 }
-function beginGame(){mode='game';roundBase=carry;carry=null;newRecord=false;secondRound=clearCount%3===1;princessRound=clearCount%3===2;   // 1周目よし太くん → 2周目 初代よし太くん → 3周目 ソラ姫 → 4周目からまたくり返す
+function beginGame(){mode='game';rankMine=null;loadRanking();roundBase=carry;carry=null;newRecord=false;secondRound=clearCount%3===1;princessRound=clearCount%3===2;   // 1周目よし太くん → 2周目 初代よし太くん → 3周目 ソラ姫 → 4周目からまたくり返す
 Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
 // デモ用の自動操作
 function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=false;   // デモも無敵ではない（ぶつかればミス）
@@ -2102,7 +2156,9 @@ function drawTitle(){
   x.fillStyle='#ffffff30';x.fillRect(W/2-206,ry-18,412,6);
   x.font='900 22px system-ui';x.fillStyle='#fff';x.shadowColor='#0008';x.shadowBlur=4;x.fillText('モグラ大王をたおして 空の国をすくえ！',W/2,ry+8);x.shadowBlur=0;
   if(XMAS)fancyText('🎄 メリークリスマス！ 🎄',W/2,ry+52,26,'red');
-  if(hiScore>0)fancyText('HIGH SCORE  '+hiScore,W/2,ry+(XMAS?86:52),24,'gold');
+  {let hy=ry+(XMAS?86:52);
+    if(ranking&&ranking[0]){fancyText('みんなの1位  '+ranking[0].name+'  '+ranking[0].score,W/2,hy,24,'gold');hy+=30;if(hiScore>0)fancyText('じぶんのベスト  '+hiScore,W/2,hy,18,'white');}
+    else if(hiScore>0)fancyText('HIGH SCORE  '+hiScore,W/2,hy,24,'gold');}
   // 「デモ」表示：上部に大きなバッジ＋画面の四隅に枠
   const on=Math.floor(t/500)%2;
   const bg=x.createLinearGradient(0,18,0,70);bg.addColorStop(0,on?'#ff5a5a':'#d83a3a');bg.addColorStop(1,on?'#c02a2a':'#a02020');
@@ -2212,7 +2268,8 @@ if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&en
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
 noteHiScore();
-if(state==='lose'&&mode==='game'){if(++loseT>LOSE_TO_TITLE){toTitle();startEndSong('demo');}return;}   // ゲームオーバー後のデモでは「雪原の気球」を流す
+if(mode==='game'&&((state==='lose'&&loseT===50)||(state==='ending'&&endingDone())))maybeAskName();
+if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();startEndSong('demo');}return;}   // ゲームオーバー後のデモでは「雪原の気球」を流す
 if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
@@ -3425,7 +3482,7 @@ if(!restoreQuestEnding())startOpening();   // 最初はオープニングから�
 requestAnimationFrame(loop);
 
 // キーボード
-document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(state==='endingCut'&&mode==='game'){finishEndingCut();return;}if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose'){if(loseT>40)retry();}else reset()}});
+document.addEventListener('keydown',e=>{if(nameOpen||!document.getElementById('rankBox').hidden){if(e.key==='Escape'){if(nameOpen)closeName();else document.getElementById('rankBox').hidden=true;}if(nameOpen&&e.key==='Enter'&&e.target.id==='nameInput'){e.preventDefault();submitName();}return;}let k=e.key.toLowerCase();if(state==='endingCut'&&mode==='game'){finishEndingCut();return;}if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose'){if(loseT>40)retry();}else reset()}});
 document.addEventListener('keyup',e=>{let k=e.key.toLowerCase();if(['arrowleft','a'].includes(k))keys.left=false;if(['arrowright','d'].includes(k))keys.right=false;if([' ','arrowup','w'].includes(k))keys.jump=false});
 
 // 方向パッド：大きな ◀ ▶ の2つ。指を離さずスライドで左右を切り替え（ジャンプは右のジャンプボタンで）
@@ -3457,6 +3514,13 @@ document.getElementById('startBtn').addEventListener('click',e=>{e.stopPropagati
 
 // 音楽ON/OFFボタン（設定は次回も保持）
 const mb=document.getElementById('music');
+{const rb=document.getElementById('rank');if(rankOn())rb.hidden=false;
+  rb.addEventListener('click',async e=>{e.stopPropagation();if(nameOpen)return;showRanking('読みこみ中…');await loadRanking();showRanking('');});
+  document.getElementById('rankClose').addEventListener('click',()=>{document.getElementById('rankBox').hidden=true;});
+  document.getElementById('nameOk').addEventListener('click',submitName);
+  document.getElementById('nameSkip').addEventListener('click',closeName);
+  for(const id of ['rankBox','nameBox'])for(const ev of ['pointerdown','touchstart'])document.getElementById(id).addEventListener(ev,e=>e.stopPropagation());
+  loadRanking();}
 function setMusic(on){musicOn=on;try{if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(endSongVolume(),audioCtx.currentTime,.05);END_SONG.volume=endSongVolume();}catch(_){}mb.textContent=on?'🎵':'🔇';mb.classList.toggle('off',!on);try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02)}
 mb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();unlockAudio();setMusic(!musicOn)});
 setMusic(musicOn);
