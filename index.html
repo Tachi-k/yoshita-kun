@@ -503,6 +503,7 @@ function closeName(){nameOpen=false;document.getElementById('nameBox').hidden=tr
 function noteHiScore(){if(mode!=='game'||score<=hiScore)return;hiScore=score;newRecord=true;try{localStorage.setItem(HI_KEY,String(hiScore))}catch(_){}}
 // ゲームオーバーのまま約10秒たつと、デモ画面（タイトル）にもどる
 let loseT=0,goKind='s1';const LOSE_TO_TITLE=600;   // goKind：'s1'＝1面／'s2'＝2面／'boss'＝ボス戦（それぞれ演出がちがう）
+function loseTap(){if(rankOn()&&rankAsked!==score&&rankPlace(score))maybeAskName();else retry();}
 function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else{reset();lives=3}}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
@@ -2283,9 +2284,9 @@ if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&en
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
 noteHiScore();
-if(mode==='game'&&((state==='lose'&&loseT===50)||(state==='ending'&&endingDone())))maybeAskName();
+if(mode==='game'&&((state==='lose'&&loseT>=40)||(state==='ending'&&endingDone())))maybeAskName();   // ランキング入りなら名前入力（すぐ再挑戦のタップをしても、先にこちらが出る）
 if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();startEndSong('demo');}return;}   // ゲームオーバー後のデモでは「雪原の気球」を流す
-if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;startKeepAlive();try{loadJingle(END_SONG)}catch(_){};goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
+if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;startKeepAlive();if(!ranking)loadRanking();try{loadJingle(END_SONG)}catch(_){};goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
   else{if(goalTick>45){balloonVy=Math.min(4.2,balloonVy+.045);balloonLift+=balloonVy;}if(goalTick===32||goalTick%26===0)sound('burner');p.x=bx-17;p.y=ground-38-28-balloonLift;}
@@ -3504,7 +3505,7 @@ if(!restoreQuestEnding())startOpening();   // 最初はオープニングから�
 requestAnimationFrame(loop);
 
 // キーボード
-document.addEventListener('keydown',e=>{if(nameOpen||!document.getElementById('rankBox').hidden){if(e.key==='Escape'){if(nameOpen)closeName();else document.getElementById('rankBox').hidden=true;}if(nameOpen&&e.key==='Enter'&&e.target.id==='nameInput'){e.preventDefault();submitName();}return;}let k=e.key.toLowerCase();if(state==='endingCut'&&mode==='game'){finishEndingCut();return;}if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose'){if(loseT>40)retry();}else reset()}});
+document.addEventListener('keydown',e=>{if(nameOpen||!document.getElementById('rankBox').hidden){if(e.key==='Escape'){if(nameOpen)closeName();else document.getElementById('rankBox').hidden=true;}if(nameOpen&&e.key==='Enter'&&e.target.id==='nameInput'){e.preventDefault();submitName();}return;}let k=e.key.toLowerCase();if(state==='endingCut'&&mode==='game'){finishEndingCut();return;}if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose'){if(loseT>40)loseTap();}else reset()}});
 document.addEventListener('keyup',e=>{let k=e.key.toLowerCase();if(['arrowleft','a'].includes(k))keys.left=false;if(['arrowright','d'].includes(k))keys.right=false;if([' ','arrowup','w'].includes(k))keys.jump=false});
 
 // 方向パッド：大きな ◀ ▶ の2つ。指を離さずスライドで左右を切り替え（ジャンプは右のジャンプボタンで）
@@ -3520,7 +3521,7 @@ function holdButton(el,down,up){let id=null;el.addEventListener('pointerdown',e=
 holdButton(document.getElementById('jump'),()=>keys.jump=true,()=>keys.jump=false);
 holdButton(document.getElementById('dig'),()=>{dig();},()=>{}); // 1タップにつき1回だけ掘る。デモAIの自動掘削は維持
 
-c.addEventListener('pointerdown',()=>{if(mode==='opening'){endOpening();return;}if(state==='endingCut'){finishEndingCut();return;}if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose'){if(loseT>40)retry();}else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
+c.addEventListener('pointerdown',()=>{if(mode==='opening'){endOpening();return;}if(state==='endingCut'){finishEndingCut();return;}if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose'){if(loseT>40)loseTap();}else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
 
 // スクロール・ズーム・長押しメニューを防止
 document.addEventListener('touchmove',e=>{if(!arcade.open)e.preventDefault();},{passive:false});
