@@ -777,19 +777,27 @@ SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[
 const END_SONG=new Audio('audio/ending-song.mp3');END_SONG.preload='auto';
 let endSong={on:false,src:null,gain:null,where:'ending'};   // where：'ending'＝エンディング／'demo'＝ゲームオーバー後のデモ画面
 function endSongVolume(){return musicOn?.85:0}
-function startEndSong(where='ending'){if(endSong.on)return;endSong.on=true;endSong.where=where;
+// iPhoneは、音が止まったまましばらくたつと音を出す仕組みが眠ってしまうことがある。
+// ゲームオーバー中は聞こえないくらい小さな音を流しつづけて、10秒後の曲がちゃんと鳴るようにする
+let keepAlive=null;
+function startKeepAlive(){if(keepAlive||!audioCtx)return;try{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=40;g.gain.value=.0004;o.connect(g);g.connect(audioCtx.destination);o.start();keepAlive={o,g};}catch(_){}}
+function stopKeepAlive(){if(!keepAlive)return;try{keepAlive.o.stop();keepAlive.o.disconnect();}catch(_){}keepAlive=null}
+function wakeAudio(){try{if(audioCtx&&audioCtx.state!=='running')audioCtx.resume();}catch(_){}}
+function startEndSong(where='ending'){if(endSong.on)return;endSong.on=true;endSong.where=where;wakeAudio();
   const info=document.getElementById('songInfo');if(info)info.hidden=false;document.body.classList.add('song-on');
   try{unlockAudio();}catch(_){}
   loadJingle(END_SONG).then(buffer=>{if(!endSong.on)return;
     if(buffer&&audioCtx){try{const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;src.loop=true;
         g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(endSongVolume(),audioCtx.currentTime+1.5);   // ふわっと始まる
-        src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;return;}catch(_){}}
+        src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;setTimeout(stopKeepAlive,2500);return;}catch(_){}}
     try{endSong.el=true;END_SONG.loop=true;END_SONG.volume=endSongVolume();END_SONG.currentTime=0;const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}});}
 function stopEndSong(){if(!endSong.on)return;endSong.on=false;endSong.el=false;try{closeVideo();}catch(_){}
   const info=document.getElementById('songInfo');if(info)info.hidden=true;document.body.classList.remove('song-on');
   try{if(endSong.src){endSong.src.stop();endSong.src=null;endSong.gain=null;}}catch(_){}
   try{END_SONG.pause();}catch(_){}}
 document.getElementById('songLink').addEventListener('pointerdown',e=>e.stopPropagation());
+for(const ev of ['pointerdown','touchend'])document.addEventListener(ev,()=>{if(!endSong.on)return;wakeAudio();
+  if(!endSong.src&&endSong.el&&END_SONG.paused){try{const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}}},{capture:true,passive:true});
 // 動画（YouTube）：開いている間は、ゲームの曲を消しておく
 const VIDEO_ID='5zwVHWrBwFA';
 function openVideo(){const box=document.getElementById('videoBox');box.hidden=false;
@@ -2250,7 +2258,8 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
-if(endSong.on&&(endSong.where==='ending'?state!=='ending':mode!=='title'||xmasIntro))stopEndSong();   // エンディング／デモ画面から出たら止める
+if(endSong.on&&(endSong.where==='ending'?state!=='ending':mode!=='title'||xmasIntro))stopEndSong();
+if(keepAlive&&!endSong.on&&!(state==='lose'&&mode==='game'))stopKeepAlive();   // エンディング／デモ画面から出たら止める
 if(mode==='opening'){updateOpening();return;}
 if(state==='endingCut'){updateEndingCut();return;}
 if(state==='arcade')return;
@@ -2278,7 +2287,7 @@ if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else l
 noteHiScore();
 if(mode==='game'&&((state==='lose'&&loseT===50)||(state==='ending'&&endingDone())))maybeAskName();
 if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();startEndSong('demo');}return;}   // ゲームオーバー後のデモでは「雪原の気球」を流す
-if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
+if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;startKeepAlive();try{loadJingle(END_SONG)}catch(_){};goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
   else{if(goalTick>45){balloonVy=Math.min(4.2,balloonVy+.045);balloonLift+=balloonVy;}if(goalTick===32||goalTick%26===0)sound('burner');p.x=bx-17;p.y=ground-38-28-balloonLift;}
