@@ -107,7 +107,14 @@ canvas{display:block;background:#17283c}
 #songInfo b{color:#ffe36a}
 #songLink{display:inline-block;padding:6px 14px;border-radius:999px;background:linear-gradient(#3ee27a,#1db954 60%,#14903f);color:#fff;font:900 14px system-ui;text-decoration:none;box-shadow:0 3px 0 #0c6a2c;touch-action:manipulation}
 @keyframes songIn{from{opacity:0;transform:translate(-50%,20px)}}
-@media (orientation:landscape) and (max-height:500px){#songInfo{max-width:56vw;padding:5px 10px;font-size:12px;gap:2px 8px;bottom:6px}#songLink{padding:4px 10px;font-size:12px}}
+#videoBtn{padding:6px 14px;border-radius:999px;border:0;background:linear-gradient(#ff6a6a,#e8202e 60%,#a8101e);color:#fff;font:900 14px system-ui;box-shadow:0 3px 0 #7a0a14;touch-action:manipulation;cursor:pointer}
+/* 動画の窓（エンディングで「動画を見る」を押すと開く） */
+#videoBox{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(0,0,0,.8)}
+#videoBox[hidden]{display:none}
+#videoBox .vb-inner{position:relative;width:min(92vw,calc(86dvh*16/9));aspect-ratio:16/9;border:3px solid #ffd45a;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 0 30px #ffd45a66}
+#videoBox .vb-frame,#videoBox iframe{width:100%;height:100%;border:0;display:block}
+#videoClose{position:absolute;top:6px;right:6px;z-index:2;width:40px;height:40px;border-radius:50%;border:2px solid #fff;background:#000c;color:#fff;font:900 20px system-ui;cursor:pointer}
+@media (orientation:landscape) and (max-height:500px){#songInfo{max-width:56vw;padding:5px 10px;font-size:12px;gap:2px 8px;bottom:6px}#songLink,#videoBtn{padding:4px 10px;font-size:12px}}
 #arcade{box-sizing:border-box;width:min(560px,94vw);max-height:92dvh;overflow:auto;border:2px solid #79a7cb;border-radius:16px;padding:16px;background:#17283c;color:#fff;text-align:center;touch-action:pan-y}
 #arcade::backdrop{background:#071322c9}
 #arcade h2,#arcade h3{margin:0 0 8px}
@@ -189,7 +196,8 @@ canvas{display:block;background:#17283c}
 </div>
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
 <button id="startBtn" aria-label="ゲームスタート"><span class="sb-body"><span class="sb-ic" aria-hidden="true">▶</span><span class="sb-tx">START<small>ゲームスタート</small></span></span></button>
-<div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a></div>
+<div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a><button id="videoBtn" type="button">🎬 動画を見る</button></div>
+<div id="videoBox" hidden><div class="vb-inner"><button id="videoClose" type="button" aria-label="とじる">✕</button><div class="vb-frame"></div></div></div>
 <div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
 <dialog id="arcade" aria-labelledby="arcadeTitle">
@@ -705,11 +713,22 @@ function startEndSong(){if(endSong.on)return;endSong.on=true;
         g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(endSongVolume(),audioCtx.currentTime+1.5);   // ふわっと始まる
         src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;return;}catch(_){}}
     try{endSong.el=true;END_SONG.loop=true;END_SONG.volume=endSongVolume();END_SONG.currentTime=0;const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}});}
-function stopEndSong(){if(!endSong.on)return;endSong.on=false;endSong.el=false;
+function stopEndSong(){if(!endSong.on)return;endSong.on=false;endSong.el=false;try{closeVideo();}catch(_){}
   const info=document.getElementById('songInfo');if(info)info.hidden=true;
   try{if(endSong.src){endSong.src.stop();endSong.src=null;endSong.gain=null;}}catch(_){}
   try{END_SONG.pause();}catch(_){}}
 document.getElementById('songLink').addEventListener('pointerdown',e=>e.stopPropagation());
+// 動画（YouTube）：開いている間は、ゲームの曲を消しておく
+const VIDEO_ID='5zwVHWrBwFA';
+function openVideo(){const box=document.getElementById('videoBox');box.hidden=false;
+  box.querySelector('.vb-frame').innerHTML='<iframe src="https://www.youtube-nocookie.com/embed/'+VIDEO_ID+'?autoplay=1&playsinline=1&rel=0" title="動画" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>';
+  try{if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(0,audioCtx.currentTime,.05);END_SONG.volume=0;}catch(_){}}
+function closeVideo(){const box=document.getElementById('videoBox');box.hidden=true;box.querySelector('.vb-frame').innerHTML='';
+  try{if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(endSongVolume(),audioCtx.currentTime,.3);END_SONG.volume=endSongVolume();}catch(_){}}
+for(const id of['videoBtn','videoClose','videoBox'])document.getElementById(id).addEventListener('pointerdown',e=>e.stopPropagation());
+document.getElementById('videoBtn').addEventListener('click',e=>{e.stopPropagation();openVideo();});
+document.getElementById('videoClose').addEventListener('click',e=>{e.stopPropagation();closeVideo();});
+document.getElementById('videoBox').addEventListener('click',e=>{if(e.target.id==='videoBox')closeVideo();});
 function currentSong(){if(endSong.on)return null;   // エンディングの曲が流れている間は、ほかのBGMを止める
   if(mode==='title'||mode==='opening')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
 // ===== MP3のBGM =====
