@@ -849,7 +849,7 @@ function updateBoss(p,oldY){
     if(b.short){b.y=top;if(b.t>40){bgo('walk');banner('','穴を掘って 大王を落とし、頭をふめ！',120)}}
     else{b.pt=(b.pt||0)+1;if(!b.phase)b.phase='rumble';
       if(b.phase==='rumble'){b.y=ground+30;shake=Math.max(shake,2+b.pt/12);if(b.pt%5===0)boom(cx+(Math.random()-.5)*90,ground,3,['#c9a27a','#8a6a4a'],4);if(b.pt===1||b.pt===40)sound('rumble');   // ゴゴゴ…地鳴り
-        if(b.pt>=80){b.phase='burst';b.pt=0;b.y=ground-10;b.vy=-13.5;shake=30;sound('slam');sound('boom');boom(cx,ground,46,['#c9a27a','#8a6a4a','#5e3a22'],10);}}   // 地面を突き破る
+        if(b.pt>=80){b.phase='burst';b.pt=0;b.y=ground-10;b.vy=-13.5;shake=30;for(let k=0;k<18;k++)parts.push({x:cx+(Math.random()-.5)*60,y:ground,vx:(Math.random()-.5)*12,vy:-6-Math.random()*9,g:.4,s:5+Math.random()*7,life:70,max:70,col:['#8a6a4a','#5e3a22','#c9a27a'][k%3]});sound('slam');sound('boom');boom(cx,ground,46,['#c9a27a','#8a6a4a','#5e3a22'],10);}}   // 地面を突き破る
       else if(b.phase==='burst'){b.vy+=.6;b.y+=b.vy;if(b.y>=top&&b.vy>0){b.y=top;b.vy=0;b.landed=true;shake=20;sound('slam');boom(cx,ground,18,['#c9a27a','#8a6a4a'],6);b.phase='pinwait';b.pt=0;}}
       else if(b.phase==='pinwait'){if(b.pt>14){b.phase='pin';b.pt=0;b.vx=-13.5;b.vy=-19;b.pins=0;sound('boing');}}
       // ピンボールのように跳ね回る
@@ -3096,15 +3096,37 @@ function draw(){
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:72);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText('モグラ大王 ドリモグ',595,28,20,'red');x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
-  // ボス登場の演出（映画のような黒帯と名前のカットイン）
-  if(bossIntroLong()){const T=boss.t,bar=Math.min(1,T/25)*46;x.fillStyle='#000';x.fillRect(0,0,W,bar);x.fillRect(0,H-bar,W,bar);
-    x.textAlign='center';
-    if(boss.phase==='rumble'){x.globalAlpha=.5+.5*Math.abs(Math.sin(T*.25));x.font='900 54px system-ui';x.lineWidth=8;x.strokeStyle='#20304a';x.fillStyle='#ffb43c';const jx=(realRandom()-.5)*6;x.strokeText('ゴゴゴゴ…',W/2+jx,190);x.fillText('ゴゴゴゴ…',W/2+jx,190);x.globalAlpha=1;}
-    if(boss.phase==='roar'){const P=boss.pt,k=Math.min(1,P/18),e=1-Math.pow(1-Math.max(0,Math.min(1,(P-10)/22)),3),out=P>95?Math.min(1,(P-95)/20):0;
-      x.globalAlpha=1-out;x.fillStyle='#000a';x.fillRect(0,175,W*k,150);x.fillStyle='#e64040';x.fillRect(0,175,W*k,6);x.fillRect(W*(1-k),319,W*k,6);
-      if(P>10){x.font='bold 26px system-ui';x.fillStyle='#ffdf50';x.fillText('谷の 支配者',W/2-(1-e)*500,222);
-        x.font='900 84px system-ui';x.lineWidth=10;x.strokeStyle='#5e1010';x.fillStyle='#fff';const tx=W/2+(1-e)*700;x.strokeText('モグラ大王 ドリモグ',tx,300);x.fillText('モグラ大王 ドリモグ',tx,300);}
+  // ボス登場の演出：暗くなる空と赤い警告 → 地面のひびから光 → 白い閃光で大王が飛び出す → 雄たけびの衝撃波 → 名前のカットイン
+  if(bossIntroLong()){const T=boss.t,ph=boss.phase,P=boss.pt||0,bar=Math.min(1,T/25)*52,cx=boss.x+boss.w/2-camera,now=Date.now();
+    // 空がだんだん暗く、赤くなる
+    const dark=ph==='rumble'?Math.min(.55,P/80*.55):ph==='roar'?.5:.4;x.fillStyle=`rgba(20,0,10,${dark})`;x.fillRect(0,0,W,H);
+    const vg=x.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.85);vg.addColorStop(0,'rgba(180,0,0,0)');vg.addColorStop(1,`rgba(200,10,20,${.25+.2*Math.abs(Math.sin(T*.12))})`);x.fillStyle=vg;x.fillRect(0,0,W,H);
+    // いなずま
+    if(ph!=='rumble'&&T%70<4){x.fillStyle='rgba(255,255,255,.5)';x.fillRect(0,0,W,H);}
+    if(ph==='rumble'){
+      // 地面のひびから吹き上がる光
+      const L=P/80,g=x.createLinearGradient(0,ground,0,ground-260*L);g.addColorStop(0,`rgba(255,140,40,${.6*L})`);g.addColorStop(1,'rgba(255,140,40,0)');
+      x.fillStyle=g;x.beginPath();x.moveTo(cx-60*L,ground);x.lineTo(cx-20,ground-260*L);x.lineTo(cx+20,ground-260*L);x.lineTo(cx+60*L,ground);x.closePath();x.fill();
+      // 上下に流れる「WARNING」の帯
+      x.save();x.globalAlpha=.85;for(const [y,dir] of[[118,1],[H-138,-1]]){x.fillStyle='#b80e1e';x.fillRect(0,y,W,30);x.fillStyle='#ffdf50';x.fillRect(0,y,W,3);x.fillRect(0,y+27,W,3);
+        x.font='900 20px system-ui';x.fillStyle='#fff';x.textAlign='left';const off=((T*3*dir)%220+220)%220;for(let k=-1;k<6;k++)x.fillText('⚠ WARNING ⚠',k*220+off-110,y+22);}x.restore();
+      x.textAlign='center';x.globalAlpha=.5+.5*Math.abs(Math.sin(T*.25));const jx=(realRandom()-.5)*8;fancyText('ゴゴゴゴ…',W/2+jx,215,62,'gold');x.globalAlpha=1;}
+    if(ph==='burst'&&P<14){x.fillStyle=`rgba(255,255,255,${1-P/14})`;x.fillRect(0,0,W,H);}   // 地面を突き破った瞬間の白い閃光
+    if(ph==='roar'){
+      // 雄たけびの衝撃波（広がる輪）
+      x.save();for(let k=0;k<3;k++){const r=((P*9+k*120)%360);x.globalAlpha=Math.max(0,1-r/360)*.7;x.strokeStyle=k%2?'#ffdf50':'#ff5a4a';x.lineWidth=8-k*2;x.beginPath();x.ellipse(cx,boss.y+30,r*1.4,r*.7,0,0,7);x.stroke();}x.restore();
+      const k=Math.min(1,P/18),e=1-Math.pow(1-Math.max(0,Math.min(1,(P-10)/22)),3),out=P>95?Math.min(1,(P-95)/20):0;
+      x.globalAlpha=1-out;
+      // ななめの赤い帯
+      x.save();x.translate(W/2,250);x.rotate(-.06);x.fillStyle='rgba(10,0,0,.82)';x.fillRect(-W*k,-78,W*2*k,156);
+      const band=x.createLinearGradient(-W,0,W,0);band.addColorStop(0,'#7a0010');band.addColorStop(.5,'#ff3a3a');band.addColorStop(1,'#7a0010');x.fillStyle=band;x.fillRect(-W*k,-78,W*2*k,8);x.fillRect(-W*k,70,W*2*k,8);
+      x.restore();
+      x.textAlign='center';
+      if(P>10){fancyText('谷の 支配者',W/2-(1-e)*500,206,30,'gold');
+        const tx=W/2+(1-e)*700,shake=P<40?(realRandom()-.5)*6:0;fancyText('モグラ大王 ドリモグ',tx+shake,292,86,'red');
+        x.globalAlpha=(1-out)*Math.min(1,Math.max(0,(P-34)/12));fancyText('— MOLE KING DORIMOGU —',W/2,328,20,'white');}
       x.globalAlpha=1;}
+    x.fillStyle='#000';x.fillRect(0,0,W,bar);x.fillRect(0,H-bar,W,bar);   // 映画のような黒帯
     x.textAlign='left';}
   // バナー・オーバーレイ
   x.textAlign='center';
