@@ -38,14 +38,24 @@ canvas{display:block;background:#17283c}
 .topbtns #bgmSwitch button[aria-pressed="true"]{background:linear-gradient(#fff6b0,#ffd23a 50%,#e0a010);border-color:#fff;color:#3a2000;box-shadow:0 3px 0 #9a6a10,0 0 12px #ffdf5088,inset 0 2px 0 #fff9}
 .topbtns #bgmSwitch button[aria-pressed="true"]::before{content:'✓ '}
 .topbtns #bgmSwitch button:focus-visible{outline:3px solid #fff;outline-offset:1px}
-#startBtn{position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;overflow:hidden;font:900 24px system-ui;letter-spacing:3px;padding:10px 34px;border-radius:44px;border:3px solid #fff6c8;
-  background:linear-gradient(#fff7b0,#ffcf2a 45%,#e89510);color:#3a1a00;text-shadow:0 1px 0 #fff9;
-  box-shadow:0 0 0 3px #7a4a00,0 6px 0 #7a4a00,0 0 28px #ffd45aaa,0 14px 26px #0007,inset 0 3px 0 #ffffffb0;touch-action:manipulation;animation:pulse 1.1s ease-in-out infinite}
-#startBtn::after{content:'';position:absolute;top:-20%;left:-40%;width:30%;height:140%;background:linear-gradient(90deg,#fff0,#ffffffcc,#fff0);transform:skewX(-20deg);animation:startShine 2.4s ease-in-out infinite}   /* 光が流れる */
+/* ===== STARTボタン：虹色に回る光のふち＋金のボタン＋紺の再生マーク ===== */
+#startBtn{position:absolute;left:50%;top:60%;transform:translateX(-50%);z-index:6;overflow:hidden;padding:4px;border:0;border-radius:999px;background:#1a0f00;
+  box-shadow:0 0 0 2px #3a2200,0 8px 0 #4a2a00,0 0 34px #ffcf4a99,0 16px 28px #0008;touch-action:manipulation;animation:pulse 1.4s ease-in-out infinite;cursor:pointer}
+#startBtn::before{content:'';position:absolute;left:50%;top:50%;width:200%;aspect-ratio:1;translate:-50% -50%;
+  background:conic-gradient(#fff6b0,#ffb020,#ff5a8a,#b07aff,#5fd0ff,#7dffb0,#fff6b0);animation:startSpin 2.6s linear infinite}   /* 回る虹色のふち */
+@keyframes startSpin{to{rotate:360deg}}
+#startBtn .sb-body{position:relative;z-index:1;display:flex;align-items:center;gap:12px;overflow:hidden;padding:8px 30px 8px 10px;border-radius:999px;
+  background:linear-gradient(#fffbe0 0%,#ffe066 30%,#ffb81e 62%,#e08a00 100%);box-shadow:inset 0 3px 0 #ffffffd0,inset 0 -5px 8px #a85a0088}
+#startBtn .sb-body::after{content:'';position:absolute;top:-30%;left:-40%;width:28%;height:160%;background:linear-gradient(90deg,#fff0,#ffffffd8,#fff0);transform:skewX(-20deg);animation:startShine 2.4s ease-in-out infinite}   /* 光が流れる */
+#startBtn .sb-ic{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 40% 30%,#4a5a9a,#1a2250 70%);
+  border:2px solid #fff3b0;box-shadow:0 2px 0 #7a4a00,inset 0 2px 0 #ffffff40;color:#ffd84a;font-size:20px;padding-left:3px;text-shadow:0 0 8px #ffd84a}
+#startBtn .sb-tx{display:flex;flex-direction:column;align-items:flex-start;line-height:1;color:#3a1a00;font:900 30px system-ui;letter-spacing:4px;text-shadow:0 2px 0 #fff8,0 -1px 0 #7a4a0055}
+#startBtn .sb-tx small{font:800 11px system-ui;letter-spacing:3px;margin-top:4px;color:#7a3a00;text-shadow:none}
 @keyframes startShine{0%,55%{left:-40%}100%{left:130%}}
-#startBtn:active{transform:translateX(-50%) translateY(4px);box-shadow:0 0 0 3px #7a4a00,0 2px 0 #7a4a00,0 0 20px #ffd45aaa}
-@keyframes pulse{50%{scale:1.07}}
-@media (prefers-reduced-motion:reduce){#startBtn,#startBtn::after{animation:none}}
+#startBtn:active{transform:translateX(-50%) translateY(5px);box-shadow:0 0 0 2px #3a2200,0 3px 0 #4a2a00,0 0 24px #ffcf4a99}
+#startBtn:active .sb-body{filter:brightness(1.08)}
+@keyframes pulse{50%{scale:1.06}}
+@media (prefers-reduced-motion:reduce){#startBtn,#startBtn::before,#startBtn .sb-body::after{animation:none}}
 #fs{display:none}
 .hint,.help{font-size:13px;opacity:.8;text-align:center;margin:8px 0 0}
 .help{display:none}
@@ -84,7 +94,8 @@ canvas{display:block;background:#17283c}
   .topbtns{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px);left:8px;right:8px;justify-content:center;align-items:center}   /* はみ出さないよう画面の幅に収める */
   .topbtns #bgmSwitch button{font-size:min(16px,4vw);padding:0 min(10px,1.5vw)}
   .topbtns #bgmSwitch span{font-size:min(16px,4vw)}
-  #startBtn{top:calc(env(safe-area-inset-top) + 56.25vw*.6 - 22px);font-size:19px;padding:9px 22px}
+  #startBtn{top:calc(env(safe-area-inset-top) + 56.25vw*.6 - 26px)}
+  #startBtn .sb-body{padding:5px 20px 5px 6px;gap:8px}#startBtn .sb-ic{width:34px;height:34px;font-size:16px}#startBtn .sb-tx{font-size:22px;letter-spacing:3px}#startBtn .sb-tx small{font-size:9px}
   .btn{width:min(92px,21vw);height:min(92px,21vw)}#jump{width:min(110px,25vw);height:min(110px,25vw)}
 }
 @media (hover:hover) and (pointer:fine){.help{display:block}.hint{display:none}}
@@ -168,7 +179,7 @@ canvas{display:block;background:#17283c}
   <div class="pad"><button class="btn" id="dig"><b>⛏</b>掘る</button><button class="btn" id="jump"><b>⬆</b>ジャンプ</button></div>
 </div>
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
-<button id="startBtn">▶ START</button>
+<button id="startBtn" aria-label="ゲームスタート"><span class="sb-body"><span class="sb-ic" aria-hidden="true">▶</span><span class="sb-tx">START<small>ゲームスタート</small></span></span></button>
 <div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
 <dialog id="arcade" aria-labelledby="arcadeTitle">
