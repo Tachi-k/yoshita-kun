@@ -2460,7 +2460,13 @@ function drawLifeHeart(cx,cy,w,gold){
 function drawItem(it){const ix=it.x,iy=it.y,foot=iy+10;   // 置いてある位置の足もと
   if(it.type==='coin')drawCoin(ix,foot-15,15,Date.now()*.006+ix*.05);
   else if(it.type==='gem')drawGem(ix,foot,34);
-  else if(it.type==='heart'||it.type==='goldHeart'){const bob=Math.sin(Date.now()*.006+ix)*2;{const gold=it.type==='goldHeart',w=gold?46:40;drawLifeHeart(ix,foot-w*.47+bob,w,gold);}}
+  else if(it.type==='heart'||it.type==='goldHeart'){const bob=Math.sin(Date.now()*.006+ix)*2;{const gold=it.type==='goldHeart',w=gold?46:40,cy=foot-w*.47+bob;
+    // コインのように、くるくる回る（横に細くなって、また広がる。うら側は少し暗く）
+    const turn=Math.cos(Date.now()*.004+ix*.05),sx=Math.max(.12,Math.abs(turn));
+    x.save();x.translate(ix,cy);x.scale(sx,1);x.translate(-ix,-cy);drawLifeHeart(ix,cy,w,gold);
+    if(turn<0){x.globalAlpha=.25*(-turn);heartPath(ix,cy,w);x.fillStyle='#000';x.fill();x.globalAlpha=1;}
+    x.restore();
+    if(sx<.4){x.globalAlpha=(.4-sx)*2;x.fillStyle=gold?'#fff3a0':'#ffd0dc';x.fillRect(ix-1.5,cy-w*.45,3,w*.85);x.globalAlpha=1;}}}   // 横を向いたときの光る線
   else if(it.type==='chest'){
     const glow=.25+.15*Math.sin(Date.now()*.005);x.globalAlpha=glow;ell(ix,foot-18,38,26,'#ffe680');x.globalAlpha=1;   // ほんのり光る
     drawChest(ix,foot,56);}
