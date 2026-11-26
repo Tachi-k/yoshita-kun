@@ -315,6 +315,15 @@ function drawSkyRope(){
     for(let k=0;k<3;k++){const a=r.t*.1+k*2.1;x.fillStyle='#fff8c0';x.fillRect(r.x+Math.cos(a)*14-1,bottom-10+Math.sin(a)*10-1,2.5,2.5);}}   // きらきら
   x.restore();
 }
+// 雲の面へ飛ぶ台：金色のふちの石の台に、雲のマークと矢印
+function drawCloudPad(b){const t=Date.now(),on=!cloudUsed;
+  x.fillStyle='#5a4a6a';x.fillRect(b.x+8,b.y+b.h,b.w-16,ground-b.y-b.h);   // 支える柱
+  x.fillStyle='#7a6a8a';for(let k=0;k<3;k++)x.fillRect(b.x+12,b.y+b.h+8+k*16,b.w-24,3);
+  const g=x.createLinearGradient(0,b.y,0,b.y+b.h);g.addColorStop(0,on?'#fff3b0':'#d8d8e0');g.addColorStop(1,on?'#e0a020':'#8a8a98');
+  x.fillStyle=g;x.beginPath();if(x.roundRect)x.roundRect(b.x,b.y,b.w,b.h,6);else x.rect(b.x,b.y,b.w,b.h);x.fill();x.strokeStyle='#7a4a00';x.lineWidth=2;x.stroke();
+  drawCloud(b.x+b.w/2,b.y+8,.22,'#c8d8ea','#ffffff','#ffffff');   // 雲のマーク
+  if(on){x.globalAlpha=.35+.25*Math.sin(t*.006);ell(b.x+b.w/2,b.y,b.w*.7,10,'#fff3a0');x.globalAlpha=1;
+    if(Math.abs(player.x+17-(b.x+b.w/2))<140){x.textAlign='center';x.font='900 14px system-ui';x.lineWidth=4;x.strokeStyle='#0d1830';x.fillStyle='#fff';const tx='台の上で 二段ジャンプ！';x.strokeText(tx,b.x+b.w/2,b.y-30);x.fillText(tx,b.x+b.w/2,b.y-30);x.textAlign='left';}}}
 function drawSignpost(sx,text){
   x.fillStyle='#6a4428';x.fillRect(sx-3,ground-58,6,58);
   x.font='bold 14px system-ui';const tw=x.measureText(text).width+16;
@@ -367,6 +376,7 @@ function loadStage(n){
     for(let i=0;i<30;i++)coins.push({x:180+i*130,y:260+(i%4)*34,taken:false});
     for(let i=0;i<11;i++)enemies.push(makeEnemy(450+i*330,i%3===2?'hop':'walk',i));
     addPerchEnemies([1,4,7,10]);
+    platforms.push({x:CLOUD_SPOT_X-36,y:ground-70,w:72,h:16,cloudPad:true});   // 雲の面へ飛ぶための台
     [[2,'gem'],[4,'coins'],[7,'heart'],[9,'gem'],[13,'chest'],[16,'gem']].forEach(([k,t])=>spots.push({x:k*240+120,type:t,found:false}));
     banner(XMAS&&mode==='game'?'メリークリスマス！':'STAGE 1',princessRound&&mode==='game'?'ソラ姫の冒険がはじまる！':XMAS&&mode==='game'?'STAGE 1　そよかぜの丘':'そよかぜの丘');
   }else{
@@ -2105,10 +2115,12 @@ if(jumpPressed)p.jumpBuf=JUMP_BUFFER_FRAMES;else if(p.jumpBuf>0)p.jumpBuf--;
 p.prevJump=jumpIn;
 if(bossIntroLong()){p.vx=0;}else if((jumpIn||(assist&&p.jumpBuf>0))&&(p.on||(assist&&p.coyote>0&&!p.hole))){p.vy=-16.5;p.on=false;p.jumping=true;p.jumpBuf=0;p.coyote=0;
   // 走りながら跳ぶと遠くまで（runJump）、その場で跳ぶと てっぺん近くで もう一回跳べる（standJump → 二段ジャンプ）
-  const moving=keys.left||keys.right;p.runJump=assist&&moving;p.standJump=assist&&!moving;p.doubleUsed=false;sound('jump');}
+  const moving=keys.left||keys.right;p.runJump=assist&&moving;p.standJump=assist&&!moving;p.doubleUsed=false;
+  p.fromPad=platforms.some(b=>b.cloudPad&&Math.abs(p.y+p.h-b.y)<3&&p.x+p.w>b.x&&p.x<b.x+b.w);   // 雲の台の上から跳んだか
+  sound('jump');}
 else if(assist&&jumpPressed&&!p.on&&!p.hole&&p.standJump&&!p.doubleUsed&&Math.abs(p.vy)<DOUBLE_JUMP_WINDOW){
   p.vy=-14;p.doubleUsed=true;p.jumpBuf=0;p.jumping=true;tone(720,.12,'square',.06,0,1180);
-  if(mode==='game'&&stage===1&&!inBasement&&!westSide&&!cloudUsed&&Math.abs(p.x+p.w/2-CLOUD_SPOT_X)<70){p.vy=-26;p.toCloud=true;sound('boing');popup(p.x+p.w/2,p.y-30,'ビューン！','#fff',24,50);}   // ひみつの場所：空の雲の面へ
+  if(mode==='game'&&stage===1&&!inBasement&&!westSide&&!cloudUsed&&p.fromPad){p.vy=-26;p.toCloud=true;sound('boing');popup(p.x+p.w/2,p.y-30,'ビューン！','#fff',24,50);}   // ひみつの場所：空の雲の面へ
   boom(p.x+p.w/2,p.y+p.h,10,['#fff','#bfe6ff','#ffdf50'],4);popup(p.x+p.w/2,p.y-8,'二段ジャンプ！','#bfe6ff',18,40);}
 if(!p.on&&p.runJump&&!p.kickT)p.vx*=RUN_JUMP_SPEED;   // 走りジャンプ中は横に速く進む
 p.vy=Math.min(16,p.vy+.65);
@@ -2910,7 +2922,7 @@ function draw(){
       if(stage===1&&!XMAS)for(const bx of[-60,40]){ell(hx+bx,ground-4,16,10,'#4e9a52');ell(hx+bx+10,ground-8,12,9,'#5fb062');}}
     if(XMAS)for(let i=0;i<world/700;i++){const tx=i*700+380;if(tx+60<camera||tx-60>camera+W||(stage===2&&tx>AX-80))continue;if(i%2)drawSnowman(tx);else drawXmasTree(tx);}}   // 丘と茂み（クリスマスはツリーと雪だるま）
   if(stage===2&&!inBasement)drawArenaBg();
-  for(const b of platforms){if(!inBasement){drawTerrain(b);continue;}if(roomKind!=='basement'){drawBonusPlatform(b);continue;}if(b.y>=ground-1){drawBasementFloor(b);continue;}drawStoneLedge(b);continue;x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
+  for(const b of platforms){if(b.cloudPad&&!inBasement){drawCloudPad(b);continue;}if(!inBasement){drawTerrain(b);continue;}if(roomKind!=='basement'){drawBonusPlatform(b);continue;}if(b.y>=ground-1){drawBasementFloor(b);continue;}drawStoneLedge(b);continue;x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
   if(vaultVisible()){
     const open=diamonds>=VAULT_DIAMONDS,dx=VAULT_X;
     x.fillStyle=open?'#3d627a':'#372b48';x.fillRect(dx-22,ground-59,44,59);
@@ -2956,8 +2968,12 @@ function draw(){
   if(stage===1&&!inBasement&&westSide)drawSignpost(WEST_ROUTE,'← 西のひみつの道');   // 何もない地面のあとに出てくる看板
   if(skyRope&&stage===2&&!inBasement)drawSkyRope();
   drawKeyDoor();
-  if(stage===1&&!inBasement&&!westSide&&!cloudUsed&&mode==='game'){const t=Date.now(),cy=70+Math.sin(t*.002)*4;   // ひみつの場所の目印：空の小さな雲がキラッと光る
-    drawCloud(CLOUD_SPOT_X,cy,.35,'#dbe8f6','#ffffff','#ffffff');if(Math.sin(t*.004)>.6){const k=(Math.sin(t*.004)-.6)/.4*10;x.fillStyle='#fff8c0';x.fillRect(CLOUD_SPOT_X+10-.8,cy-6-k,1.6,k*2);x.fillRect(CLOUD_SPOT_X+10-k,cy-6-.8,k*2,1.6);}}
+  if(stage===1&&!inBasement&&!westSide&&!cloudUsed&&mode==='game'){const t=Date.now(),cy=95+Math.sin(t*.002)*5;   // ひみつの場所の目印：空の雲と、台から空へのびる光
+    const beam=x.createLinearGradient(0,cy,0,ground-70);beam.addColorStop(0,'rgba(255,245,180,0)');beam.addColorStop(.5,`rgba(255,245,180,${.18+.08*Math.sin(t*.004)})`);beam.addColorStop(1,'rgba(255,245,180,.35)');
+    x.fillStyle=beam;x.beginPath();x.moveTo(CLOUD_SPOT_X-30,ground-70);x.lineTo(CLOUD_SPOT_X-55,cy);x.lineTo(CLOUD_SPOT_X+55,cy);x.lineTo(CLOUD_SPOT_X+30,ground-70);x.closePath();x.fill();
+    drawCloud(CLOUD_SPOT_X,cy,.7,'#e8d8a0','#fff8dc','#ffffff');
+    for(let k=0;k<5;k++){const a=t*.003+k*1.26,sx=CLOUD_SPOT_X+Math.cos(a)*42,sy=cy+Math.sin(a)*16,len=3+Math.abs(Math.sin(t*.006+k))*5;x.fillStyle='#fff8c0';x.fillRect(sx-.8,sy-len,1.6,len*2);x.fillRect(sx-len,sy-.8,len*2,1.6);}
+    for(let k=0;k<3;k++){const ay=ground-90-((t*.06+k*45)%135);x.globalAlpha=Math.min(1,(ay-cy)/60)*.8;x.font='900 22px system-ui';x.textAlign='center';x.lineWidth=4;x.strokeStyle='#0d1830';x.strokeText('↑',CLOUD_SPOT_X,ay);x.fillStyle='#ffe36a';x.fillText('↑',CLOUD_SPOT_X,ay);x.textAlign='left';x.globalAlpha=1;}}
   if(stage===1&&!inBasement)drawBalloon('back');
   if(boss)drawBoss(boss);
   if(boss&&boss.st==='dead'&&boss.crownFly){const cf=boss.crownFly;x.save();x.translate(cf.x,cf.y);x.rotate(cf.spin);drawBossCrown(0,8,1.25,false);x.restore();
