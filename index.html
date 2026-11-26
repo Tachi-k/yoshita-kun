@@ -67,7 +67,7 @@ canvas{display:block;background:#17283c}
   .controls{display:contents}
   .pad{grid-row:1;padding:0 10px}
   .controls .pad:first-child{grid-column:1}
-  .controls .pad:last-child{grid-column:3;flex-direction:column-reverse;gap:12px}   /* 上：ジャンプ　下：掘る */
+  .controls .pad:last-child{grid-column:3;flex-direction:column-reverse;gap:12px;align-self:end;padding-bottom:calc(env(safe-area-inset-bottom) + 14px)}   /* 上：ジャンプ　下：掘る（親指がとどきやすいよう下寄せ） */
   #dpad{width:min(170px,20vw);height:min(150px,40vh)}
   #dpad span{font-size:min(44px,6vw,11vh)}
   .btn{width:min(80px,10vw,22vh);height:min(80px,10vw,22vh)}
@@ -2614,6 +2614,7 @@ function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='cl
     // 球皮：上がまるく下がすぼまった形
     const ex=bx+sway,shape=()=>{x.beginPath();x.moveTo(ex-20,cy+70);x.bezierCurveTo(ex-58,cy+38,ex-78,cy-10,ex-62,cy-46);x.bezierCurveTo(ex-46,cy-82,ex+46,cy-82,ex+62,cy-46);x.bezierCurveTo(ex+78,cy-10,ex+58,cy+38,ex+20,cy+70);x.closePath();};
     x.save();shape();x.clip();
+    x.fillStyle='#e8453c';x.fillRect(ex-90,cy-95,180,190);   // 下地をぬって、しまのすき間が透けないように
     const cols=['#e8453c','#ffd23a','#2f9ee8','#fff7ea'];
     for(let k=-4;k<4;k++){   // 縦のしま（球の丸みに合わせて曲げる）
       x.fillStyle=cols[(k+8)%4];x.beginPath();
