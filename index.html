@@ -431,10 +431,17 @@ function loadStage(n){
   }
   player=newPlayer(120);player.x=stageStartX();camera=followCamera(player.x);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
 }
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};hasKey=false;keyDoorUsed=false;loadStage(1)}
+// 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
+let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
+function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};hasKey=false;keyDoorUsed=false;
+  if(roundBase){score=roundBase.score;lives=Math.max(1,roundBase.lives);coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
+  loadStage(1)}
+// ハイスコア（この端末に記録）
+const HI_KEY='yoshita-hiscore';let hiScore=0,newRecord=false;try{hiScore=Number(localStorage.getItem(HI_KEY))||0}catch(_){}
+function noteHiScore(){if(mode!=='game'||score<=hiScore)return;hiScore=score;newRecord=true;try{localStorage.setItem(HI_KEY,String(hiScore))}catch(_){}}
 // ゲームオーバーのまま約10秒たつと、デモ画面（タイトル）にもどる
 let loseT=0,goKind='s1';const LOSE_TO_TITLE=600;   // goKind：'s1'＝1面／'s2'＝2面／'boss'＝ボス戦（それぞれ演出がちがう）
-function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else reset()}
+function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else{reset();lives=3}}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
 function inHole(h){return enemies.filter(e=>e.alive&&e.trapHole===h)}
@@ -1242,7 +1249,7 @@ const QUEST_TRIAL_URL='https://tachi-k.github.io/ojiya-quest/?from=ending';
 const QUEST_ENDING_KEY='yoshita-quest-return';
 function openQuestTrial(){
   try{
-    sessionStorage.setItem(QUEST_ENDING_KEY,JSON.stringify({score,endingPair,endingRare,secondRound,clearCount,princessRound}));
+    sessionStorage.setItem(QUEST_ENDING_KEY,JSON.stringify({score,lives,coinProgress,diamonds,endingPair,endingRare,secondRound,clearCount,princessRound}));
   }catch(_){}
   window.location.assign(QUEST_TRIAL_URL);
 }
@@ -1252,7 +1259,7 @@ function restoreQuestEnding(){
   try{ending=JSON.parse(sessionStorage.getItem(QUEST_ENDING_KEY));}catch(_){return false;}
   if(!ending||!Number.isFinite(ending.score))return false;
   mode='game';Math.random=realRandom;
-  score=ending.score;loadStage(2);state='ending';clearedAdventure=true;
+  score=ending.score;loadStage(2);state='ending';if(Number.isFinite(ending.lives))lives=ending.lives;if(Number.isFinite(ending.coinProgress))coinProgress=ending.coinProgress;if(Number.isFinite(ending.diamonds))diamonds=ending.diamonds;clearedAdventure=true;
   secondRound=ending.secondRound===true;
   clearCount=Number(ending.clearCount)||1;princessRound=ending.princessRound===true;
   endingRare=ending.endingRare===true;endingPair=!endingRare&&ending.endingPair===true;
@@ -1935,7 +1942,7 @@ function drawOpening(){const o=opening,t=o.t;
   if(t>OP_LEN-40){x.fillStyle=`rgba(0,0,0,${(t-(OP_LEN-40))/40})`;x.fillRect(0,0,W,H);}   // フェードアウト
   x.font='bold 16px system-ui';x.fillStyle='#ffffffcc';x.textAlign='right';x.fillText('タップで スキップ ▶▶',W-16,H-14);x.textAlign='left';
 }
-function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
+function toTitle(){if(mode==='game'){carry=state==='ending'?{score,lives,coinProgress,diamonds}:null;}const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
 // clearCount：クリアした回数。3周ごとにくり返す（よし太くん → 初代よし太くん → ソラ姫 → よし太くん …）
 let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
 // クリスマス版：スタートを押すと「メリークリスマス！」と叫ぶ（用意した声の2種類から、毎回どちらかを流す＋鈴の音）
@@ -1971,7 +1978,7 @@ function startGame(){stopEndSong();
     shoutMerryXmas(()=>{xmasIntro=null;beginGame();});return;}
   beginGame();
 }
-function beginGame(){mode='game';secondRound=clearCount%3===1;princessRound=clearCount%3===2;   // 1周目よし太くん → 2周目 初代よし太くん → 3周目 ソラ姫 → 4周目からまたくり返す
+function beginGame(){mode='game';roundBase=carry;carry=null;newRecord=false;secondRound=clearCount%3===1;princessRound=clearCount%3===2;   // 1周目よし太くん → 2周目 初代よし太くん → 3周目 ソラ姫 → 4周目からまたくり返す
 Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
 // デモ用の自動操作
 function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=false;   // デモも無敵ではない（ぶつかればミス）
@@ -2095,6 +2102,7 @@ function drawTitle(){
   x.fillStyle='#ffffff30';x.fillRect(W/2-206,ry-18,412,6);
   x.font='900 22px system-ui';x.fillStyle='#fff';x.shadowColor='#0008';x.shadowBlur=4;x.fillText('モグラ大王をたおして 空の国をすくえ！',W/2,ry+8);x.shadowBlur=0;
   if(XMAS)fancyText('🎄 メリークリスマス！ 🎄',W/2,ry+52,26,'red');
+  if(hiScore>0)fancyText('HIGH SCORE  '+hiScore,W/2,ry+(XMAS?86:52),24,'gold');
   // 「デモ」表示：上部に大きなバッジ＋画面の四隅に枠
   const on=Math.floor(t/500)%2;
   const bg=x.createLinearGradient(0,18,0,70);bg.addColorStop(0,on?'#ff5a5a':'#d83a3a');bg.addColorStop(1,on?'#c02a2a':'#a02020');
@@ -2203,6 +2211,7 @@ if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(sh
 if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT>60)startEndSong();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
+noteHiScore();
 if(state==='lose'&&mode==='game'){if(++loseT>LOSE_TO_TITLE){toTitle();startEndSong('demo');}return;}   // ゲームオーバー後のデモでは「雪原の気球」を流す
 if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
@@ -3164,7 +3173,7 @@ function draw(){
   {let hx=22;const w=(t,size)=>{x.font='900 '+size+'px system-ui';return x.measureText(t).width;};
     const put=(label,value)=>{if(label){fancyText(label,hx,42,19,'gold');hx+=w(label,19)+6;}fancyText(String(value),hx,42,30,'white');hx+=w(String(value),30)+20;};
     put('SCORE',score);drawLifeHeart(hx+16,31,32,false);hx+=36;put('×',lives);put('STAGE',stage);if(!arenaOn){drawGem(hx+15,50,28,false);hx+=36;put('',diamonds);}if(hasKey){drawKeyIcon(hx+14,34,1);hx+=34;}}   // 画面上のダイヤも絵で描く
-  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';fancyText(coinProgress+' / '+COINS_PER_LIFE,22+x.measureText('コイン').width+6,72,20,'white');const roomTimer=inBonus()&&roomKind!=='cloud',sec=Math.ceil((roomTimer?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';{const cx0=22+x.measureText('コイン').width+6,ct=coinProgress+' / '+COINS_PER_LIFE;fancyText(ct,cx0,72,20,'white');x.font='900 20px system-ui';const hx0=cx0+x.measureText(ct).width+26;fancyText('HI',hx0,72,16,'gold');fancyText(String(hiScore),hx0+28,72,20,newRecord?'gold':'white');}const roomTimer=inBonus()&&roomKind!=='cloud',sec=Math.ceil((roomTimer?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
     const bx0=arenaOn?420:610,by0=6,bw=arenaOn?165:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
     x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(roomKind==='cloud'&&inBasement?'STOP':arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
@@ -3281,7 +3290,9 @@ function drawGameOver(){
   if(t>sub){x.globalAlpha=Math.min(1,(t-sub)/20);fancyText('ゲームオーバー',W/2,cy+48,28,'white');x.globalAlpha=1;}
   if(deathCause&&t>sub+10){x.globalAlpha=Math.min(1,(t-sub-10)/20);fancyText(deathCause,W/2,136,32,k==='boss'?'gold':'red');x.globalAlpha=1;}
   if(k==='boss'&&t>130){const b=Math.sin(t*.25)*4;x.globalAlpha=Math.min(1,(t-130)/15);fancyText('ガハハハ！',W/2+250,96+b,30,'red');x.globalAlpha=1;}
-  if(t>100&&Math.floor(t/28)%2===0)fancyText(stage===2?'タップで ステージ2から再挑戦':'画面をタップ / Rキーで再挑戦',W/2,cy+104,24,'white');
+  if(t>sub+20){x.globalAlpha=Math.min(1,(t-sub-20)/20);fancyText('SCORE '+score+'　　HIGH SCORE '+hiScore,W/2,cy+82,22,'white');
+    if(newRecord&&Math.floor(t/12)%2)fancyText('★ NEW RECORD! ★',W/2,cy-74,30,'gold');x.globalAlpha=1;}
+  if(t>100&&Math.floor(t/28)%2===0)fancyText(stage===2?'タップで ステージ2から再挑戦':'画面をタップ / Rキーで再挑戦',W/2,cy+122,24,'white');
   x.restore();
 }
 function creditsY(){return H+40-endT*.75}
@@ -3390,7 +3401,7 @@ function drawEnding(){
     if(head)fancyText(l,W/2,y,34,'gold');else if(/^(HERO|PRINCESS|FRIEND)/.test(l))fancyText(l,W/2,y,26,'blue');else fancyText(l,W/2,y,26,'white');x.globalAlpha=1;}});
   if(endingDone()){const pulse=1+Math.sin(endT*.08)*.04;x.save();x.translate(W/2,182);x.scale(pulse,pulse);fancyText('THE END',0,0,76,'gold');x.restore();
     for(let k=0;k<6;k++){const a=endT*.03+k*1.05,sx=W/2+Math.cos(a)*190,sy=160+Math.sin(a*1.3)*28,len=4+Math.abs(Math.sin(endT*.1+k))*7;x.fillStyle='#fff8c0';x.beginPath();x.moveTo(sx,sy-len);x.lineTo(sx+len*.25,sy);x.lineTo(sx,sy+len);x.lineTo(sx-len*.25,sy);x.closePath();x.fill();x.beginPath();x.moveTo(sx-len,sy);x.lineTo(sx,sy-len*.25);x.lineTo(sx+len,sy);x.lineTo(sx,sy+len*.25);x.closePath();x.fill();}
-    fancyText('FINAL SCORE  '+score,W/2,245,30,'white');if(Math.floor(endT/30)%2)fancyText('タップで もういちど あそぶ',W/2,298,22,'blue');}
+    fancyText('FINAL SCORE  '+score,W/2,245,30,'white');fancyText(newRecord?'★ NEW RECORD! ★':'HIGH SCORE  '+hiScore,W/2,272,20,newRecord?'gold':'white');if(Math.floor(endT/30)%2)fancyText('タップで つぎの周へ（スコア・ハートは そのまま）',W/2,304,22,'blue');}
   x.textAlign='left';
 }
 
