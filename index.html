@@ -432,8 +432,8 @@ function loadStage(n){
   player=newPlayer(120);player.x=stageStartX();camera=followCamera(player.x);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
 }
 function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};hasKey=false;keyDoorUsed=false;loadStage(1)}
-// ゲームオーバーのまま約30秒たつと、デモ画面（タイトル）にもどる
-let loseT=0;const LOSE_TO_TITLE=1800;
+// ゲームオーバーのまま約10秒たつと、デモ画面（タイトル）にもどる
+let loseT=0,goKind='s1';const LOSE_TO_TITLE=600;   // goKind：'s1'＝1面／'s2'＝2面／'boss'＝ボス戦（それぞれ演出がちがう）
 function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else reset()}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
@@ -822,7 +822,17 @@ function bgmTick(){
 // 1面の音源はタイトル表示中から先読みする（自動再生はしない）。
 mp3Get('field1');
 setInterval(bgmTick,25);
-function gameOverMusic(){if(mode==='title')return;unlockAudio();if(!audioCtx)return;[[67,0,.22],[64,.25,.22],[60,.5,.22],[55,.78,.7]].forEach(([m,at,d])=>tone(mf(m),d,'triangle',.12,.05+at))}
+function gameOverMusic(){if(mode==='title')return;unlockAudio();if(!audioCtx)return;
+  if(goKind==='s2'){   // 2面：雷鳴と、低くしずむメロディ
+    tone(90,1.4,'sawtooth',.07,0,28);
+    [[63,.35,.3],[62,.7,.3],[58,1.05,.3],[55,1.4,1]].forEach(([m,at,d])=>{tone(mf(m),d,'square',.06,at);tone(mf(m-12),d,'triangle',.09,at)});
+  }else if(goKind==='boss'){   // ボス戦：ドーンという衝撃 → 重い和音 → 大王の笑い声
+    tone(120,.9,'sawtooth',.13,.5,35);tone(60,1.2,'square',.07,.5,30);
+    [[43,46,50],[42,45,49]].forEach((ch,k)=>ch.forEach(m=>tone(mf(m),.55,'sawtooth',.045,.95+k*.6)));
+    for(let k=0;k<5;k++)tone(560-k*30,.09,'square',.05,2.3+k*.15,380-k*30);
+  }else{   // 1面：ちょっとさみしい下りメロディ
+    [[67,0,.22],[64,.25,.22],[60,.5,.22],[55,.78,.7]].forEach(([m,at,d])=>tone(mf(m),d,'triangle',.12,.05+at))}
+}
 
 // ===== パーティクル =====
 function boom(x0,y0,n,cols,spd=6){for(let i=0;i<n;i++)parts.push({x:x0,y:y0,vx:(Math.random()-.5)*spd,vy:-Math.random()*spd*.8,life:30+Math.random()*20,max:50,col:cols[i%cols.length],s:3+Math.random()*4,g:.2})}
@@ -2194,7 +2204,7 @@ if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&en
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
 if(state==='lose'&&mode==='game'){if(++loseT>LOSE_TO_TITLE){toTitle();startEndSong('demo');}return;}   // ゲームオーバー後のデモでは「雪原の気球」を流す
-if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;gameOverMusic();}}return;}
+if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
   else{if(goalTick>45){balloonVy=Math.min(4.2,balloonVy+.045);balloonLift+=balloonVy;}if(goalTick===32||goalTick%26===0)sound('burner');p.x=bx-17;p.y=ground-38-28-balloonLift;}
@@ -3216,10 +3226,63 @@ function draw(){
   }
   if(state==='goal')fancyText('GOAL!',W/2,140,56,'gold');
   // ミスの理由を表示
-  if((state==='dying'||state==='lose')&&deathCause)fancyText(deathCause,W/2,state==='lose'?150:200,36,'red');
+  if(state==='dying'&&deathCause)fancyText(deathCause,W/2,state==='lose'?150:200,36,'red');
   if(state==='clear'){x.fillStyle='#0008';x.fillRect(0,0,W,H);fancyText('STAGE 1 CLEAR!',W/2,215,62,'gold');fancyText('TIME BONUS  +'+timeBonus,W/2,268,30,'white');fancyText('つぎは 大王の谷へ…',W/2,312,24,'blue');}
-  if(state==='lose'){x.fillStyle='#0009';x.fillRect(0,0,W,H);fancyText('ゲームオーバー',W/2,238,60,'red');fancyText(stage===2?'タップで ステージ2から再挑戦':'画面をタップ / Rキーで再挑戦',W/2,296,26,'white');}
+  if(state==='lose')drawGameOver();
   x.textAlign='left';
+}
+// ゲームオーバー演出（1面・2面・ボス戦でちがう）
+function drawGameOver(){
+  const t=loseT,k=goKind,word='GAME OVER',size=82,cy=236;
+  x.save();x.textAlign='center';
+  let sx=0,sy=0;
+  if(k==='boss'&&t>=34&&t<60){const a=(60-t)*.7;sx=(Math.random()-.5)*a;sy=(Math.random()-.5)*a;}
+  x.translate(sx,sy);
+  if(k==='s1'){   // 夕焼けにしずむ草原、落ち葉がひらひら
+    const a=Math.min(1,t/50),g=x.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'rgba(40,16,48,'+(.85*a)+')');g.addColorStop(.6,'rgba(120,40,40,'+(.7*a)+')');g.addColorStop(1,'rgba(200,90,30,'+(.6*a)+')');
+    x.fillStyle=g;x.fillRect(-20,-20,W+40,H+40);
+    for(let i=0;i<26;i++){const lx=(i*137+Math.sin(t*.02+i)*40)%W,ly=((t*(1+i%3*.4)+i*61)%(H+60))-30,r=t*.05+i;
+      x.save();x.translate(lx,ly);x.rotate(r);x.globalAlpha=a*.9;x.fillStyle=['#ffb040','#ff7030','#e04a2a','#ffd060'][i%4];
+      x.beginPath();x.ellipse(0,0,8,4,0,0,7);x.fill();x.restore();}
+  }else if(k==='s2'){   // 大王の谷：夜の雨と稲妻
+    const a=Math.min(1,t/30);x.fillStyle='rgba(8,14,40,'+(.82*a)+')';x.fillRect(-20,-20,W+40,H+40);
+    x.strokeStyle='rgba(160,190,255,'+(.45*a)+')';x.lineWidth=1.5;x.beginPath();
+    for(let i=0;i<70;i++){const rx=(i*73+t*3)%(W+80)-40,ry=(i*151+t*17)%(H+60)-30;x.moveTo(rx,ry);x.lineTo(rx-6,ry+18);}x.stroke();
+    const lt=t%160;
+    if(lt<14&&t>8){const seed=Math.floor(t/160);let bx=200+(seed*331)%560,by=0;
+      x.fillStyle='rgba(220,235,255,'+((14-lt)/14*.5)+')';x.fillRect(-20,-20,W+40,H+40);
+      x.strokeStyle='#eaf4ff';x.lineWidth=4;x.shadowColor='#8ab8ff';x.shadowBlur=20;x.beginPath();x.moveTo(bx,by);
+      for(let j=1;j<9;j++){bx+=Math.sin(seed*7+j*3.1)*38;by=j*44;x.lineTo(bx,by);}x.stroke();x.shadowBlur=0;}
+  }else{   // ボス戦：真っ赤な闇、火の粉、ひび割れ
+    const a=Math.min(1,t/24),g=x.createRadialGradient(W/2,cy,40,W/2,cy,620);
+    g.addColorStop(0,'rgba(90,0,0,'+(.75*a)+')');g.addColorStop(1,'rgba(10,0,0,'+(.95*a)+')');x.fillStyle=g;x.fillRect(-20,-20,W+40,H+40);
+    for(let i=0;i<40;i++){const ex=(i*97+Math.sin(t*.03+i)*30)%W,ey=H-((t*(1.2+i%4*.5)+i*47)%(H+40));
+      x.globalAlpha=a*(.4+.6*Math.abs(Math.sin(t*.1+i)));x.fillStyle=i%3?'#ff7a20':'#ffd040';x.fillRect(ex,ey,3,3);}x.globalAlpha=1;
+    if(t>=34){const c=Math.min(1,(t-34)/14);x.strokeStyle='rgba(255,120,60,'+(.75*c)+')';x.lineWidth=3;x.beginPath();
+      for(let i=0;i<9;i++){const an=i*.7+.3;let px=W/2,py=cy-25;x.moveTo(px,py);
+        for(let j=1;j<=4;j++){px+=Math.cos(an+Math.sin(i*5+j)*.5)*70*c;py+=Math.sin(an+Math.sin(i*3+j)*.5)*55*c;x.lineTo(px,py);}}x.stroke();}
+  }
+  // 「GAME OVER」の文字
+  x.font='900 '+size+'px system-ui';
+  const ws=[...word].map(ch=>x.measureText(ch).width+(ch===' '?0:4)),tw=ws.reduce((s,w)=>s+w,0);
+  let lx=W/2-tw/2;
+  const style=k==='s1'?'gold':k==='s2'?'blue':'red';
+  [...word].forEach((ch,i)=>{const w=ws[i],cx=lx+w/2;lx+=w;if(ch===' ')return;
+    let ox=0,oy=0,sc=1,al=1;
+    if(k==='s1'){const st=t-10-i*6;let p=Math.max(0,Math.min(1,st/34));if(st<0)return;   // 上から落ちてポンポンはねる
+      const b=p<.36?7.56*p*p:p<.73?7.56*(p-=.545)*p+.75:p<.91?7.56*(p-=.82)*p+.94:7.56*(p-=.955)*p+.984;oy=-(1-b)*300;}
+    else if(k==='s2'){const st=t-6-Math.abs(i-4)*4,p=Math.max(0,Math.min(1,st/16));if(st<0)return;   // 左右から飛びこむ
+      ox=(i<4?-1:1)*(1-p)*(1-p)*620;al=p;}
+    else{const p=Math.max(0,Math.min(1,(t-14)/20));if(p<=0)return;sc=1+(1-p)*(1-p)*5;al=p;}   // 巨大な文字がドーンと落ちてくる
+    const wob=k==='boss'&&t>60?Math.sin(t*.12+i)*2:k==='s1'&&t>70?Math.sin(t*.06+i*.8)*3:0;
+    x.save();x.globalAlpha=al;x.translate(cx+ox,cy+oy+wob);x.scale(sc,sc);fancyText(ch,0,0,size,style);x.restore();});
+  const sub=k==='s1'?54:k==='s2'?40:56;
+  if(t>sub){x.globalAlpha=Math.min(1,(t-sub)/20);fancyText('ゲームオーバー',W/2,cy+48,28,'white');x.globalAlpha=1;}
+  if(deathCause&&t>sub+10){x.globalAlpha=Math.min(1,(t-sub-10)/20);fancyText(deathCause,W/2,136,32,k==='boss'?'gold':'red');x.globalAlpha=1;}
+  if(k==='boss'&&t>130){const b=Math.sin(t*.25)*4;x.globalAlpha=Math.min(1,(t-130)/15);fancyText('ガハハハ！',W/2+250,96+b,30,'red');x.globalAlpha=1;}
+  if(t>100&&Math.floor(t/28)%2===0)fancyText(stage===2?'タップで ステージ2から再挑戦':'画面をタップ / Rキーで再挑戦',W/2,cy+104,24,'white');
+  x.restore();
 }
 function creditsY(){return H+40-endT*.75}
 function endingDone(){return creditsY()+credits().length*46<110}
@@ -3351,7 +3414,7 @@ if(!restoreQuestEnding())startOpening();   // 最初はオープニングから�
 requestAnimationFrame(loop);
 
 // キーボード
-document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(state==='endingCut'&&mode==='game'){finishEndingCut();return;}if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose')retry();else reset()}});
+document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(state==='endingCut'&&mode==='game'){finishEndingCut();return;}if(mode==='opening'&&k!=='enter'&&k!==' '){endOpening();return;}if(mode==='title'||mode==='opening'){if(k==='enter'||k===' '){e.preventDefault();startGame();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}return}if(k==='p'||k==='escape'){if(!e.repeat)setPause(!paused);return}if(paused)return;if(['arrowleft','a','arrowright','d',' ','arrowup','w'].includes(k))unlockAudio();if(['arrowleft','a'].includes(k))keys.left=true;if(['arrowright','d'].includes(k))keys.right=true;if([' ','arrowup','w'].includes(k)){keys.jump=true;e.preventDefault()}if(k==='x'){unlockAudio();if(!e.repeat)dig();}if(k==='m'&&!e.repeat){unlockAudio();setMusic(!musicOn);}if(k==='r'){if(state==='lose'){if(loseT>40)retry();}else reset()}});
 document.addEventListener('keyup',e=>{let k=e.key.toLowerCase();if(['arrowleft','a'].includes(k))keys.left=false;if(['arrowright','d'].includes(k))keys.right=false;if([' ','arrowup','w'].includes(k))keys.jump=false});
 
 // 方向パッド：大きな ◀ ▶ の2つ。指を離さずスライドで左右を切り替え（ジャンプは右のジャンプボタンで）
@@ -3367,7 +3430,7 @@ function holdButton(el,down,up){let id=null;el.addEventListener('pointerdown',e=
 holdButton(document.getElementById('jump'),()=>keys.jump=true,()=>keys.jump=false);
 holdButton(document.getElementById('dig'),()=>{dig();},()=>{}); // 1タップにつき1回だけ掘る。デモAIの自動掘削は維持
 
-c.addEventListener('pointerdown',()=>{if(mode==='opening'){endOpening();return;}if(state==='endingCut'){finishEndingCut();return;}if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose')retry();else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
+c.addEventListener('pointerdown',()=>{if(mode==='opening'){endOpening();return;}if(state==='endingCut'){finishEndingCut();return;}if(mode==='title')return;unlockAudio();if(paused){setPause(false);return}if(state==='lose'){if(loseT>40)retry();}else if(state==='ending'&&endingDone()&&!endP?.doorFrame)toTitle();else if(canPause())setPause(true);});
 
 // スクロール・ズーム・長押しメニューを防止
 document.addEventListener('touchmove',e=>{if(!arcade.open)e.preventDefault();},{passive:false});
