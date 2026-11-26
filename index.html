@@ -320,7 +320,7 @@ function onSurface(px,y){return platforms.some(b=>Math.abs(b.y-y)<2&&px>=b.x&&px
 function groundAt(px){return platforms.some(b=>b.y===ground&&px>=b.x&&px<=b.x+b.w)}
 function addPerchEnemies(idx){const floats=platforms.filter(b=>b.y<ground-1&&(stage!==2||b.x+b.w<AX));idx.forEach((k,i)=>{const f=floats[k];if(f)enemies.push(makeEnemy(f.x+f.w/2-16,i%2===1?'hop':'walk',i+20,f))})}
 function banner(t,s,d=150){bannerText=t;bannerSub=s;bannerT=d}
-const COINS_PER_LIFE=100,COIN_POINTS=10;
+const COINS_PER_LIFE=100,COIN_BONUS=1000,COIN_POINTS=10;
 const STAGE2_OFFSET=240,STAGE2_START=STAGE2_OFFSET+60,STAGE2_BONUS_X=38;
 const SKY_ROPE_X=110,SKY_ROPE_BOTTOM=ground-30;   // 空から降りてくるロープの位置と、いちばん下の高さ
 let skyRope=null,camEase=0;   // camEase：カメラをなめらかに戻す残りフレーム
@@ -461,7 +461,7 @@ function loadStage(n){
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
 function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};hasKey=false;keyDoorUsed=false;
-  if(roundBase){score=roundBase.score;lives=Math.max(1,roundBase.lives);coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
+  if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
 const HI_KEY='yoshita-hiscore';let hiScore=0,newRecord=false;try{hiScore=Number(localStorage.getItem(HI_KEY))||0}catch(_){}
@@ -525,22 +525,25 @@ function revealTreasure(h){
   else if(arenaOn){if(Math.random()<.08)spawnItem(heartType(),h.x+h.w/2)}
   else if(Math.random()<.18)spawnItem('coin',h.x+h.w/2)}
 function sparkleFx(x0){boom(x0,ground,16,['#fff','#7fe3ff','#ffdf50'],5)}
+// ライフは最大5まで（ふえすぎると かんたんになるので）。いっぱいの時は、かわりに +500点
+const MAX_LIVES=5;
 function addLife(cx,cy,n=1){
-  const gained=n;   // ライフの上限なし
+  const gained=Math.min(n,Math.max(0,MAX_LIVES-lives));
+  if(gained<=0){score+=500;popup(cx,cy,'ライフMAX +500','#ffd24a',24,90);sound('treasure');return;}
   lives+=gained;
   popup(cx,cy,gained+'UP！',n>1?'#ffd24a':'#ff6b8a',n>1?38:30,100);
   sound('oneup');
 }
-// ハートは ときどき 金のハート（ライフ5人分）になる
-const GOLD_HEART_CHANCE=.25,GOLD_HEART_LIVES=5;
+// ハートは ときどき 金のハート（ライフ1つ＋ボーナス点）になる
+const GOLD_HEART_CHANCE=.25,GOLD_HEART_BONUS=3000;   // 金のハート：ライフ1つ＋3000点
 function heartType(){return Math.random()<GOLD_HEART_CHANCE?'goldHeart':'heart'}
 function collectCoins(count,cx,cy){
   if(bonusLoot&&count===1)bonusLoot.coins++;
   score+=count*COIN_POINTS;
   coinProgress+=count;
-  if(coinProgress>=COINS_PER_LIFE){
+  if(coinProgress>=COINS_PER_LIFE){   // コイン100枚：ライフはふえず、ボーナス点
     coinProgress-=COINS_PER_LIFE;
-    addLife(cx,cy);
+    score+=COIN_BONUS;popup(cx,cy,'コイン100枚！ +'+COIN_BONUS,'#ffd24a',26,100);sound('treasure');
   }
 }
 function collectItem(it){const cx=it.x;
@@ -554,7 +557,7 @@ function collectItem(it){const cx=it.x;
   }
   else if(it.type==='heart'){addLife(cx,it.y-20);}
   else if(it.type==='key'){hasKey=true;keyCelebrate={t:0};sound('treasure');sound('oneup');boom(cx,it.y,40,['#ffdf50','#fff','#ff9ad5'],8);}
-  else if(it.type==='goldHeart'){addLife(cx,it.y-30,GOLD_HEART_LIVES);sound('treasure');boom(cx,it.y,28,['#ffd24a','#fff','#ff9ad5']);popup(cx,it.y-70,'金のハート！ ライフ5人分','#ffd24a',24,110);}
+  else if(it.type==='goldHeart'){addLife(cx,it.y-30,1);score+=GOLD_HEART_BONUS;sound('treasure');boom(cx,it.y,28,['#ffd24a','#fff','#ff9ad5']);popup(cx,it.y-70,'金のハート！ +'+GOLD_HEART_BONUS,'#ffd24a',24,110);}
 }
 function updateItems(p){for(const it of items){it.t--;it.vy=Math.min(14,it.vy+.45);it.x+=it.vx;it.y+=it.vy;
     // 完成した穴の上なら穴の底まで落ちる（穴の中からでも拾える）。穴が閉じたら地面の上に戻る
