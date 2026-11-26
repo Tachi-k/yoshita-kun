@@ -359,7 +359,7 @@ function loadStage(n){
   stopStageClearAudio();
   stopBossSounds();
   stage=n;stageStartScore=score;stageStartCoinProgress=coinProgress;stageStartDiamonds=diamonds;diamondVaultUsed=false;bonusLoot=null;bonusResult=null;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonShot=null;cannonT=60*8;lastSafeX=stageStartX();bonusUsed[n]=false;rainGapCrossed=false;roomKind='basement';roomT=0;inBasement=false;surface=null;secret={x:n===1?2520:STAGE2_OFFSET+840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
-  westSide=false;westArea=null;eastArea=null;westVisited=false;skyRope=null;camEase=0;
+  westSide=false;westArea=null;eastArea=null;westVisited=false;skyRope=null;camEase=0;if(n===1)cloudUsed=false;
   if(n===1){
     world=4300;
     for(let i=0;i<world/240;i++){if(i!==5&&i!==11&&i!==15)platforms.push({x:i*240,y:ground,w:240,h:75});}
@@ -391,7 +391,7 @@ function loadStage(n){
   }
   player=newPlayer(120);player.x=stageStartX();camera=followCamera(player.x);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
 }
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};loadStage(1)}
+function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};hasKey=false;keyDoorUsed=false;loadStage(1)}
 function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else reset()}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
@@ -441,6 +441,7 @@ function collectItem(it){const cx=it.x;
     sound('treasure');boom(cx,it.y,30,['#ffdf50','#fff','#ff9a3c']);
   }
   else if(it.type==='heart'){addLife(cx,it.y-20);}
+  else if(it.type==='key'){hasKey=true;popup(cx,it.y-40,'🔑 カギを手に入れた！','#ffdf50',26,120);popup(cx,it.y-14,'2面のドアで つかおう','#fff',18,120);sound('treasure');boom(cx,it.y,24,['#ffdf50','#fff']);}
   else if(it.type==='goldHeart'){addLife(cx,it.y-30,GOLD_HEART_LIVES);sound('treasure');boom(cx,it.y,28,['#ffd24a','#fff','#ff9ad5']);popup(cx,it.y-70,'金のハート！ ライフ5人分','#ffd24a',24,110);}
 }
 function updateItems(p){for(const it of items){it.t--;it.vy=Math.min(14,it.vy+.45);it.x+=it.vx;it.y+=it.vy;
@@ -792,6 +793,11 @@ function doDig(){const s=digSpot();if(!s)return false;
   let h=s.hole;if(!h){h={x:s.x,y:ground,w:s.w,h:s.h,t:HOLE_T,stage:0};holes.push(h);}h.stage++;h.t=HOLE_T;digCooldown=9;sound('dig');if(h.stage===3){revealTreasure(h);checkSecret(h);}return true}
 // ボタン/キーを押したとき：連打や着地直前の入力も取りこぼさず、掘れない場所なら×を表示
 function dig(){if(state!=='play'||inBasement||paused)return;
+  if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!keyDoorUsed&&player.on&&Math.abs(player.x+17-KEY_DOOR_X)<40){   // 鍵つきドア
+    if(hasKey){keyDoorUsed=true;hasKey=false;sound('treasure');enterBasement(null,KEY_DOOR_X+50,'カギの宝物庫');}
+    else{popup(KEY_DOOR_X,ground-100,'🔑が ひつよう！','#fff',21,65);tone(150,.08,'square',.05);}
+    return;
+  }
   if(mode==='game'&&vaultVisible()&&player.on&&Math.abs(player.x+17-VAULT_X)<44){
     if(diamonds>=VAULT_DIAMONDS){diamondVaultUsed=true;enterBasement(null);}
     else popup(VAULT_X,ground-82,'ダイヤが3個必要！','#9fe6ff',21,65);
@@ -903,10 +909,27 @@ function checkSecret(h){
   }
 }
 function vaultVisible(){return stage===2&&!inBasement&&!arenaOn&&!diamondVaultUsed;}
-function enterBasement(h){
+// ===== 雲の面（1面のひみつ）と🔑・2面の鍵つきドア =====
+// 1面の CLOUD_SPOT_X あたり（空にキラキラ光る小さな雲が目印）で二段ジャンプすると、画面の上へ飛んで雲の面へ。
+// 雲の面はタイムが止まる・地面なし。落ちるかゴールの門で1面に戻る。どこかに🔑があり、2面の鍵つきドアで使う。
+const CLOUD_SPOT_X=1950,KEY_DOOR_X=STAGE2_OFFSET+1500;
+let cloudUsed=false,hasKey=false,keyDoorUsed=false;
+function enterCloudWorld(){const p=player;
+  bonusResult=null;bonusLoot=mode==='game'?{coins:0,chests:0,gems:0}:null;
+  surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX:Math.max(80,p.x)};inBasement=true;roomKind='cloud';cloudUsed=true;
+  world=3*W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;cannonShot=null;items=[];coins=[];
+  platforms=[];
+  const clouds=[[40,380,200],[300,330,130],[500,260,120],[700,330,110],[880,250,130],[1090,190,120],[1300,280,140],[1500,150,110],[1520,380,130],[1750,300,120],[1960,230,120],[2170,320,130],[2380,260,120],[2590,330,250]];
+  for(const [cx,cy,cw] of clouds){platforms.push({x:cx,y:cy,w:cw,h:18});for(let k=cx+18;k<=cx+cw-18;k+=28)coins.push({x:k,y:cy-30,taken:false});}
+  items.push({type:'key',x:1555,y:150-10,vx:0,vy:0,t:1e9});   // 🔑は高い雲の上（二段ジャンプでとどく）
+  items.push({type:'chest',x:1140,y:190-10,vx:0,vy:0,t:1e9},{type:'gem',x:2010,y:230-10,vx:0,vy:0,t:1e9});
+  for(const [ex,k] of[[720,0],[1320,1],[1780,2],[2190,3]]){const b=platforms.find(q=>q.x===ex-20||q.x===ex);if(b)enemies.push(makeEnemy(b.x+b.w/2-16,k%2?'hop':'walk',k+60,b));}
+  p.x=110;p.y=H+10;p.vy=-18;p.vx=0;p.on=false;p.hole=null;p.kickT=0;p.toCloud=false;
+  banner('雲の上の世界','タイムが止まる！ 🔑とゴールをめざせ',170);sound('oneup');}
+function enterBasement(h,returnX=VAULT_X+45,title=''){
   const p=player;
   roomKind='basement';roomT=0;
-  surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:h,returnX:VAULT_X+45};
+  surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:h,returnX};
   if(h)secret.used=true;
   inBasement=true;
   world=W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;
@@ -919,14 +942,14 @@ function enterBasement(h){
   if(h){put('gem',330,ground);put('gem',600,ground);put('gem',480,ground);}
   else{put('chest',460,ground);put('chest',790,ground);}
   p.x=46;p.y=40;p.vx=0;p.vy=2;p.hole=null;p.on=false;p.kickT=0;
-  banner(h?'隠し地下室':'ダイヤの宝物庫','お宝を集めて 右のはしごから戻ろう',150);sound('oneup');}
-function exitBasement(){const p=player,sf=surface,h=sf.hole,wasBonus=inBonus();
+  banner(title||(h?'隠し地下室':'ダイヤの宝物庫'),'お宝を集めて 右のはしごから戻ろう',150);sound('oneup');}
+function exitBasement(){const p=player,sf=surface,h=sf.hole,wasBonus=inBonus(),wasCloud=roomKind==='cloud';
   if(wasBonus)finishBonus();
   platforms=sf.platforms;coins=sf.coins;enemies=sf.enemies;items=sf.items;spots=sf.spots;world=sf.world;camera=sf.camera;
   holes=h?sf.holes.filter(x=>x!==h):sf.holes;inBasement=false;surface=null;parts=[];roomKind='basement';balls=[];cannonWarn=null;cannonShot=null;cannonT=Math.max(cannonT,240);
   p.x=h?h.x+h.w+6:sf.returnX;p.y=ground-p.h;p.vy=-8;p.moveLock=300;p.on=false;p.hole=null;p.inv=Math.max(p.inv,90);p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);
   for(const e of enemies){if(e.alive&&!e.trapHole&&Math.abs(e.x+16-(p.x+17))<170){e.x+=(e.x+16>=p.x+17?1:-1)*170;e.safe=90;}}
-  popup(p.x+17,ground-70,wasBonus?'ボーナス終了！':'地上にもどった！','#fff',24,90);sound('jump');}
+  popup(p.x+17,ground-70,wasCloud?'雲の上から もどった！':wasBonus?'ボーナス終了！':'地上にもどった！','#fff',24,90);sound('jump');}
 // ボーナス画面（1面：コインの雨）とボーナスステージ（2面：雲の上）
 function finishBonus(){
   const loot=bonusLoot;
@@ -1021,15 +1044,15 @@ function drawBonusBg(){
       x.fillStyle='#bfe6ff';x.globalAlpha=.6;for(let w=0;w<3;w++)x.fillRect(ix+(w-1)*6*k,iy+30*k+((t*.05+w*20)%60)*k,1.5,8);x.globalAlpha=1;}   // 島からこぼれる水
     // 遠くの雲と、下に広がる雲の海
     x.globalAlpha=.45;for(const c of CLOUD_SET){const span=W+400,cx=((c.x-camera*.3+t*.004)%span+span)%span-200;drawCloud(cx,c.y-40,c.s*.75,'#a9c8ea','#d8eaff','#eef6ff');}x.globalAlpha=1;   // 足場の雲とまちがえないよう、うすく
-    for(let k=0;k<9;k++){const cx=((k*150-camera*.5)%(W+300)+W+300)%(W+300)-150;drawCloud(cx,ground+6+(k%2)*8,1.4,'#c8dbee','#f6fbff','#ffffff');}
+    if(roomKind==='sky')for(let k=0;k<9;k++){const cx=((k*150-camera*.5)%(W+300)+W+300)%(W+300)-150;drawCloud(cx,ground+6+(k%2)*8,1.4,'#c8dbee','#f6fbff','#ffffff');}
     // 鳥
     x.strokeStyle='#30405a';x.lineWidth=2;for(let k=0;k<3;k++){const bx=((t*.03+k*230)%(W+100))-50,by=150+k*30+Math.sin(t*.003+k)*8,f=Math.sin(t*.012+k)*4;x.beginPath();x.moveTo(bx-8,by-f);x.quadraticCurveTo(bx-4,by-4,bx,by);x.quadraticCurveTo(bx+4,by-4,bx+8,by-f);x.stroke();}
   }
-  x.textAlign='center';x.font='900 36px system-ui';x.globalAlpha=.18;x.fillStyle='#fff';x.fillText(roomKind==='rain'?'BONUS':'BONUS STAGE',W/2,H/2);x.globalAlpha=1;x.textAlign='left';}
+  x.textAlign='center';x.font='900 36px system-ui';x.globalAlpha=.18;x.fillStyle='#fff';x.fillText(roomKind==='rain'?'BONUS':roomKind==='cloud'?'CLOUD WORLD':'BONUS STAGE',W/2,H/2);x.globalAlpha=1;x.textAlign='left';}
 // ボーナス画面の足場：天空ステージはふわふわの雲、夜空の画面は光る水晶の地面
 function drawBonusPlatform(b){
   if(b.x+b.w<camera-40||b.x>camera+W+40)return;
-  if(roomKind==='sky'){
+  if(roomKind==='sky'||roomKind==='cloud'){
     const L=Math.max(b.x,camera-40),R=Math.min(b.x+b.w,camera+W+40),floor=b.y===ground;
     const g=x.createLinearGradient(0,b.y-10,0,b.y+(floor?40:b.h));g.addColorStop(0,'#ffffff');g.addColorStop(1,'#cfe2f5');
     x.fillStyle=g;x.beginPath();if(x.roundRect)x.roundRect(b.x,b.y,b.w,floor?H-b.y:Math.max(16,b.h),floor?0:10);else x.rect(b.x,b.y,b.w,b.h);x.fill();
@@ -2084,7 +2107,9 @@ if(bossIntroLong()){p.vx=0;}else if((jumpIn||(assist&&p.jumpBuf>0))&&(p.on||(ass
   // 走りながら跳ぶと遠くまで（runJump）、その場で跳ぶと てっぺん近くで もう一回跳べる（standJump → 二段ジャンプ）
   const moving=keys.left||keys.right;p.runJump=assist&&moving;p.standJump=assist&&!moving;p.doubleUsed=false;sound('jump');}
 else if(assist&&jumpPressed&&!p.on&&!p.hole&&p.standJump&&!p.doubleUsed&&Math.abs(p.vy)<DOUBLE_JUMP_WINDOW){
-  p.vy=-14;p.doubleUsed=true;p.jumpBuf=0;p.jumping=true;tone(720,.12,'square',.06,0,1180);boom(p.x+p.w/2,p.y+p.h,10,['#fff','#bfe6ff','#ffdf50'],4);popup(p.x+p.w/2,p.y-8,'二段ジャンプ！','#bfe6ff',18,40);}
+  p.vy=-14;p.doubleUsed=true;p.jumpBuf=0;p.jumping=true;tone(720,.12,'square',.06,0,1180);
+  if(mode==='game'&&stage===1&&!inBasement&&!westSide&&!cloudUsed&&Math.abs(p.x+p.w/2-CLOUD_SPOT_X)<70){p.vy=-26;p.toCloud=true;sound('boing');popup(p.x+p.w/2,p.y-30,'ビューン！','#fff',24,50);}   // ひみつの場所：空の雲の面へ
+  boom(p.x+p.w/2,p.y+p.h,10,['#fff','#bfe6ff','#ffdf50'],4);popup(p.x+p.w/2,p.y-8,'二段ジャンプ！','#bfe6ff',18,40);}
 if(!p.on&&p.runJump&&!p.kickT)p.vx*=RUN_JUMP_SPEED;   // 走りジャンプ中は横に速く進む
 p.vy=Math.min(16,p.vy+.65);
 p.x=Math.max(arenaOn?AX:0,Math.min(world-p.w,p.x+p.vx));
@@ -2160,7 +2185,11 @@ if(arenaOn&&boss)updateBoss(p,oldY);
 if(state==='victoryFlight')return;
 
 if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'&&!p.climb){p.climb={t:0,tx:W-72+20-p.w/2};p.vx=p.vy=0;tone(660,.08,'square',.05);}   // はしごに着いたら登りはじめる
-if(inBonus()&&state==='play'){roomT--;
+if(p.toCloud&&p.y+p.h<-20&&state==='play'){enterCloudWorld();return;}
+if(inBasement&&roomKind==='cloud'&&state==='play'){
+  if(p.y>H+30){exitBasement();return;}   // 雲から落ちたら1面に戻る（ミスにはならない）
+  if(p.x+p.w>world-90&&p.on){score+=2000;popup(p.x+17,p.y-40,'雲の上をクリア！ +2000','#ffdf50',26,100);sound('treasure');exitBasement();return;}}
+if(inBonus()&&roomKind!=='cloud'&&state==='play'){roomT--;
   if(roomKind==='rain'&&roomT>20&&roomT%7===0){const r=Math.random();items.push({type:r<.03?heartType():r<.12?'gem':'coin',x:40+Math.random()*(W-80),y:-20,vx:(Math.random()-.5)*1.2,vy:1,t:300});}
   if(roomT<=0){exitBasement();return;}}
 // 崖の底で横位置を判定すると、落ちながら移動したときに入口を通り過ぎてしまう。
@@ -2471,6 +2500,26 @@ function drawLifeHeart(cx,cy,w,gold){
   }
   x.restore();
 }
+// 🔑：金色のカギ
+function drawKeyIcon(cx,cy,s){x.save();x.translate(cx,cy);x.scale(s,s);
+  const g=x.createLinearGradient(-10,-12,10,12);g.addColorStop(0,'#fff3a0');g.addColorStop(.5,'#ffc928');g.addColorStop(1,'#b87800');
+  x.strokeStyle='#7a4a00';x.lineWidth=2;x.fillStyle=g;
+  x.beginPath();x.arc(-6,-6,7,0,7);x.fill();x.stroke();ell(-6,-6,3,3,'#7a4a00');   // 持つところの輪
+  x.beginPath();x.moveTo(-1,-1);x.lineTo(10,10);x.lineTo(7,13);x.lineTo(5,11);x.lineTo(3,13);x.lineTo(1,11);x.lineTo(-4,4);x.closePath();x.fill();x.stroke();   // 歯
+  ell(-8,-9,1.8,1.2,'#ffffffcc');x.restore();}
+// 2面の鍵つきドア（石の枠・木のとびら・金の錠前）
+function drawKeyDoor(){if(stage!==2||inBasement||arenaOn)return;const dx=KEY_DOOR_X,top=ground-78,t=Date.now();
+  x.fillStyle='#6a6a78';x.beginPath();x.moveTo(dx-34,ground);x.lineTo(dx-34,top+18);x.quadraticCurveTo(dx,top-14,dx+34,top+18);x.lineTo(dx+34,ground);x.closePath();x.fill();   // 石の枠
+  x.fillStyle='#8a8a98';for(let k=0;k<5;k++)x.fillRect(dx-34,top+22+k*11,6,8),x.fillRect(dx+28,top+28+k*11,6,8);
+  const wg=x.createLinearGradient(dx-26,0,dx+26,0);wg.addColorStop(0,'#5a3418');wg.addColorStop(.5,'#8a5a2c');wg.addColorStop(1,'#4a2a12');
+  x.fillStyle=keyDoorUsed?'#1a1018':wg;x.beginPath();x.moveTo(dx-26,ground);x.lineTo(dx-26,top+22);x.quadraticCurveTo(dx,top-4,dx+26,top+22);x.lineTo(dx+26,ground);x.closePath();x.fill();
+  if(!keyDoorUsed){x.strokeStyle='#3a2010';x.lineWidth=1.5;for(const lx of[-13,0,13]){x.beginPath();x.moveTo(dx+lx,top+10);x.lineTo(dx+lx,ground);x.stroke();}
+    x.fillStyle='#c9a34a';x.fillRect(dx-26,top+30,52,4);x.fillRect(dx-26,ground-20,52,4);
+    const lg=x.createLinearGradient(0,ground-46,0,ground-26);lg.addColorStop(0,'#fff0a0');lg.addColorStop(1,'#c98a00');x.fillStyle=lg;x.fillRect(dx-8,ground-46,16,18);
+    x.strokeStyle='#c98a00';x.lineWidth=3;x.beginPath();x.arc(dx,ground-46,6,Math.PI,0);x.stroke();ell(dx,ground-39,2.4,2.4,'#3a2010');x.fillStyle='#3a2010';x.fillRect(dx-1,ground-38,2,5);
+    const near=Math.abs(player.x+17-dx)<120;x.textAlign='center';x.font='900 15px system-ui';x.lineWidth=4;x.strokeStyle='#0d1830';x.fillStyle=hasKey?'#ffdf50':'#fff';
+    const label=hasKey?'掘るで 🔑をつかう':'🔑が ひつよう';if(near||hasKey){x.strokeText(label,dx,top-22);x.fillText(label,dx,top-22);}x.textAlign='left';
+    if(hasKey){x.globalAlpha=.3+.2*Math.sin(t*.006);ell(dx,ground-40,40,48,'#ffe680');x.globalAlpha=1;}}}
 function drawItem(it){const ix=it.x,iy=it.y,foot=iy+10;   // 置いてある位置の足もと
   if(it.type==='coin')drawCoin(ix,foot-15,15,Date.now()*.006+ix*.05);
   else if(it.type==='gem')drawGem(ix,foot,34);
@@ -2481,6 +2530,7 @@ function drawItem(it){const ix=it.x,iy=it.y,foot=iy+10;   // 置いてある位�
     if(turn<0){x.globalAlpha=.25*(-turn);heartPath(ix,cy,w);x.fillStyle='#000';x.fill();x.globalAlpha=1;}
     x.restore();
     if(sx<.4){x.globalAlpha=(.4-sx)*2;x.fillStyle=gold?'#fff3a0':'#ffd0dc';x.fillRect(ix-1.5,cy-w*.45,3,w*.85);x.globalAlpha=1;}}}   // 横を向いたときの光る線
+  else if(it.type==='key'){const bob=Math.sin(Date.now()*.005)*3;x.globalAlpha=.35+.2*Math.sin(Date.now()*.008);ell(ix,foot-20+bob,26,26,'#ffe680');x.globalAlpha=1;drawKeyIcon(ix,foot-20+bob,1.5);}
   else if(it.type==='chest'){
     const glow=.25+.15*Math.sin(Date.now()*.005);x.globalAlpha=glow;ell(ix,foot-18,38,26,'#ffe680');x.globalAlpha=1;   // ほんのり光る
     drawChest(ix,foot,56);}
@@ -2905,6 +2955,9 @@ function draw(){
   for(const e of enemies){if(!e.alive)continue;if(e.trapHole){x.save();x.beginPath();x.rect(e.trapHole.x,ground,e.trapHole.w,36);x.clip();}drawScaled(e.x+e.w/2,e.y+e.h,()=>drawEnemy(e));if(e.trapHole)x.restore();}
   if(stage===1&&!inBasement&&westSide)drawSignpost(WEST_ROUTE,'← 西のひみつの道');   // 何もない地面のあとに出てくる看板
   if(skyRope&&stage===2&&!inBasement)drawSkyRope();
+  drawKeyDoor();
+  if(stage===1&&!inBasement&&!westSide&&!cloudUsed&&mode==='game'){const t=Date.now(),cy=70+Math.sin(t*.002)*4;   // ひみつの場所の目印：空の小さな雲がキラッと光る
+    drawCloud(CLOUD_SPOT_X,cy,.35,'#dbe8f6','#ffffff','#ffffff');if(Math.sin(t*.004)>.6){const k=(Math.sin(t*.004)-.6)/.4*10;x.fillStyle='#fff8c0';x.fillRect(CLOUD_SPOT_X+10-.8,cy-6-k,1.6,k*2);x.fillRect(CLOUD_SPOT_X+10-k,cy-6-.8,k*2,1.6);}}
   if(stage===1&&!inBasement)drawBalloon('back');
   if(boss)drawBoss(boss);
   if(boss&&boss.st==='dead'&&boss.crownFly){const cf=boss.crownFly;x.save();x.translate(cf.x,cf.y);x.rotate(cf.spin);drawBossCrown(0,8,1.25,false);x.restore();
@@ -2932,15 +2985,15 @@ function draw(){
   // 見出しは小さな金色、数字は大きな白で、どちらもふちどり＋奥行きのある文字
   {let hx=22;const w=(t,size)=>{x.font='900 '+size+'px system-ui';return x.measureText(t).width;};
     const put=(label,value)=>{if(label){fancyText(label,hx,42,19,'gold');hx+=w(label,19)+6;}fancyText(String(value),hx,42,30,'white');hx+=w(String(value),30)+20;};
-    put('SCORE',score);drawLifeHeart(hx+16,31,32,false);hx+=36;put('×',lives);put('STAGE',stage);if(!arenaOn){drawGem(hx+15,50,28,false);hx+=36;put('',diamonds);}}   // 画面上のダイヤも絵で描く
-  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';fancyText(coinProgress+' / '+COINS_PER_LIFE,22+x.measureText('コイン').width+6,72,20,'white');const sec=Math.ceil((inBonus()?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+    put('SCORE',score);drawLifeHeart(hx+16,31,32,false);hx+=36;put('×',lives);put('STAGE',stage);if(!arenaOn){drawGem(hx+15,50,28,false);hx+=36;put('',diamonds);}if(hasKey){drawKeyIcon(hx+14,34,1);hx+=34;}}   // 画面上のダイヤも絵で描く
+  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';fancyText(coinProgress+' / '+COINS_PER_LIFE,22+x.measureText('コイン').width+6,72,20,'white');const roomTimer=inBonus()&&roomKind!=='cloud',sec=Math.ceil((roomTimer?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
     const bx0=arenaOn?420:610,by0=6,bw=arenaOn?165:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
-    x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
+    x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(roomKind==='cloud'&&inBasement?'STOP':arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
   if(!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
-  const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':'ボーナス！ 時間内に たくさん集めよう'):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:72);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText('モグラ大王 ドリモグ',595,28,20,'red');x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
