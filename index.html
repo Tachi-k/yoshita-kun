@@ -2172,9 +2172,7 @@ function drawTitle(){
   x.fillStyle='#ffffff30';x.fillRect(W/2-206,ry-18,412,6);
   x.font='900 22px system-ui';x.fillStyle='#fff';x.shadowColor='#0008';x.shadowBlur=4;x.fillText('モグラ大王をたおして 空の国をすくえ！',W/2,ry+8);x.shadowBlur=0;
   if(XMAS)fancyText('🎄 メリークリスマス！ 🎄',W/2,ry+52,26,'red');
-  {let hy=ry+(XMAS?86:52);
-    if(ranking&&ranking[0]){fancyText('みんなの1位  '+ranking[0].name+'  '+ranking[0].score,W/2,hy,24,'gold');hy+=30;if(hiScore>0)fancyText('じぶんのベスト  '+hiScore,W/2,hy,18,'white');}
-    else if(hiScore>0)fancyText('HIGH SCORE  '+hiScore,W/2,hy,24,'gold');}
+  drawTitleScores();
   // 「デモ」表示：上部に大きなバッジ＋画面の四隅に枠
   const on=Math.floor(t/500)%2;
   const bg=x.createLinearGradient(0,18,0,70);bg.addColorStop(0,on?'#ff5a5a':'#d83a3a');bg.addColorStop(1,on?'#c02a2a':'#a02020');
@@ -3246,16 +3244,16 @@ function draw(){
   // 見出しは小さな金色、数字は大きな白で、どちらもふちどり＋奥行きのある文字
   {let hx=22;const w=(t,size)=>{x.font='900 '+size+'px system-ui';return x.measureText(t).width;};
     const put=(label,value)=>{if(label){fancyText(label,hx,42,19,'gold');hx+=w(label,19)+6;}fancyText(String(value),hx,42,30,'white');hx+=w(String(value),30)+20;};
-    put('SCORE',score);drawLifeHeart(hx+16,31,32,false);hx+=36;put('×',lives);put('STAGE',stage);if(!arenaOn){drawGem(hx+15,50,28,false);hx+=36;put('',diamonds);}if(hasKey){drawKeyIcon(hx+14,34,1);hx+=34;}}   // 画面上のダイヤも絵で描く
+    if(mode!=='title'){put('SCORE',score);drawLifeHeart(hx+16,31,32,false);hx+=36;put('×',lives);put('STAGE',stage);if(!arenaOn){drawGem(hx+15,50,28,false);hx+=36;put('',diamonds);}if(hasKey){drawKeyIcon(hx+14,34,1);hx+=34;}}}   // 画面上のダイヤも絵で描く
   if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';{const cx0=22+x.measureText('コイン').width+6,ct=coinProgress+' / '+COINS_PER_LIFE;fancyText(ct,cx0,72,20,'white');x.font='900 20px system-ui';const hx0=cx0+x.measureText(ct).width+26;fancyText('HI',hx0,72,16,'gold');fancyText(String(hiScore),hx0+28,72,20,newRecord?'gold':'white');}const roomTimer=inBonus()&&roomKind!=='cloud',sec=Math.ceil((roomTimer?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
     const bx0=arenaOn?420:610,by0=6,bw=arenaOn?165:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
     x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(roomKind==='cloud'&&inBasement?'STOP':arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
-  if(!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
+  if(mode!=='title'&&!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
   const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
-  if(!bossIntroLong())hudT(hint,22,mode==='game'?98:72);
+  if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText('モグラ大王 ドリモグ',595,28,20,'red');x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
   // ボス登場の演出：暗くなる空と赤い警告 → 地面のひびから光 → 白い閃光で大王が飛び出す → 雄たけびの衝撃波 → 名前のカットイン
@@ -3367,6 +3365,13 @@ function drawGameOver(){
   if(t>sub+20){x.globalAlpha=Math.min(1,(t-sub-20)/20);fancyText('SCORE '+score+'　　HIGH SCORE '+hiScore,W/2,cy+82,22,'white');
     if(newRecord&&Math.floor(t/12)%2)fancyText('★ NEW RECORD! ★',W/2,cy-74,30,'gold');x.globalAlpha=1;}
   if(t>100&&Math.floor(t/28)%2===0)fancyText(stage===2?'タップで ステージ2から再挑戦':'画面をタップ / Rキーで再挑戦',W/2,cy+122,24,'white');
+  x.restore();
+}
+// デモ画面：左上に じぶんのベスト、右上に みんなの1位（STARTボタンにかくれない場所）
+function drawTitleScores(){
+  x.save();
+  if(hiScore>0){x.textAlign='left';fancyText('じぶんのベスト',20,32,20,'gold');fancyText(String(hiScore),20,68,32,'white');}
+  if(ranking&&ranking[0]){x.textAlign='right';fancyText('★みんなの1位',W-20,32,20,'gold');fancyText(ranking[0].name+' '+ranking[0].score,W-20,68,28,'white');}
   x.restore();
 }
 function creditsY(){return H+40-endT*.75}
