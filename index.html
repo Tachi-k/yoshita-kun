@@ -99,6 +99,15 @@ canvas{display:block;background:#17283c}
   .btn{width:min(92px,21vw);height:min(92px,21vw)}#jump{width:min(110px,25vw);height:min(110px,25vw)}
 }
 @media (hover:hover) and (pointer:fine){.help{display:block}.hint{display:none}}
+/* エンディングの曲の案内（エンディングの最後に出る） */
+#songInfo{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);z-index:7;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 12px;
+  max-width:min(92vw,620px);padding:8px 16px;border-radius:16px;border:2px solid #ffd45a;background:rgba(12,16,40,.88);box-shadow:0 0 18px #ffd45a66;color:#fff;font:700 14px system-ui;text-align:center;animation:songIn .6s ease-out}
+#songInfo[hidden]{display:none}
+#songInfo .si-note{width:100%;font:900 11px system-ui;letter-spacing:.15em;color:#ffd45a}
+#songInfo b{color:#ffe36a}
+#songLink{display:inline-block;padding:6px 14px;border-radius:999px;background:linear-gradient(#3ee27a,#1db954 60%,#14903f);color:#fff;font:900 14px system-ui;text-decoration:none;box-shadow:0 3px 0 #0c6a2c;touch-action:manipulation}
+@keyframes songIn{from{opacity:0;transform:translate(-50%,20px)}}
+@media (orientation:landscape) and (max-height:500px){#songInfo{max-width:56vw;padding:5px 10px;font-size:12px;gap:2px 8px;bottom:6px}#songLink{padding:4px 10px;font-size:12px}}
 #arcade{box-sizing:border-box;width:min(560px,94vw);max-height:92dvh;overflow:auto;border:2px solid #79a7cb;border-radius:16px;padding:16px;background:#17283c;color:#fff;text-align:center;touch-action:pan-y}
 #arcade::backdrop{background:#071322c9}
 #arcade h2,#arcade h3{margin:0 0 8px}
@@ -180,6 +189,7 @@ canvas{display:block;background:#17283c}
 </div>
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
 <button id="startBtn" aria-label="ゲームスタート"><span class="sb-body"><span class="sb-ic" aria-hidden="true">▶</span><span class="sb-tx">START<small>ゲームスタート</small></span></span></button>
+<div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a></div>
 <div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
 <dialog id="arcade" aria-labelledby="arcadeTitle">
@@ -683,7 +693,25 @@ SONGS.basement={len:32,dur:()=>60/128/2/hurryMul(),step(i,t,sd){const bar=i>>3,b
   if(b%4===0)bnote(140,t,.1,'sine',.18,50);if(b%4===2)hat(t,.05,.08);if(b%2===1)hat(t,.02);
   if(i%8===7)bell(m?m+12:88,t,.015);}};
 SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];if(m){bnote(mf(m+5),t,sd*.7,'square',.04);bnote(mf(m+17),t,sd*.3,'sine',.04);}bnote(mf(BS_ROOT[bar]+5+(b%2?12:0)),t,sd*.7,'triangle',.11);if(b%2===0)bnote(150,t,.1,'sine',.18,50);hat(t,.025);if(b===4)hat(t,.06,.1);}};
-function currentSong(){if(mode==='title'||mode==='opening')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
+// ===== エンディングの最後に流す曲（Web Audioで鳴らす。🎵オフのときは音を出さない）=====
+const END_SONG=new Audio('audio/ending-song.mp3');END_SONG.preload='auto';
+let endSong={on:false,src:null,gain:null};
+function endSongVolume(){return musicOn?.85:0}
+function startEndSong(){if(endSong.on)return;endSong.on=true;
+  const info=document.getElementById('songInfo');if(info)info.hidden=false;
+  try{unlockAudio();}catch(_){}
+  loadJingle(END_SONG).then(buffer=>{if(!endSong.on)return;
+    if(buffer&&audioCtx){try{const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;src.loop=true;
+        g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(endSongVolume(),audioCtx.currentTime+1.5);   // ふわっと始まる
+        src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;return;}catch(_){}}
+    try{END_SONG.loop=true;END_SONG.volume=endSongVolume();END_SONG.currentTime=0;const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}});}
+function stopEndSong(){if(!endSong.on)return;endSong.on=false;
+  const info=document.getElementById('songInfo');if(info)info.hidden=true;
+  try{if(endSong.src){endSong.src.stop();endSong.src=null;endSong.gain=null;}}catch(_){}
+  try{END_SONG.pause();}catch(_){}}
+document.getElementById('songLink').addEventListener('pointerdown',e=>e.stopPropagation());
+function currentSong(){if(endSong.on)return null;   // エンディングの曲が流れている間は、ほかのBGMを止める
+  if(mode==='title'||mode==='opening')return null;if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
 // ===== MP3のBGM =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
 // 未登録の場面ではオリジナルBGMを再生。ループ区間未指定なら曲全体を繰り返す。
@@ -2101,6 +2129,7 @@ function updateVictoryFlight(){
 
 // ===== 更新 =====
 function update(){
+if(endSong.on&&state!=='ending')stopEndSong();   // エンディングから出たら止める
 if(mode==='opening'){updateOpening();return;}
 if(state==='endingCut'){updateEndingCut();return;}
 if(state==='arcade')return;
@@ -2122,7 +2151,7 @@ if(mode==='title'){
   if(demoT>60*limit)return startDemo();
 }
 if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(shake>0)shake--;updateParts();
-if(state==='ending'){endT++;updateEndPlayer();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
+if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT>60)startEndSong();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
 if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';gameOverMusic();}}return;}
@@ -3314,7 +3343,7 @@ document.getElementById('startBtn').addEventListener('click',e=>{e.stopPropagati
 
 // 音楽ON/OFFボタン（設定は次回も保持）
 const mb=document.getElementById('music');
-function setMusic(on){musicOn=on;mb.textContent=on?'🎵':'🔇';mb.classList.toggle('off',!on);try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02)}
+function setMusic(on){musicOn=on;try{if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(endSongVolume(),audioCtx.currentTime,.05);END_SONG.volume=endSongVolume();}catch(_){}mb.textContent=on?'🎵':'🔇';mb.classList.toggle('off',!on);try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02)}
 mb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();unlockAudio();setMusic(!musicOn)});
 setMusic(musicOn);
 
