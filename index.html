@@ -2289,8 +2289,8 @@ if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
 noteHiScore();
 if(mode==='game'&&((state==='lose'&&loseT>=40)||(state==='ending'&&endingDone())))maybeAskName();   // ランキング入りなら名前入力（すぐ再挑戦のタップをしても、先にこちらが出る）
-if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();startEndSong('demo');}return;}   // ゲームオーバー後のデモでは「雪原の気球」を流す
-if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;startKeepAlive();if(!ranking)loadRanking();try{loadJingle(END_SONG)}catch(_){};goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
+if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();}return;}   // ゲームオーバー後のデモは、ふつうのデモと同じ（1面の曲）。「雪原の気球」はエンディングだけ
+if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;startKeepAlive();if(!ranking)loadRanking();goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
   else{if(goalTick>45){balloonVy=Math.min(4.2,balloonVy+.045);balloonLift+=balloonVy;}if(goalTick===32||goalTick%26===0)sound('burner');p.x=bx-17;p.y=ground-38-28-balloonLift;}
