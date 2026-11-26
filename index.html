@@ -703,9 +703,9 @@ function startEndSong(){if(endSong.on)return;endSong.on=true;
   loadJingle(END_SONG).then(buffer=>{if(!endSong.on)return;
     if(buffer&&audioCtx){try{const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;src.loop=true;
         g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(endSongVolume(),audioCtx.currentTime+1.5);   // ふわっと始まる
-        src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;return;}catch(_){}}
-    try{END_SONG.loop=true;END_SONG.volume=endSongVolume();END_SONG.currentTime=0;const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}});}
-function stopEndSong(){if(!endSong.on)return;endSong.on=false;
+        src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;return;}catch(_){}}
+    try{endSong.el=true;END_SONG.loop=true;END_SONG.volume=endSongVolume();END_SONG.currentTime=0;const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}});}
+function stopEndSong(){if(!endSong.on)return;endSong.on=false;endSong.el=false;
   const info=document.getElementById('songInfo');if(info)info.hidden=true;
   try{if(endSong.src){endSong.src.stop();endSong.src=null;endSong.gain=null;}}catch(_){}
   try{END_SONG.pause();}catch(_){}}
@@ -1278,6 +1278,7 @@ function updateEndPlayer(){
     if(q.doorFrame===44)openQuestTrial();
     return;
   }
+  if(keys.left||keys.right||keys.jump||padJump)q.idle=0;else q.idle=(q.idle||0)+1;   // 操作していない時間（長いと踊りだす）
   const vx=(keys.right?4:0)-(keys.left?4:0),oldX=q.x;
   q.x=Math.max(0,Math.min(W-34,q.x+vx));
   q.walking=q.x!==oldX;
@@ -1298,6 +1299,20 @@ function updateEndPlayer(){
   q.overlapsPrincess=overlaps;
   if(endingRare&&near(W/2+80,140)&&!q.cool){q.cool=60;popup(W/2+150,ground-170,'なかよし！','#ffdf50',24,60);sound('coin');}
 }
+// ===== 操作しないと、音楽に合わせてみんなが踊る =====
+const END_SONG_BPM=146,END_SONG_OFFSET=.18;   // エンディングの曲のテンポ（拍の数／分）と、最初の拍までの秒数
+function endDancing(){return !!endP&&!endP.doorFrame&&(endP.idle||0)>90&&endP.on;}
+function endBeat(){   // いまが何拍目か（小数つき）。曲が流れていれば曲に、なければゆっくりのテンポに合わせる
+  try{if(endSong.on&&endSong.src&&audioCtx)return Math.max(0,(audioCtx.currentTime-endSong.t0-END_SONG_OFFSET))*END_SONG_BPM/60;
+    if(endSong.on&&endSong.el)return Math.max(0,END_SONG.currentTime-END_SONG_OFFSET)*END_SONG_BPM/60;}catch(_){}
+  return endT/60*100/60;}
+// 8拍ごとに振り付けが変わる：①ノリノリではねる ②左右にステップ ③くるっと向きを変える ④ばんざい
+function danceMove(i){const b=endBeat()+i*.5,ph=b%1,beat=Math.floor(b),part=Math.floor(beat/8)%4,hop=Math.sin(ph*Math.PI);
+  if(part===0)return {dy:-hop*14,rot:0,face:null,arms:false,dx:0};
+  if(part===1)return {dy:-hop*6,rot:(beat%2?1:-1)*.12,face:beat%2?1:-1,arms:false,dx:(beat%2?1:-1)*8*hop};
+  if(part===2)return {dy:-hop*10,rot:0,face:beat%2?1:-1,arms:beat%2===0,dx:0};
+  return {dy:-hop*18,rot:Math.sin(b*Math.PI)*.08,face:null,arms:true,dx:0};}
+function withDance(i,cx,footY,fn){if(!endDancing()){fn(null);return;}const m=danceMove(i);x.save();x.translate(cx+m.dx,footY+m.dy);x.rotate(m.rot);x.translate(-cx,-footY);fn(m);x.restore();}
 function drawEndPlayer(){
   if(!endP)return;
   const pose=!endP.on?'jump':endP.walking?'walk':'front';
@@ -1305,7 +1320,7 @@ function drawEndPlayer(){
     const depth=(endP.doorFrame-28)/16;
     x.save();x.translate(endP.x+17,ground-4);x.scale(1-depth*.6,1-depth*.6);
     x.globalAlpha=1-depth;x.scale(END_SCALE,END_SCALE);drawHero(-17,-42,endP.f,pose,endP.stride);x.restore();
-  }else drawEndScaled(endP.x+17,endP.y+42,()=>drawHero(endP.x,endP.y,endP.f,pose,endP.stride));
+  }else withDance(0,endP.x+17,endP.y+42,m=>drawEndScaled(endP.x+17,endP.y+42,()=>drawHero(endP.x,endP.y,m&&m.face?m.face:endP.f,m?(m.arms?'jump':'front'):pose,endP.stride)));
   if(endT<360&&Math.floor(endT/30)%2){x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#ffffffcc';x.fillText('← → で うごける・ジャンプもできる',W/2,H-14);x.textAlign='left';}}
 // 秘密のはしごの先。ミニゲーム中は本編の時計を止める。
 const arcade=document.getElementById('arcade');
@@ -3271,13 +3286,13 @@ function drawEnding(){
   const princess=endingPrincessPosition();
   if(endingRare){drawRainbow();const jump=k=>Math.abs(Math.sin(endT*.13+k))*18;
     drawEndPlayer();
-    drawEndScaled(princess.x+17,princess.y+46,()=>princessRound?drawPlayerAt(princess.x,princess.y+4,endP&&endP.x<princess.x?-1:1,'front'):drawPartner(princess.x,princess.y,endP&&endP.x<princess.x?-1:1));   // ソラ姫が主人公のときは、となりによし太くん
-    drawMoleFriend(W/2+150,ground-88*.75*END_SCALE-jump(2),.75*END_SCALE,endT);
+    withDance(1,princess.x+17,princess.y+46,m=>drawEndScaled(princess.x+17,princess.y+46,()=>princessRound?drawPlayerAt(princess.x,princess.y+4,m&&m.face?m.face:endP&&endP.x<princess.x?-1:1,m&&m.arms?'jump':'front'):drawPartner(princess.x,princess.y,m&&m.face?m.face:endP&&endP.x<princess.x?-1:1)));   // ソラ姫が主人公のときは、となりによし太くん
+    withDance(2,W/2+150,ground,()=>drawMoleFriend(W/2+150,ground-88*.75*END_SCALE-(endDancing()?0:jump(2)),.75*END_SCALE,endT));
     x.textAlign='center';fancyText('★ RARE ENDING ★',W/2,50,34,Math.floor(endT/20)%2?'gold':'white');x.textAlign='left';
   }else if(endingPair){
     // 花のアーチ
     x.strokeStyle='#fff8';x.lineWidth=6;x.beginPath();x.arc(W/2,ground,150,Math.PI,0);x.stroke();for(let k=0;k<=12;k++){const a=Math.PI+k*Math.PI/12;x.fillStyle=['#ff9ad5','#fff','#ffd84d'][k%3];x.beginPath();x.arc(W/2+Math.cos(a)*150,ground+Math.sin(a)*150,7,0,7);x.fill();}
-    drawEndPlayer();drawEndScaled(princess.x+17,princess.y+46,()=>drawPartner(princess.x,princess.y,endP&&endP.x>princess.x?1:-1));
+    drawEndPlayer();withDance(1,princess.x+17,princess.y+46,m=>drawEndScaled(princess.x+17,princess.y+46,()=>drawPartner(princess.x,princess.y,m&&m.face?m.face:endP&&endP.x>princess.x?1:-1)));
   }else{drawEndPlayer();}
   drawParts(true);
   x.textAlign='center';
