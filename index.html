@@ -1849,15 +1849,15 @@ function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.disp
 // clearCount：クリアした回数。3周ごとにくり返す（よし太くん → 初代よし太くん → ソラ姫 → よし太くん …）
 let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
 // クリスマス版：スタートを押すと「メリークリスマス！」と叫ぶ（用意した声の2種類から、毎回どちらかを流す＋鈴の音）
-// 声のあとに鈴の音を入れて1つにした音声（声と鈴が、いつもセットで鳴る）
-const XMAS_VOICES=['audio/xmas-greeting-1.mp3','audio/xmas-greeting-2.mp3'].map(src=>{const a=new Audio(src);a.preload='auto';return a;});
+// 送ってもらった2つの音源（「メリークリスマス」の声 → 鈴の音）をつなげて1つにした音声
+const XMAS_VOICES=['audio/xmas-greeting.mp3'].map(src=>{const a=new Audio(src);a.preload='auto';return a;});
 // 声 →（声が終わったら）鈴 → done() の順に進める。声が鳴らない機種でも、決まった時間で先へ進む
 let xmasIntro=null,xmasVoiceNodes=null;
 function shoutMerryXmas(done){
   const v=XMAS_VOICES[Math.floor(realRandom()*XMAS_VOICES.length)];
   let finished=false,started=false;
   const finish=()=>{if(finished)return;finished=true;done();};
-  const bellsOnly=()=>{try{if(audioCtx)[1568,1976,2349,1976,2637,3136].forEach((f,i)=>{tone(f,.22,'triangle',.06,i*.1);tone(f*2,.12,'sine',.025,i*.1);});}catch(_){}setTimeout(finish,1300);};
+  const bellsOnly=()=>setTimeout(finish,300);   // 鳴らせなかったときは、そのままスタート
   // 読みこめなかったときだけ<audio>で鳴らす（この音声にも鈴が入っている）
   const viaElement=()=>{if(started)return;started=true;try{v.currentTime=0;v.volume=1;v.onended=()=>setTimeout(finish,300);const pr=v.play();if(pr&&pr.catch)pr.catch(bellsOnly);}catch(_){bellsOnly();}setTimeout(finish,6500);};
   try{unlockAudio();}catch(_){}
