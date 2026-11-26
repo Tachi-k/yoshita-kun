@@ -463,7 +463,7 @@ function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};
 const HI_KEY='yoshita-hiscore';let hiScore=0,newRecord=false;try{hiScore=Number(localStorage.getItem(HI_KEY))||0}catch(_){}
 // ===== みんなのランキング（Firebase Realtime Database） =====
 // RANK_URL に Firebase の「データ」タブのURLを入れると、🏆ボタンとランキング登録が使えるようになる
-const RANK_URL='';
+const RANK_URL='https://yoshita-kun-default-rtdb.asia-southeast1.firebasedatabase.app';
 let ranking=null,rankAsked=-1,nameOpen=false,rankMine=null;
 function rankOn(){return !!RANK_URL}
 async function loadRanking(){if(!rankOn())return;
