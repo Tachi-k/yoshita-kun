@@ -64,11 +64,17 @@ canvas{display:block;background:#17283c}
   #jump{width:min(94px,12vw,26vh);height:min(94px,12vw,26vh)}
   .hint{display:none}
   .topbtns{left:calc(env(safe-area-inset-left) + 8px);right:auto;width:min(160px,19vw);flex-wrap:wrap;justify-content:center;gap:6px}   /* 横画面：左上（方向パッドの上）に置いて、ゲーム画面にかぶらない */
+  .topbtns #music,.topbtns #fs{position:fixed;top:calc(env(safe-area-inset-top) + 6px);z-index:6;width:40px;height:40px;font-size:20px}   /* 横画面：🎵と全画面は右上へ（◀▶ボタンにかぶらない） */
+  .topbtns #music{right:calc(env(safe-area-inset-right) + 6px)}
+  .topbtns #fs{right:calc(env(safe-area-inset-right) + 50px)}
   .topbtns #bgmSwitch{width:100%;grid-template-columns:1fr}   /* 横画面：2つを縦に並べて、文字を大きく */
   .topbtns #bgmSwitch span{font-size:clamp(10px,1.8vw,16px)}
   .topbtns #bgmSwitch button{height:clamp(34px,10vh,44px);padding:0 2px;font-size:clamp(10px,2vw,16px)}
   .controls .pad:first-child{align-self:end;padding-bottom:calc(env(safe-area-inset-bottom) + 10px)}   /* 方向パッドは下へ寄せて、BGMボタンと重ならない */
   .help{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 6px);left:50%;transform:translateX(-50%);margin:0}
+}
+@media (orientation:landscape) and (max-width:620px){
+  .topbtns #fs{right:calc(env(safe-area-inset-right) + 6px);top:calc(env(safe-area-inset-top) + 50px)}   /* 右のすきまがせまい画面では、全画面ボタンは🎵の下に */
 }
 @media (orientation:portrait){
   #stage > canvas{width:100%;height:auto;aspect-ratio:16/9;margin-top:env(safe-area-inset-top)}
