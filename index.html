@@ -980,14 +980,15 @@ function clampToHole(p,h){p.x=Math.max(h.x+1,Math.min(h.x+h.w-p.w-1,p.x))}
 
 // ===== ボス：モグラ大王 ドリモグ =====
 // short=true は再挑戦時の短い登場（毎回長い演出を見なくてよい）
-function newBoss(hp=3,short=false){return {x:AX+700,y:short?ground-88:ground+30,w:96,h:88,vx:0,vy:0,hp:hp,st:'intro',t:0,dir:-1,inv:0,flash:0,hole:null,landed:short,short}}
+const BOSS_HP=5;   // ボスは5回ふむと たおせる
+function newBoss(hp=BOSS_HP,short=false){return {maxHp:hp,x:AX+700,y:short?ground-88:ground+30,w:96,h:88,vx:0,vy:0,hp:hp,st:'intro',t:0,dir:-1,inv:0,flash:0,hole:null,landed:short,short}}
 function bossIntroLong(){return arenaOn&&boss&&boss.st==='intro'&&!boss.short}
 function bgo(st){boss.st=st;boss.t=0}
 function throwRock(p){const b=boss,sx=b.x+b.w/2,sy=b.y+10,T=48+Math.random()*16,tx=p.x+p.w/2+(Math.random()*80-40),ty=ground-14,g=.35;rocks.push({x:sx,y:sy,vx:(tx-sx)/T,vy:(ty-sy-.5*g*T*T)/T,r:13});sound('throw')}
 function bossEscape(){const b=boss;holes=holes.filter(h=>h!==b.hole);b.hole=null;b.y=ground-b.h;b.vy=-15;b.vx=b.x+b.w/2<AX+480?4.5:-4.5;bgo('escape')}
 function updateBoss(p,oldY){
   const b=boss;b.t++;if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
-  const phase=b.hp>=3?1:b.hp===2?2:3,L=AX,R=AX+960-b.w,top=ground-b.h;
+  const phase=b.hp>=b.maxHp-1?1:b.hp>=2?2:3,L=AX,R=AX+960-b.w,top=ground-b.h;
   if(b.st==='intro'){if(b.t===1)playBossIntro();const cx=b.x+b.w/2;
     if(b.short){b.y=top;if(b.t>40){bgo('walk');banner('','穴を掘って 大王を落とし、頭をふめ！',120)}}
     else{b.pt=(b.pt||0)+1;if(!b.phase)b.phase='rumble';
@@ -2408,7 +2409,7 @@ for(const e of enemies){if(!e.alive)continue;
 }
 
 // ボスエリア突入
-if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss();bannerT=0;timeLeft=BOSS_TIME*60;enemies.forEach(e=>e.alive=false);holes=holes.filter(h=>h.x>AX);}
+if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss(mode==='title'?3:BOSS_HP);bannerT=0;timeLeft=BOSS_TIME*60;enemies.forEach(e=>e.alive=false);holes=holes.filter(h=>h.x>AX);}
 if(arenaOn&&boss)updateBoss(p,oldY);
 if(state==='victoryFlight')return;
 
@@ -3258,7 +3259,7 @@ function draw(){
   x.font='700 18px system-ui';x.lineWidth=4;
   const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
-  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText('モグラ大王 ドリモグ',595,28,20,'red');x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/3,16);x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
+  if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText('モグラ大王 ドリモグ',595,28,20,'red');x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/(boss.maxHp||3),16);x.strokeStyle='#0008';x.lineWidth=2;{const n=boss.maxHp||3;for(let k=1;k<n;k++){const lx=597+341*k/n;x.beginPath();x.moveTo(lx,38);x.lineTo(lx,54);x.stroke();}}x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
   // ボス登場の演出：暗くなる空と赤い警告 → 地面のひびから光 → 白い閃光で大王が飛び出す → 雄たけびの衝撃波 → 名前のカットイン
   if(bossIntroLong()){const T=boss.t,ph=boss.phase,P=boss.pt||0,bar=Math.min(1,T/25)*52,cx=boss.x+boss.w/2-camera,now=Date.now();
