@@ -1804,9 +1804,10 @@ function drawOpening(){const o=opening,t=o.t;
   x.font='bold 16px system-ui';x.fillStyle='#ffffffcc';x.textAlign='right';x.fillText('タップで スキップ ▶▶',W-16,H-14);x.textAlign='left';
 }
 function toTitle(){const b=document.getElementById('startBtn');if(b)b.style.display='block';startDemo();}
-// clearCount：クリアした回数。2周目はよし太くんの色が変わり、3周目からはソラ姫が冒険する
+// clearCount：クリアした回数。3周ごとにくり返す（よし太くん → 初代よし太くん → ソラ姫 → よし太くん …）
 let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
-function startGame(){mode='game';secondRound=clearedAdventure;princessRound=clearCount>=2;Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
+function startGame(){mode='game';secondRound=clearCount%3===1;princessRound=clearCount%3===2;   // 1周目よし太くん → 2周目 初代よし太くん → 3周目 ソラ姫 → 4周目からまたくり返す
+Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
 // デモ用の自動操作
 function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=false;   // デモも無敵ではない（ぶつかればミス）
   if(demoScene==='miss'||demoScene==='enemyMiss'||demoScene==='goal'){keys.right=true;return;}
