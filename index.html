@@ -726,19 +726,10 @@ function timp(t,vol,f0){bnote(f0,t,.7,'sine',vol,f0*.6)}
 function bell(m,t,vol){bnote(mf(m),t,1.6,'sine',vol);bnote(mf(m)*2.76,t,.8,'sine',vol*.3)}
 function holdLen(arr,i,max){let n=1;while(n<max&&!arr[i+n]&&(i+n)%8!==0)n++;return n}
 
-// 1面の道中曲。シンコペーションの主旋律と、跳ねるオクターブのベース。
-const MEL=[74,0,77,79,81,0,79,77, 74,77,82,0,81,77,74,0,
-           72,77,81,84,0,81,79,77, 76,79,84,0,82,79,76,72,
-           74,77,81,86,0,84,81,77, 82,0,81,77,79,82,86,0,
-           84,81,77,79,81,84,89,86, 84,82,79,76,79,0,72,0];
-const ROOT=[50,46,41,48,50,46,41,48];
-const FIELD_CH=[[62,65,69],[58,62,65],[57,60,65],[60,64,67],
-                [62,65,69],[58,62,65],[57,60,65],[60,64,67]];
-// 西の道は、差し替え前の1面の曲。
-const WEST_MEL=[72,74,76,79,0,76,79,84, 81,0,79,76,79,0,76,72, 77,76,77,81,0,77,81,84, 83,0,79,0,74,76,79,83,
-           84,0,79,84,0,79,88,86, 84,0,81,76,81,0,84,88, 89,88,86,84,81,0,84,86, 79,81,83,84,86,0,83,79];
-const WEST_ROOT=[48,45,41,43,48,45,41,43];
-const WEST_FIELD_CH=[[60,64,67],[57,60,64],[53,57,60],[55,59,62],[60,64,67],[57,60,64],[53,57,60],[55,59,62]];
+// 1面の道中曲：C-Am-F-G。
+const MEL=[72,0,76,79,76,0,74,72, 69,0,72,76,74,72,69,0, 65,69,72,0,77,76,74,72, 71,0,74,0,79,77,74,71,
+           76,0,79,84,83,79,76,0, 81,0,79,76,72,0,76,0, 77,76,74,72,69,72,74,0, 74,0,71,74,72,0,0,0];
+const ROOT=[48,45,41,43,48,45,41,43];
 // ファミコン風の音色：矩形波（デューティ比をえらべる）・ノイズのスネア・キック
 const pulseWaves={};
 function pulseWave(d){if(!pulseWaves[d]){const N=40,re=new Float32Array(N),im=new Float32Array(N);for(let n=1;n<N;n++)re[n]=2/(n*Math.PI)*Math.sin(n*Math.PI*d);pulseWaves[d]=audioCtx.createPeriodicWave(re,im);}return pulseWaves[d]}
@@ -757,24 +748,8 @@ const END_MEL=[72,0,0,0,74,0,76,0, 79,0,0,0,0,0,77,76, 76,0,0,0,74,0,72,0, 74,0,
                72,0,76,0,79,0,84,0, 81,0,0,0,79,0,77,0, 76,0,0,0,74,0,0,0, 72,0,0,0,0,0,0,0];
 const END_CH=[[60,64,67],[59,62,67],[57,60,64],[57,60,65],[60,64,67],[57,60,65],[59,62,67],[60,64,67]];
 const END_ROOT=[48,47,45,41,48,41,43,36];
-function stage1Song(melody,roots,chords){
-  return {len:64,dur:()=>60/(player&&player.hole?184:160)/2/(stage===1?stage1Rush():1)/hurryMul(),step(i,t,sd){const T=stage===2?2:0,m=melody[i],bar=i>>3,b=i%8,ch=chords[bar];
-    // メロディ：ファミコンの矩形波（25%）＋ビブラート、1拍おくれの「やまびこ」で広がりを出す
-    if(m){const L=holdLen(melody,i,3);pulse(mf(m+T),t,sd*L*.9,.045,.25,true);pulse(mf(m+T),t+sd,sd*L*.7,.014,.25,false);
-      if(bar>=4)pulse(mf(m+T-(bar===6?5:4)),t,sd*L*.85,.016,.5,false);}   // 後半はハモリ
-    // ベース：三角波でオクターブを行き来する
-    bnote(mf(roots[bar]+T+([0,12,7,12,0,12,7,12][b])),t,sd*.7,'triangle',.12);   // 走るベース
-    // 分散和音：細い矩形波（12.5%）の16分アルペジオ
-    for(const k of [0,1]){const n=ch[(i*2+k)%3]+12+T;pulse(mf(n),t+k*sd/2,sd*.32,.011,.125,false);}
-    // ドラム：キック・スネア・ハイハット＋小節の終わりのフィル
-    if(b%2===0)kick8(t,.24);   // ドン・ドン・ドン・ドンの4つ打ちで前へ前へ
-    if(b===2||b===6)snare8(t,.09);
-    hat(t,.018);hat(t+sd/2,b%2?.035:.022,b%2?.07:.045);   // 16分のハイハット（うら拍は少し開いた音）
-    if(i>=60)snare8(t+sd/2,.06);}};
-}
 const SONGS={
-  field:stage1Song(MEL,ROOT,FIELD_CH),
-  fieldWest:stage1Song(WEST_MEL,WEST_ROOT,WEST_FIELD_CH),
+  field:{len:64,dur:()=>60/(player&&player.hole?172:140)/2/(stage===1?stage1Rush():1)/hurryMul(),step(i,t,sd){const T=stage===2?2:0,m=MEL[i];if(m)bnote(mf(m+T),t,sd*.85,'square',.04);const root=ROOT[i>>3]+T;if(i%2===0)bnote(mf(root+(i%4===2?12:0)),t,sd*1.6,'triangle',.11);if(i%4===0)bnote(150,t,.12,'sine',.22,45);if(i%8===4)hat(t,.07,.1);if(i%2===1)hat(t,.03)}},
   boss:{len:64,dur:()=>60/(boss&&boss.hp===1?166:152)/2/bossRush(),step(i,t,sd){const bar=i>>3,b=i%8,m=BOSS_MEL[i];if(m)brass(m,t,sd*holdLen(BOSS_MEL,i,4)*.92,.045);if(b===0)pad(BOSS_CH[bar],t,sd*8,.022);bnote(mf(BOSS_ROOT[bar]+(b%2?12:0)),t,sd*.8,'sawtooth',.045);if(b===0)timp(t,.34,98);if(b===4)timp(t,.2,98);if(i%16>=14)timp(t,.13,130);if(b%2===1)hat(t,.025);if(b===4)hat(t,.06,.1)}},
   ending:{len:64,dur:()=>60/72/2,step(i,t,sd){const bar=i>>3,b=i%8,ch=END_CH[bar];if(b===0){pad(ch,t,sd*8,.028);bnote(mf(END_ROOT[bar]),t,sd*8,'triangle',.12);timp(t,bar%4===0?.28:.12,82);bell(ch[2]+12,t,.035)}bnote(mf(ch[[0,1,2,1,2,1,0,1][b]]+12),t,sd*1.5,'triangle',.045);const m=END_MEL[i];if(m){const L=holdLen(END_MEL,i,8);brass(m,t,sd*L*.95,.03);bnote(mf(m+12),t,sd*L*.9,'sine',.025)}}}
 };
@@ -875,15 +850,13 @@ document.getElementById('videoBox').addEventListener('click',e=>{if(e.target.id=
 function currentSong(){if(endSong.on)return null;   // エンディングの曲が流れている間は、ほかのBGMを止める
   if(mode==='opening'||xmasIntro)return null;
   if(mode==='title')return null;   // デモ画面は音楽なし（とぎれとぎれになるので）
-  if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';if(stage===2)return 'field2';
-  return westSide&&player.x+player.w/2<WEST_ROUTE?'fieldWest':'field';
+  if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field';
 }
 // ===== MP3のBGM =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
 // 未登録の場面ではオリジナルBGMを再生。ループ区間未指定なら曲全体を繰り返す。
 const MP3_BGM={
-  field1:{src:'audio/bgm-stage1-sky-run.wav'},
-  fieldWest:{src:'audio/bgm-stage1-pixel-adventure.mp3'},
+  field1:{src:'audio/bgm-stage1-pixel-adventure.mp3'},
   field2:{src:'audio/bgm-stage2.mp3'}, // 2面
   boss:{src:'audio/bgm-boss.mp3'}, // 2面後半のボス戦
   bonus:{src:'audio/bgm-bonus.mp3'}, // ボーナスステージ
@@ -917,7 +890,7 @@ function mp3StartBuf(m,rate){mp3StopBuf(m);const c=m.cfg,src=audioCtx.createBuff
 function mp3Halt(key){const m=mp3[key];if(!m)return;if(m.src&&audioCtx)m.pos=mp3Wrap(m,m.pos+(audioCtx.currentTime-m.lastCtxT)*m.src.playbackRate.value);if(m.el&&!m.el.paused){try{m.el.pause()}catch(_){}}if(m.engine==='el'&&m.el)m.pos=m.el.currentTime;mp3StopBuf(m);}
 function mp3Restart(key){const m=mp3[key];if(!m)return;m.pos=0;try{if(m.el)m.el.currentTime=0}catch(_){}if(m.src&&audioCtx){mp3StopBuf(m);}}
 function mp3PlayEl(m){if(!m.el||m.elBad)return;try{m.el.currentTime=mp3Wrap(m,m.pos)}catch(_){}m.reqT=Date.now();m.elT0=m.el.currentTime;m.elOK=false;const pr=m.el.play();if(pr&&pr.catch)pr.catch(()=>{m.elBad=true});}
-const BASE_DUR={field:60/160/2,fieldWest:60/140/2,field2:60/118/2};
+const BASE_DUR={field:60/140/2,field2:60/118/2};
 function mp3LoopCheck(){const m=mp3Cur&&mp3[mp3Cur];if(!m||m.engine!=='el'||!m.el||m.el.paused)return;const c=m.cfg;if(c.loopEnd&&m.el.currentTime>=c.loopEnd){try{m.el.currentTime-= (c.loopEnd-c.loopStart)}catch(_){}}}
 function mp3Tick(){   // MP3の再生開始を確認してから通常BGMを止める。読み込み中は通常BGMを継続。
   const s=currentSong(),want=(!paused&&musicOn&&!document.hidden&&(mode==='game'||mode==='title')&&audioCtx)?mp3Key(s):null;
@@ -945,7 +918,7 @@ function bgmTick(){
   const s=currentSong();
   if(mp3Enabled&&mode==='game'&&musicOn&&!paused&&!document.hidden){
     // クリア画面とボス登場演出の間に、次の場面のアレンジ曲を先読みする。
-    const upcoming=state==='clear'?'field2':bossIntroLong()?'boss':stage===1&&westSide?'fieldWest':null;
+    const upcoming=state==='clear'?'field2':bossIntroLong()?'boss':null;
     if(upcoming)mp3Load(mp3Get(upcoming));
   }
   const playingArrangement=mp3Tick();
