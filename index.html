@@ -807,7 +807,7 @@ function startEndSong(where='ending'){if(endSong.on)return;endSong.on=true;endSo
   loadJingle(END_SONG).then(buffer=>{if(!endSong.on)return;
     if(buffer&&audioCtx){try{const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;src.loop=false;src.onended=()=>{if(endSong.src===src)endSong.done=true;};   // 1回だけ流す（くり返さない）
         g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(endSongVolume(),audioCtx.currentTime+1.5);   // ふわっと始まる
-        src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;setTimeout(stopKeepAlive,2500);return;}catch(_){}}
+        src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;return;}catch(_){}}
     try{endSong.el=true;END_SONG.loop=false;END_SONG.volume=endSongVolume();END_SONG.currentTime=0;const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}});}
 function stopEndSong(){if(!endSong.on)return;endSong.on=false;endSong.el=false;try{closeVideo();}catch(_){}
   const info=document.getElementById('songInfo');if(info)info.hidden=true;document.body.classList.remove('song-on');
@@ -2307,7 +2307,8 @@ function updateVictoryFlight(){
 // ===== 更新 =====
 function update(){
 if(endSong.on&&(endSong.where==='ending'?state!=='ending':mode!=='title'||xmasIntro))stopEndSong();
-if(keepAlive&&!endSong.on&&!(state==='lose'&&mode==='game'))stopKeepAlive();   // エンディング／デモ画面から出たら止める
+{const quiet=mode==='title'||mode==='opening'||state==='ending'||state==='endingCut'||(state==='lose'&&mode==='game');   // 音楽が止まっている画面
+  if(quiet&&audioCtx&&!keepAlive)startKeepAlive();else if(!quiet&&keepAlive)stopKeepAlive();}   // iPhoneは無音が続くと音が眠るので、聞こえない音を流しておく   // エンディング／デモ画面から出たら止める
 if(mode==='opening'){updateOpening();return;}
 if(state==='endingCut'){updateEndingCut();return;}
 if(state==='arcade')return;
