@@ -3060,7 +3060,8 @@ function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='cl
 
 // キャラクターの見た目の大きさ（当たり判定は変えず、足もとを中心に絵だけ大きくする）
 const CHAR_SCALE=1.4;
-function drawScaled(cx,footY,fn){x.save();x.translate(cx,footY);x.scale(CHAR_SCALE,CHAR_SCALE);x.translate(-cx,-footY);fn();x.restore();}
+const VILLAGE_HERO_SCALE=2.1;   // ひだまり村では、村人に合わせて よし太くんも大きく
+function drawScaled(cx,footY,fn){const sc=inBasement&&roomKind==='village'?VILLAGE_HERO_SCALE:CHAR_SCALE;x.save();x.translate(cx,footY);x.scale(sc,sc);x.translate(-cx,-footY);fn();x.restore();}
 // 敵キャラ：グラデーションの体・つやのある目・地面の影で立体的に（当たり判定は 32×32 のまま）
 const BOAR_SCALE=1.3;   // イノシシは ほかの敵より大きく描く
 function drawEnemy(e){
@@ -3444,7 +3445,7 @@ function drawDog(v){const run=v.run,ph=v.t*(run?.35:.08),wag=Math.sin(v.t*(run?.
   x.restore();}
 function drawVillager(v){const k=v.kind;if(k==='dog'){drawDog(v);if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-70,24,'gold');x.restore();}return;}
   const sc=k==='child'?.8:1,bob=v.walk?Math.abs(Math.sin(v.t*.2))*2.5:Math.abs(Math.sin(v.t*.06))*1.5;
-  x.save();x.translate(v.x,ground);x.scale(sc*1.7*v.f,sc*1.7);x.translate(0,-bob);ell(0,0,14,3,'#00000022');
+  x.save();x.translate(v.x,ground);x.scale(sc*1.55*v.f,sc*1.55);x.translate(0,-bob);ell(0,0,14,3,'#00000022');
   const P={
     man:{skin:'#ffd6b0',top:'#3f7a46',topDark:'#2a5430',sleeve:'#f4f0e8',pants:'#6a4a30',shoe:'#3a2414',
       body:()=>{x.fillStyle='#f4f0e8';x.fillRect(-4,-40,8,26);ell(0,-30,1.4,1.4,'#c8a040');ell(0,-23,1.4,1.4,'#c8a040');x.fillStyle='#5a3a22';x.fillRect(-12,-18,24,4);},
@@ -3486,7 +3487,7 @@ function drawVillager(v){const k=v.kind;if(k==='dog'){drawDog(v);if(talk&&talk.v
   }[k];
   P.step=v.walk?Math.sin(v.t*.2):0;drawPerson(P);
   x.restore();
-  if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-128*sc-bob,24,'gold');x.restore();}}
+  if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-118*sc-bob,24,'gold');x.restore();}}
 function drawVillagers(){for(const v of villagers){if(v.x<camera-60||v.x>camera+W+60)continue;drawVillager(v);}}
 function drawTalkBox(){const v=talk.v,L=villageLines(v.kind),txt=L[talk.line%L.length].slice(0,talk.chars);
   const bx=110,by=165,bw=W-220,bh=120;
