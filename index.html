@@ -2375,13 +2375,13 @@ const jumpPressed=jumpIn&&!p.prevJump;
 if(jumpPressed)p.jumpBuf=JUMP_BUFFER_FRAMES;else if(p.jumpBuf>0)p.jumpBuf--;
 p.prevJump=jumpIn;
 if(bossIntroLong()){p.vx=0;}else if((jumpIn||(assist&&p.jumpBuf>0))&&(p.on||(assist&&p.coyote>0&&!p.hole))){p.vy=-16.5;p.on=false;p.jumping=true;p.jumpBuf=0;p.coyote=0;
-  // 走りながら跳ぶと遠くまで（runJump）、その場で跳ぶと てっぺん近くで もう一回跳べる（standJump → 二段ジャンプ）
+  // 走りながら跳ぶと遠くまで（runJump）。その場でも、走りながら（横ジャンプ）でも、てっぺん近くで もう一回跳べる（二段ジャンプ）
   const moving=keys.left||keys.right;p.runJump=assist&&moving;p.standJump=assist&&!moving;p.doubleUsed=false;
   p.fromPad=platforms.some(b=>b.cloudPad&&Math.abs(p.y+p.h-b.y)<3&&p.x+p.w>b.x&&p.x<b.x+b.w);   // 雲の台の上から跳んだか
   sound('jump');}
-else if(assist&&jumpPressed&&!p.on&&!p.hole&&p.standJump&&!p.doubleUsed&&Math.abs(p.vy)<DOUBLE_JUMP_WINDOW){
-  p.vy=-14;p.doubleUsed=true;p.jumpBuf=0;p.jumping=true;tone(720,.12,'square',.06,0,1180);
-  if(mode==='game'&&stage===1&&!inBasement&&!westSide&&!cloudUsed&&p.fromPad){p.vy=-26;p.toCloud=true;sound('boing');popup(p.x+p.w/2,p.y-30,'ビューン！','#fff',24,50);}   // ひみつの場所：空の雲の面へ
+else if(assist&&jumpPressed&&!p.on&&!p.hole&&(p.standJump||p.runJump)&&!p.doubleUsed&&Math.abs(p.vy)<DOUBLE_JUMP_WINDOW){
+  p.vy=p.runJump?-12.5:-14;   // 横ジャンプからの二段ジャンプは、少しだけ低めp.doubleUsed=true;p.jumpBuf=0;p.jumping=true;tone(720,.12,'square',.06,0,1180);
+  if(mode==='game'&&stage===1&&!inBasement&&!westSide&&!cloudUsed&&p.fromPad&&p.standJump){p.vy=-26;p.toCloud=true;sound('boing');popup(p.x+p.w/2,p.y-30,'ビューン！','#fff',24,50);}   // ひみつの場所：空の雲の面へ
   boom(p.x+p.w/2,p.y+p.h,10,['#fff','#bfe6ff','#ffdf50'],4);popup(p.x+p.w/2,p.y-8,'二段ジャンプ！','#bfe6ff',18,40);}
 if(!p.on&&p.runJump&&!p.kickT)p.vx*=RUN_JUMP_SPEED;   // 走りジャンプ中は横に速く進む
 p.vy=Math.min(16,p.vy+.65);
