@@ -333,7 +333,7 @@ function addPerchEnemies(idx){const floats=platforms.filter(b=>b.y<ground-1&&(st
 function banner(t,s,d=150){bannerText=t;bannerSub=s;bannerT=d}
 const COINS_PER_LIFE=100,COIN_BONUS=1000,COIN_POINTS=10;
 const STAGE2_OFFSET=240,STAGE2_START=STAGE2_OFFSET+60,STAGE2_BONUS_X=38;
-const SKY_ROPE_X=110,SKY_ROPE_BOTTOM=ground-30;   // 空から降りてくるロープの位置と、いちばん下の高さ
+const SKY_ROPE_X=110,SKY_ROPE_BOTTOM=ground-150;   // 空から降りてくるロープの位置と、いちばん下の高さ（ジャンプしないと届かない）
 let skyRope=null,camEase=0;   // camEase：カメラをなめらかに戻す残りフレーム
 function stageStartX(){return stage===2?STAGE2_START:60;}
 // ===== 1面の西（左）側：スタートから左へ進むと「西のひみつの道」。左はしの気球からも2面へ =====
@@ -379,7 +379,7 @@ function drawSkyRope(){
   x.strokeStyle='#6a4428';x.lineWidth=6;x.beginPath();x.moveTo(r.x,-30);x.quadraticCurveTo(r.x+sway,(bottom-30)/2,r.x+sway,bottom);x.stroke();
   x.strokeStyle='#c89858';x.lineWidth=4;x.setLineDash([5,4]);x.beginPath();x.moveTo(r.x,-30);x.quadraticCurveTo(r.x+sway,(bottom-30)/2,r.x+sway,bottom);x.stroke();x.setLineDash([]);
   if(!held){x.strokeStyle='#8a5a32';x.lineWidth=4;x.beginPath();x.ellipse(r.x+sway,bottom+9,7,10,0,0,7);x.stroke();   // 下の輪っか
-    if(r.bottom>=SKY_ROPE_BOTTOM-1&&Math.floor(r.t/12)%2){x.fillStyle='#fff';x.font='900 15px system-ui';x.textAlign='center';x.lineWidth=4;x.strokeStyle='#0d1830';x.strokeText('つかまれ！',r.x+sway,bottom-46);x.fillText('つかまれ！',r.x+sway,bottom-46);x.textAlign='left';}
+    if(r.bottom>=SKY_ROPE_BOTTOM-1&&Math.floor(r.t/12)%2){x.fillStyle='#fff';x.font='900 15px system-ui';x.textAlign='center';x.lineWidth=4;x.strokeStyle='#0d1830';x.strokeText('ジャンプで つかまれ！',r.x+sway,bottom-46);x.fillText('ジャンプで つかまれ！',r.x+sway,bottom-46);x.textAlign='left';}
     for(let k=0;k<3;k++){const a=r.t*.1+k*2.1;x.fillStyle='#fff8c0';x.fillRect(r.x+Math.cos(a)*14-1,bottom-10+Math.sin(a)*10-1,2.5,2.5);}}   // きらきら
   x.restore();
 }
