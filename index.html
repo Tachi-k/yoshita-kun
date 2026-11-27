@@ -970,7 +970,8 @@ function digSpot(){if(bossIntroLong())return null;if(inBasement)return null;
     if(holes.some(e=>Math.abs(e.x+e.w/2-c)<(e.w+hw)/2+1))continue;
     return {x:c-hw/2,w:hw,h:hd};}
   return null}
-function doDig(){const s=digSpot();if(!s)return false;
+const DIG_ANIM=18;   // スコップで掘る動きの長さ（フレーム）
+function doDig(){const s=digSpot();if(!s)return false;player.digAnim=DIG_ANIM;
   if(s.bury){buryHole(s.bury);holes=holes.filter(h=>h!==s.bury);digCooldown=15;sound('dig');return true}
   let h=s.hole;if(!h){h={x:s.x,y:ground,w:s.w,h:s.h,t:HOLE_T,stage:0};holes.push(h);}h.stage++;h.t=HOLE_T;digCooldown=9;sound('dig');if(h.stage===3){revealTreasure(h);checkSecret(h);}return true}
 // ボタン/キーを押したとき：連打や着地直前の入力も取りこぼさず、掘れない場所なら×を表示
@@ -2367,6 +2368,7 @@ const oldX=p.x,oldY=p.y;if(p.inv>0)p.inv--;
 if(p.kickT>0){p.kickT--;p.vx=p.kickVx;if(p.on&&p.kickT<20)p.kickT=0;}   // 弾き飛ばされ中は操作より優先
 else{p.vx=(keys.right?4.4:0)-(keys.left?4.4:0);if(p.vx)p.facing=Math.sign(p.vx);}
 // 地下室・ボーナスから戻った直後は、押しっぱなしの移動を少しだけ無視（指を離せばすぐ動ける）
+if(p.digAnim>0)p.digAnim--;
 if(p.moveLock>0){if(!keys.left&&!keys.right)p.moveLock=0;else{p.moveLock--;p.vx=0;}}
 // ジャンプの猶予（ゲーム中のみ）：着地の少し前に押しても着地した瞬間に跳ぶ（先行入力）／
 // 足場から落ち始めて少しの間はまだ跳べる（崖のぎりぎりで押し遅れても落ちにくい）
@@ -2575,6 +2577,26 @@ function drawPartner(px,py,facing,X=x,pose='front',stride=0){const f=facing>=0?1
   // 髪かざりのお花
   const hx=-f*9,hy=-38;for(let k=0;k<5;k++){const a=k*Math.PI*2/5;o(hx+Math.cos(a)*1.8,hy+Math.sin(a)*1.8,1.4,1.4,'#fff');}o(hx,hy,1.1,1.1,'#ffd84d');
   X.restore();}
+// 掘るときの動き：掘る方を向いて前かがみになり、スコップを地面にさしこんで、土をうしろへ放り上げる
+function drawDigging(p){
+  const f=p.facing===-1?-1:1,k=1-p.digAnim/DIG_ANIM,cx=p.x+p.w/2,foot=p.y+p.h;
+  const push=k<.45?k/.45:1-(k-.45)/.55;   // 0→1：さしこむ、1→0：すくい上げる
+  const lean=f*(.1+.2*push);
+  x.save();x.translate(cx,foot);x.rotate(lean);x.translate(-cx,-foot);
+  drawHero(p.x,p.y,f,'front',0);
+  x.restore();
+  // スコップ：手もとを軸に、さしこむ → すくい上げる
+  const hx=cx+f*(8+push*7),hy=foot-24+push*7,rot=k<.45?(.35+.5*push):(.85-1.1*(k-.45)/.55);
+  x.save();x.translate(hx,hy);x.scale(f,1);x.rotate(-rot);   // 前（掘る方）へかたむける
+  x.strokeStyle='#7a4a24';x.lineWidth=3;x.lineCap='round';x.beginPath();x.moveTo(0,-8);x.lineTo(0,28);x.stroke();   // 柄
+  x.strokeStyle='#3a2a1c';x.lineWidth=2.4;x.beginPath();x.moveTo(-4,-8);x.lineTo(4,-8);x.stroke();   // にぎり
+  const bl=x.createLinearGradient(-6,27,6,40);bl.addColorStop(0,'#eef2f8');bl.addColorStop(1,'#7c8798');
+  x.fillStyle=bl;x.strokeStyle='#4a5262';x.lineWidth=1;x.beginPath();x.moveTo(-6,27);x.lineTo(6,27);x.lineTo(5.5,37);x.quadraticCurveTo(0,43,-5.5,37);x.closePath();x.fill();x.stroke();   // 刃
+  if(k>=.45&&k<.8){x.fillStyle='#6a4428';x.beginPath();x.ellipse(0,30,5.5,3.5,0,0,7);x.fill();}   // すくった土
+  x.restore();
+  // 手（柄をにぎる）
+  ell(hx,hy-1,3.2,3,'#8f9aae');
+}
 function drawHeart(cx,cy,r,col){x.fillStyle=col;x.beginPath();x.arc(cx-r/2,cy,r/2,0,7);x.arc(cx+r/2,cy,r/2,0,7);x.fill();x.beginPath();x.moveTo(cx-r,cy+r*.15);x.lineTo(cx,cy+r*1.1);x.lineTo(cx+r,cy+r*.15);x.closePath();x.fill()}
 // 主人公を描く：3周目からはソラ姫（足もとの位置をそろえる。当たり判定はよし太くんと同じ）
 function drawHero(px,py,facing,pose,stride=0,context=x){
@@ -3292,7 +3314,8 @@ function draw(){
   if(p.climb)p.facing=Math.floor(p.climb.t/14)%2?1:-1;   // 手足を交互に動かして登る
   const pose=p.climb?'jump':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
-  drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHero(p.x,p.y,p.facing,pose,p.stride));
+  if(p.digAnim>0&&p.on)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawDigging(p));   // スコップで掘る
+  else drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHero(p.x,p.y,p.facing,pose,p.stride));
   x.globalAlpha=1;
   if(stage===1&&!inBasement)drawBalloon('front');
   drawParts();drawPopups();
