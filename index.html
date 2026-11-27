@@ -829,7 +829,7 @@ document.getElementById('videoClose').addEventListener('click',e=>{e.stopPropaga
 document.getElementById('videoBox').addEventListener('click',e=>{if(e.target.id==='videoBox')closeVideo();});
 function currentSong(){if(endSong.on)return null;   // エンディングの曲が流れている間は、ほかのBGMを止める
   if(mode==='opening'||xmasIntro)return null;
-  if(mode==='title')return 'field';   // デモ画面では、1面の曲を流す（場面が変わっても同じ曲で、とぎれない）
+  if(mode==='title')return null;   // デモ画面は音楽なし（とぎれとぎれになるので）
   if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field'}
 // ===== MP3のBGM =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
