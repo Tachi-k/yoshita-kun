@@ -1460,9 +1460,9 @@ function updateVillage(p){const pc=p.x+p.w/2;let near=null,best=80;
       else v.f=dd<0?-1:1;
       if(Math.abs(dd)<200&&v.t%150===0){popup(v.x,ground-60,'ワン！','#fff',20,40);tone(520,.06,'square',.04,0,380);tone(560,.06,'square',.04,.1,400);}}
     if(v.kind!=='dog'){const d0=Math.abs(v.x-pc),spd={child:1.3,elder:.4,farmer:.6}[v.kind]||.8;v.walk=false;
-      if(d0<120){v.f=pc<v.x?-1:1;v.tx=null;}   // 話すときは立ち止まって こちらを向く
-      else{if(v.tx==null||(v.idle||0)>0){if(v.idle>0)v.idle--;else v.tx=v.home+(Math.random()*2-1)*(v.kind==='child'?140:90);}
-        if(v.tx!=null&&!(v.idle>0)){const dx=v.tx-v.x;if(Math.abs(dx)>2){v.x+=Math.sign(dx)*spd;v.f=Math.sign(dx);v.walk=true;}else{v.tx=null;v.idle=60+Math.floor(Math.random()*150);}}}}   // うろうろ歩いて、ときどき立ち止まる
+      if(d0<(insideHouse?90:120)){v.f=pc<v.x?-1:1;v.tx=null;}   // 話すときは立ち止まって こちらを向く
+      else{if(v.tx==null||(v.idle||0)>0){if(v.idle>0)v.idle--;else v.tx=insideHouse?240+Math.random()*(W-420):v.home+(Math.random()*2-1)*(v.kind==='child'?140:90);}   // 家の中では 部屋じゅうを歩きまわる
+        if(v.tx!=null&&!(v.idle>0)){const dx=v.tx-v.x;if(Math.abs(dx)>2){v.x+=Math.sign(dx)*spd;v.f=Math.sign(dx);v.walk=true;}else{v.tx=null;v.idle=insideHouse?30+Math.floor(Math.random()*70):60+Math.floor(Math.random()*150);}}}}   // うろうろ歩いて、ときどき立ち止まる
     const d=Math.abs(v.x-pc);if(d<best){best=d;near=v;}}
   if(near&&p.on){if(!talk||talk.v!==near){talk={v:near,line:0,chars:0,wait:0};tone(880,.05,'square',.03);}
     const L=villageLines(near.kind),txt=L[talk.line%L.length];
