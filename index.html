@@ -2144,7 +2144,7 @@ Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));
 function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=false;   // デモも無敵ではない（ぶつかればミス）
   if(demoScene==='miss'||demoScene==='enemyMiss'||demoScene==='goal'){keys.right=true;return;}
   if(demoScene==='basement'){
-    if(inBasement){keys.right=true;return;}
+    if(inBasement){keys.right=true;if(p.x+p.w>W-80)keys.jump=demoT%30<3;return;}   // はしごでは上ボタン
     if(holes.some(h=>h.secret)){
       if(!demoLadderAt)demoLadderAt=demoT;
       keys.right=demoT-demoLadderAt>=85&&p.x+p.w/2<secret.x;
@@ -2405,6 +2405,14 @@ if(p.climb){const c=p.climb;c.t++;p.x+=(c.tx-p.x)*.25;p.y-=c.speed?Math.min(c.sp
   if(c.done&&c.t%10===0)tone(600+c.t*4,.06,'sine',.04);   // ロープで引き上げられる音
   if(p.y+p.h<-6){const done=c.done;p.climb=null;if(done)done();else exitBasement();}
   return;}
+// 地下室の出口のはしご：重なっただけでは登らない。上（ジャンプ）ボタンを押すと、少し待ってから自動で登る
+{const LADDER_TX=W-72+20-p.w/2,atLadder=inBasement&&roomKind==='basement'&&state==='play'&&p.on&&!p.hole&&p.x+p.w>W-80,upNow=keys.jump||padJump;
+  if(p.ladderWait>0){p.ladderWait--;p.vx=0;p.vy=0;p.x+=(LADDER_TX-p.x)*.3;p.walking=false;p.prevJump=upNow;
+    if(p.ladderWait===0){p.climb={t:0,tx:LADDER_TX};tone(660,.08,'square',.05);}   // 自動で登りはじめる
+    return;}
+  if(atLadder&&upNow&&!p.prevJump){p.ladderWait=24;p.prevJump=true;p.jumpBuf=0;popup(W-52,p.y-14,'よいしょ！','#fff',18,40);tone(520,.06,'triangle',.05);return;}
+  if(atLadder&&!p.ladderHint){p.ladderHint=true;popup(W-150,ground-150,'⬆ジャンプで のぼる','#fff',20,90);}
+  if(!atLadder)p.ladderHint=false;}
 const oldX=p.x,oldY=p.y;if(p.inv>0)p.inv--;
 if(p.kickT>0){p.kickT--;p.vx=p.kickVx;if(p.on&&p.kickT<20)p.kickT=0;}   // 弾き飛ばされ中は操作より優先
 else{p.vx=(keys.right?4.4:0)-(keys.left?4.4:0);if(p.vx)p.facing=Math.sign(p.vx);}
@@ -2501,7 +2509,6 @@ if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;{const lv=bossLevel
 if(arenaOn&&boss)updateBoss(p,oldY);
 if(state==='victoryFlight')return;
 
-if(inBasement&&roomKind==='basement'&&p.x+p.w>W-80&&state==='play'&&!p.climb){p.climb={t:0,tx:W-72+20-p.w/2};p.vx=p.vy=0;tone(660,.08,'square',.05);}   // はしごに着いたら登りはじめる
 if(p.toCloud&&p.y+p.h<-20&&state==='play'){enterCloudWorld();return;}
 if(inBasement&&roomKind==='cloud'&&state==='play'){
   if(p.y>H+30){exitBasement();return;}   // 雲から落ちたら1面に戻る（ミスにはならない）
@@ -3381,7 +3388,7 @@ function draw(){
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
   if(mode!=='title'&&!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
-  const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごから地上へ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText(boss.lv==='legend'?'黒大王 ドリモグ':'モグラ大王 ドリモグ',595,28,20,boss.lv==='legend'?'blue':'red');if(bossStars()){x.save();x.textAlign='right';fancyText(bossStars(),940,28,16,boss.lv==='legend'?'gold':boss.lv==='super'||boss.lv==='smart'?'red':boss.lv==='weak'?'blue':'gold');x.restore();}x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/(boss.maxHp||3),16);x.strokeStyle='#0008';x.lineWidth=2;{const n=boss.maxHp||3;for(let k=1;k<n;k++){const lx=597+341*k/n;x.beginPath();x.moveTo(lx,38);x.lineTo(lx,54);x.stroke();}}x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
