@@ -802,6 +802,7 @@ function stopKeepAlive(){if(!keepAlive)return;try{keepAlive.o.stop();keepAlive.o
 function wakeAudio(){try{if(audioCtx&&audioCtx.state!=='running')audioCtx.resume();}catch(_){}}
 function startEndSong(where='ending'){if(endSong.on)return;endSong.on=true;endSong.where=where;wakeAudio();
   const info=document.getElementById('songInfo');if(info)info.hidden=false;document.body.classList.add('song-on');
+  if(endSong.quiet){endSong.quiet=false;return;}
   try{unlockAudio();}catch(_){}
   loadJingle(END_SONG).then(buffer=>{if(!endSong.on)return;
     if(buffer&&audioCtx){try{const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;src.loop=false;src.onended=()=>{if(endSong.src===src)endSong.done=true;};   // 1回だけ流す（くり返さない）
@@ -1346,7 +1347,7 @@ const QUEST_TRIAL_URL='https://tachi-k.github.io/ojiya-quest/?from=ending';
 const QUEST_ENDING_KEY='yoshita-quest-return';
 function openQuestTrial(){
   try{
-    sessionStorage.setItem(QUEST_ENDING_KEY,JSON.stringify({score,lives,coinProgress,diamonds,endingPair,endingRare,secondRound,clearCount,princessRound}));
+    sessionStorage.setItem(QUEST_ENDING_KEY,JSON.stringify({score,lives,coinProgress,diamonds,endingPair,endingRare,secondRound,clearCount,princessRound,rankDone:rankAsked===score,songPlayed:endSong.on,newRecord}));
   }catch(_){}
   window.location.assign(QUEST_TRIAL_URL);
 }
@@ -1362,6 +1363,9 @@ function restoreQuestEnding(){
   endingRare=ending.endingRare===true;endingPair=!endingRare&&ending.endingPair===true;
   endT=Math.ceil((H+40+credits().length*46-110)/.75)+1;
   endP=null;
+  if(ending.rankDone)rankAsked=score;   // ランキングの名前入力は、もう済んでいるので出さない
+  if(ending.songPlayed)endSong.quiet=true;   // 「雪原の気球」はもう聴いたので、もう一度は流さない（Spotify・動画のボタンは出す）
+  newRecord=ending.newRecord===true;
   document.getElementById('startBtn').style.display='none';
   return true;
 }
@@ -2306,11 +2310,11 @@ if(mode==='title'){
   if(demoT>60*limit)return startDemo();
 }
 if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(shake>0)shake--;updateParts();
+noteHiScore();   // エンディング中も記録する（エンディングの処理より先に）
+if(mode==='game'&&((state==='lose'&&loseT>=40)||(state==='ending'&&endingDone())))maybeAskName();   // ランキング入りなら名前入力（すぐ再挑戦のタップをしても、先にこちらが出る）
 if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT>60)startEndSong();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
-noteHiScore();
-if(mode==='game'&&((state==='lose'&&loseT>=40)||(state==='ending'&&endingDone())))maybeAskName();   // ランキング入りなら名前入力（すぐ再挑戦のタップをしても、先にこちらが出る）
 if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();}return;}   // ゲームオーバー後のデモは、ふつうのデモと同じ（1面の曲）。「雪原の気球」はエンディングだけ
 if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;startKeepAlive();if(!ranking)loadRanking();goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
