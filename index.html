@@ -983,14 +983,17 @@ function clampToHole(p,h){p.x=Math.max(h.x+1,Math.min(h.x+h.w-p.w-1,p.x))}
 const BOSS_HP=5;   // ボスは5回ふむと たおせる
 function newBoss(hp=BOSS_HP,short=false){return {maxHp:hp,x:AX+700,y:short?ground-88:ground+30,w:96,h:88,vx:0,vy:0,hp:hp,st:'intro',t:0,dir:-1,inv:0,flash:0,hole:null,landed:short,short}}
 function bossIntroLong(){return arenaOn&&boss&&boss.st==='intro'&&!boss.short}
+function bossTip(){return boss&&boss.lv==='smart'?'大王が かしこくなった！ 穴をよけることも…':boss&&boss.lv==='weak'?'大王は ちょっと おつかれ気味…？ 穴に落として ふめ！':'穴を掘って 大王を落とし、頭をふめ！'}
 function bgo(st){boss.st=st;boss.t=0}
-function throwRock(p){const b=boss,sx=b.x+b.w/2,sy=b.y+10,T=48+Math.random()*16,tx=p.x+p.w/2+(Math.random()*80-40),ty=ground-14,g=.35;rocks.push({x:sx,y:sy,vx:(tx-sx)/T,vy:(ty-sy-.5*g*T*T)/T,r:13});sound('throw')}
+function throwRock(p){const b=boss,sx=b.x+b.w/2,sy=b.y+10,T=48+Math.random()*16,K=bossK(),tx=p.x+p.w/2+(p.vx||0)*T*K.lead*.8+(Math.random()-.5)*K.spread,ty=ground-14,g=.35;rocks.push({x:sx,y:sy,vx:(tx-sx)/T,vy:(ty-sy-.5*g*T*T)/T,r:13});sound('throw')}
 function bossEscape(){const b=boss;holes=holes.filter(h=>h!==b.hole);b.hole=null;b.y=ground-b.h;b.vy=-15;b.vx=b.x+b.w/2<AX+480?4.5:-4.5;bgo('escape')}
+// 周回ごとのボスの強さ：2周目＝かしこい（穴をよけたり、先回りして岩を投げる）／3周目＝よわい（ゆっくり・体力3）
+function bossK(){const lv=boss&&boss.lv;return lv==='smart'?{spd:1.15,wait:.8,stun:.75,lead:1,spread:30}:lv==='weak'?{spd:.7,wait:1.35,stun:1.4,lead:0,spread:110}:{spd:1,wait:1,stun:1,lead:0,spread:80}}
 function updateBoss(p,oldY){
-  const b=boss;b.t++;if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
+  const b=boss,K=bossK();b.t++;if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
   const phase=b.hp>=b.maxHp-1?1:b.hp>=2?2:3,L=AX,R=AX+960-b.w,top=ground-b.h;
   if(b.st==='intro'){if(b.t===1)playBossIntro();const cx=b.x+b.w/2;
-    if(b.short){b.y=top;if(b.t>40){bgo('walk');banner('','穴を掘って 大王を落とし、頭をふめ！',120)}}
+    if(b.short){b.y=top;if(b.t>40){bgo('walk');banner('',bossTip(),120)}}
     else{b.pt=(b.pt||0)+1;if(!b.phase)b.phase='rumble';
       if(b.phase==='rumble'){b.y=ground+30;shake=Math.max(shake,2+b.pt/12);if(b.pt%5===0)boom(cx+(Math.random()-.5)*90,ground,3,['#c9a27a','#8a6a4a'],4);if(b.pt===1||b.pt===40)sound('rumble');   // ゴゴゴ…地鳴り
         if(b.pt>=80){b.phase='burst';b.pt=0;b.y=ground-10;b.vy=-13.5;shake=30;for(let k=0;k<18;k++)parts.push({x:cx+(Math.random()-.5)*60,y:ground,vx:(Math.random()-.5)*12,vy:-6-Math.random()*9,g:.4,s:5+Math.random()*7,life:70,max:70,col:['#8a6a4a','#5e3a22','#c9a27a'][k%3]});sound('slam');sound('boom');boom(cx,ground,46,['#c9a27a','#8a6a4a','#5e3a22'],10);}}   // 地面を突き破る
@@ -1006,18 +1009,20 @@ function updateBoss(p,oldY){
           else{b.vy=-Math.max(16.5,Math.abs(b.vy)*.97);hit=[b.x+b.w/2,ground];}}
         if(hit){b.pins++;shake=Math.max(shake,8);pinSound(b.pins);boom(hit[0],hit[1],12,['#fff','#ffdf50','#7fe3ff'],7);b.flash=6;popup(Math.max(AX+50,Math.min(AX+910,hit[0])),Math.max(110,hit[1]-12),['ドン！','バン！','ガン！','ボヨン！'][b.pins%4],'#ffdf50',26,32);}}
       else if(b.phase==='settle'){b.y=top;if(b.pt>=28){sound('roar');shake=14;b.phase='roar';b.pt=0;}}                 // 雄たけび
-      else if(b.phase==='roar'){if(b.pt>115){bgo('walk');banner('','穴を掘って 大王を落とし、頭をふめ！',140)}}}}
-  else if(b.st==='walk'){const tx=p.x+p.w/2-(b.x+b.w/2);if(Math.abs(tx)>8)b.dir=Math.sign(tx);b.x+=b.dir*(.8+phase*.45);
-    if(b.t>(phase===3?60:phase===2?85:110)){const r=Math.random();
+      else if(b.phase==='roar'){if(b.pt>115){bgo('walk');banner('',bossTip(),140)}}}}
+  else if(b.st==='walk'){const tx=p.x+p.w/2-(b.x+b.w/2);if(Math.abs(tx)>8)b.dir=Math.sign(tx);b.x+=b.dir*(.8+phase*.45)*K.spd;
+    if(b.lv==='smart'){const bc=b.x+b.w/2,ah=holes.find(h=>h.stage===3&&!h.smartSeen&&!enemies.some(e=>e.alive&&e.trapHole===h)&&(b.dir>0?h.x>bc-10&&h.x-bc<60:h.x+h.w<bc+10&&bc-(h.x+h.w)<60));
+      if(ah){ah.smartSeen=true;if(Math.random()<.45){bgo('jump');b.vy=-14;b.vx=b.dir*5;b.hop=true;popup(bc,b.y-14,'ひょいっ！','#ffdf50',24,50);sound('boing');}}}
+    if(b.st==='walk'&&b.t>(phase===3?60:phase===2?85:110)*K.wait){const r=Math.random();
       if(phase===1){if(r<.5){bgo('jump');b.vy=-15;b.vx=Math.max(-5,Math.min(5,tx/45))}else bgo('throw')}
       else if(r<.33){bgo('jump');b.vy=-15.5;b.vx=Math.max(-6,Math.min(6,tx/42))}
       else if(r<.6)bgo('throw');
       else{bgo('windup');b.dir=Math.sign(tx)||b.dir}}}
-  else if(b.st==='jump'||b.st==='escape'){b.vy+=.7;b.x+=b.vx;b.y+=b.vy;if(b.y>=top&&b.vy>0){b.y=top;b.vy=0;b.vx=0;if(b.st==='jump'){shake=18;sound('slam');const sp=4+phase;waves.push({x:b.x+b.w/2-30,dir:-1,sp},{x:b.x+b.w/2+30,dir:1,sp});boom(b.x+b.w/2,ground,10,['#c9a27a'])}bgo('walk')}}
-  else if(b.st==='throw'){if(b.t===30||(phase>=2&&b.t===48)||(phase===3&&b.t===66))throwRock(p);if(b.t>95)bgo('walk')}
+  else if(b.st==='jump'||b.st==='escape'){b.vy+=.7;b.x+=b.vx;b.y+=b.vy;if(b.y>=top&&b.vy>0){b.y=top;b.vy=0;b.vx=0;if(b.st==='jump'&&b.hop){b.hop=false;}else if(b.st==='jump'){shake=18;sound('slam');const sp=(4+phase)*(b.lv==='weak'?.75:1);waves.push({x:b.x+b.w/2-30,dir:-1,sp},{x:b.x+b.w/2+30,dir:1,sp});boom(b.x+b.w/2,ground,10,['#c9a27a'])}bgo('walk')}}
+  else if(b.st==='throw'){if(b.t===30||(b.lv!=='weak'&&((phase>=2&&b.t===48)||(phase===3&&b.t===66))))throwRock(p);if(b.t>95)bgo('walk')}
   else if(b.st==='windup'){if(b.t%6===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.t>45)bgo('charge')}
-  else if(b.st==='charge'){b.x+=b.dir*(4.5+phase);if(b.t%4===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.x<=L||b.x>=R){shake=14;sound('slam');bgo('walk')}}
-  else if(b.st==='stun'){b.y=top+40;if(b.t>(phase===3?150:210))bossEscape()}
+  else if(b.st==='charge'){b.x+=b.dir*(4.5+phase)*K.spd;if(b.t%4===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.x<=L||b.x>=R){shake=14;sound('slam');bgo('walk')}}
+  else if(b.st==='stun'){b.y=top+40;if(b.t>(phase===3?150:210)*K.stun)bossEscape()}
   else if(b.st==='dead'){
     if(!b.endingSong)b.endingSong=chooseEndingSong();
     // ボス撃破演出中に、このあと使うエンディング曲だけを先読みする。
@@ -2409,7 +2414,7 @@ for(const e of enemies){if(!e.alive)continue;
 }
 
 // ボスエリア突入
-if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss(mode==='title'?3:BOSS_HP);bannerT=0;timeLeft=BOSS_TIME*60;enemies.forEach(e=>e.alive=false);holes=holes.filter(h=>h.x>AX);}
+if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss(mode==='title'||princessRound?3:BOSS_HP);boss.lv=mode==='title'?'normal':secondRound?'smart':princessRound?'weak':'normal';bannerT=0;timeLeft=BOSS_TIME*60;enemies.forEach(e=>e.alive=false);holes=holes.filter(h=>h.x>AX);}
 if(arenaOn&&boss)updateBoss(p,oldY);
 if(state==='victoryFlight')return;
 
