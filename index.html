@@ -1001,7 +1001,11 @@ function bgo(st){boss.st=st;boss.t=0}
 function throwRock(p){const b=boss,sx=b.x+b.w/2,sy=b.y+10,T=48+Math.random()*16,K=bossK(),tx=p.x+p.w/2+(p.vx||0)*T*K.lead*.8+(Math.random()-.5)*K.spread,ty=ground-14,g=.35;rocks.push({x:sx,y:sy,vx:(tx-sx)/T,vy:(ty-sy-.5*g*T*T)/T,r:13});sound('throw')}
 function bossEscape(){const b=boss;holes=holes.filter(h=>h!==b.hole);b.hole=null;b.y=ground-b.h;b.vy=-15;b.vx=b.x+b.w/2<AX+480?4.5:-4.5;bgo('escape')}
 // 周回ごとのボスの強さ：2周目＝かしこい（穴をよけたり、先回りして岩を投げる）／3周目＝よわい（ゆっくり・体力3）
-function bossK(){const lv=boss&&boss.lv;return lv==='smart'?{spd:1.15,wait:.8,stun:.75,lead:1,spread:30}:lv==='weak'?{spd:.7,wait:1.35,stun:1.4,lead:0,spread:110}:{spd:1,wait:1,stun:1,lead:0,spread:80}}
+// hop：前の穴をジャンプでよける確率／lead：岩でよし太くんの動きを先読みする強さ
+function bossK(){const lv=boss&&boss.lv;return lv==='smart'?{spd:1.15,wait:.8,stun:.75,lead:1,spread:30,hop:.55}   // 2周目：かしこい
+  :lv==='weak'?{spd:.7,wait:1.35,stun:1.4,lead:0,spread:110,hop:0}   // 3周目：よわい
+  :lv==='normal'?{spd:1.05,wait:.9,stun:.9,lead:.5,spread:55,hop:.25}   // 1周目：少しかしこい
+  :{spd:1,wait:1,stun:1,lead:0,spread:80,hop:0}}   // デモ
 function updateBoss(p,oldY){
   const b=boss,K=bossK();b.t++;if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
   const phase=b.hp>=b.maxHp-1?1:b.hp>=2?2:3,L=AX,R=AX+960-b.w,top=ground-b.h;
@@ -1024,8 +1028,8 @@ function updateBoss(p,oldY){
       else if(b.phase==='settle'){b.y=top;if(b.pt>=28){sound('roar');shake=14;b.phase='roar';b.pt=0;}}                 // 雄たけび
       else if(b.phase==='roar'){if(b.pt>115){bgo('walk');banner('',bossTip(),140)}}}}
   else if(b.st==='walk'){const tx=p.x+p.w/2-(b.x+b.w/2);if(Math.abs(tx)>8)b.dir=Math.sign(tx);b.x+=b.dir*(.8+phase*.45)*K.spd;
-    if(b.lv==='smart'){const bc=b.x+b.w/2,ah=holes.find(h=>h.stage===3&&!h.smartSeen&&!enemies.some(e=>e.alive&&e.trapHole===h)&&(b.dir>0?h.x>bc-10&&h.x-bc<60:h.x+h.w<bc+10&&bc-(h.x+h.w)<60));
-      if(ah){ah.smartSeen=true;if(Math.random()<.45){bgo('jump');b.vy=-14;b.vx=b.dir*5;b.hop=true;popup(bc,b.y-14,'ひょいっ！','#ffdf50',24,50);sound('boing');}}}
+    if(K.hop>0){const bc=b.x+b.w/2,ah=holes.find(h=>h.stage===3&&!h.smartSeen&&!enemies.some(e=>e.alive&&e.trapHole===h)&&(b.dir>0?h.x>bc-10&&h.x-bc<60:h.x+h.w<bc+10&&bc-(h.x+h.w)<60));
+      if(ah){ah.smartSeen=true;if(Math.random()<K.hop){bgo('jump');b.vy=-14;b.vx=b.dir*5;b.hop=true;popup(bc,b.y-14,'ひょいっ！','#ffdf50',24,50);sound('boing');}}}
     if(b.st==='walk'&&b.t>(phase===3?60:phase===2?85:110)*K.wait){const r=Math.random();
       if(phase===1){if(r<.5){bgo('jump');b.vy=-15;b.vx=Math.max(-5,Math.min(5,tx/45))}else bgo('throw')}
       else if(r<.33){bgo('jump');b.vy=-15.5;b.vx=Math.max(-6,Math.min(6,tx/42))}
@@ -2427,7 +2431,7 @@ for(const e of enemies){if(!e.alive)continue;
 }
 
 // ボスエリア突入
-if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss(mode==='title'||princessRound?3:BOSS_HP);boss.lv=mode==='title'?'normal':secondRound?'smart':princessRound?'weak':'normal';bannerT=0;timeLeft=BOSS_TIME*60;enemies.forEach(e=>e.alive=false);holes=holes.filter(h=>h.x>AX);}
+if(stage===2&&!inBasement&&!arenaOn&&p.x>AX+60){arenaOn=true;boss=newBoss(mode==='title'||princessRound?3:BOSS_HP);boss.lv=mode==='title'?'demo':secondRound?'smart':princessRound?'weak':'normal';bannerT=0;timeLeft=BOSS_TIME*60;enemies.forEach(e=>e.alive=false);holes=holes.filter(h=>h.x>AX);}
 if(arenaOn&&boss)updateBoss(p,oldY);
 if(state==='victoryFlight')return;
 
