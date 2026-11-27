@@ -236,7 +236,6 @@ canvas{display:block;background:#17283c}
 <div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING　「雪原の気球」</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a><button id="videoBtn" type="button">🎬 動画を見る</button></div>
 <div id="rankBox" hidden><div class="rk-panel"><button type="button" class="rk-x" id="rankX" aria-label="とじる">✕</button><h2>🏆 みんなのランキング TOP10</h2><ol id="rankList"></ol><div class="rk-msg" id="rankMsg"></div><div class="rk-btns rk-sticky"><button type="button" class="rk-ok" id="rankClose">とじる</button></div></div></div>
 <div id="nameBox" hidden><div class="rk-panel"><h2 id="nameTitle">ランキング入り！</h2><div class="rk-msg" id="nameMsg"></div><div class="rk-row"><input id="nameInput" type="text" maxlength="8" placeholder="なまえ（8文字まで）" autocomplete="nickname" enterkeyhint="done"><button type="button" id="nameDice" aria-label="ほかの名前にする" title="ほかの名前にする">🎲</button></div><div class="rk-tip">そのまま登録しても、自由に書きかえてもOK！</div><div class="rk-btns"><button type="button" class="rk-no2" id="nameSkip">登録しない</button><button type="button" class="rk-ok" id="nameOk">登録する</button></div></div></div>
-<label id="hapticSw" aria-hidden="true" style="position:fixed;left:-200px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden"><input type="checkbox" switch tabindex="-1"></label>
 <div id="videoBox" hidden><div class="vb-inner"><button id="videoClose" type="button" aria-label="とじる">✕</button><div class="vb-frame"></div></div></div>
 <div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="rank" aria-label="ランキング" hidden>🏆</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
@@ -682,10 +681,7 @@ function unlockAudio(){try{if(mp3Cur){const m=mp3[mp3Cur];if(m&&musicOn&&!paused
 ['touchstart','pointerdown','touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
 function tone(hz,duration,type='square',volume=.09,delay=0,endHz=null){if(mode==='title'&&!xmasIntro)return;unlockAudio();if(!audioCtx)return;try{let t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,hz),t);if(endHz)o.frequency.exponentialRampToValueAtTime(Math.max(1,endHz),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+duration+.02);}catch(e){}}
 const vib={dig:12,stomp:30,bury:45,chain:[40,30,40,30,80],treasure:30,oneup:[30,30,30],hurt:[70,40,140],slam:40,bosshit:[60,30,90],boom:80};
-// iPhone（iOS 18以降）は振動の命令が使えないので、「スイッチ」を切りかえたときの手ごたえ（コツン）を代わりに使う
-const HAPTIC_TAPS={hurt:3,bosshit:2,stomp:1,bury:1};
-function iosHaptic(n){const sw=document.getElementById('hapticSw');if(!sw)return;for(let i=0;i<n;i++)setTimeout(()=>{try{sw.click()}catch(_){}},i*110)}
-function buzz(kind){try{if(vib[kind]&&navigator.vibrate){navigator.vibrate(vib[kind]);return;}if(HAPTIC_TAPS[kind]&&/iP(hone|ad|od)/.test(navigator.userAgent)||HAPTIC_TAPS[kind]&&/Macintosh/.test(navigator.userAgent)&&'ontouchend' in document)iosHaptic(HAPTIC_TAPS[kind]);}catch(e){}}
+function buzz(kind){try{if(vib[kind]&&navigator.vibrate)navigator.vibrate(vib[kind])}catch(e){}}
 function pinSound(n){if(mode==='title')return;tone(420+n*55,.1,'square',.07,0,900+n*70);tone(1600+n*40,.05,'triangle',.04,.03);buzz('stomp');}
 function sound(kind){if(mode==='title')return;unlockAudio();buzz(kind);
   if(kind==='coin'){tone(988,.085,'sine',.12);tone(1480,.22,'sine',.12,.085);}
@@ -3636,12 +3632,6 @@ const mb=document.getElementById('music');
   document.getElementById('nameDice').addEventListener('click',()=>{const i=document.getElementById('nameInput');i.value=randomName(i.value);});
   for(const id of ['rankBox','nameBox'])for(const ev of ['pointerdown','touchstart'])document.getElementById(id).addEventListener(ev,e=>e.stopPropagation());
   loadRanking();}
-document.getElementById('hapticSw').addEventListener('click',e=>e.stopPropagation());   // 手ごたえ用のスイッチは、ゲームの操作にひびかないように
-// 【ためし】iPhoneで「コツン」が出るか調べる：ジャンプは押した瞬間、掘るは指をはなした瞬間に出す
-function isIOS(){return /iP(hone|ad|od)/.test(navigator.userAgent)||/Macintosh/.test(navigator.userAgent)&&'ontouchend' in document}
-function hapticNow(){if(!isIOS())return;try{document.getElementById('hapticSw').click()}catch(_){}}
-document.getElementById('jump').addEventListener('pointerdown',hapticNow);
-document.getElementById('dig').addEventListener('touchend',hapticNow);
 function setMusic(on){musicOn=on;try{if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(endSongVolume(),audioCtx.currentTime,.05);END_SONG.volume=endSongVolume();}catch(_){}mb.textContent=on?'🎵':'🔇';mb.classList.toggle('off',!on);try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02)}
 mb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();unlockAudio();setMusic(!musicOn)});
 setMusic(musicOn);
