@@ -1444,7 +1444,11 @@ function updateVillage(p){const pc=p.x+p.w/2;let near=null,best=80;
       else if(Math.abs(dd)>=260){const hd=v.home-v.x;if(Math.abs(hd)>4){v.x+=Math.sign(hd)*1.2;v.run=true;v.f=Math.sign(hd);}else v.f=Math.floor(v.t/200)%2?1:-1;}
       else v.f=dd<0?-1:1;
       if(Math.abs(dd)<200&&v.t%150===0){popup(v.x,ground-60,'ワン！','#fff',20,40);tone(520,.06,'square',.04,0,380);tone(560,.06,'square',.04,.1,400);}}
-    const d=Math.abs(v.x-pc);if(d<best){best=d;near=v;}if(v.kind!=='dog')v.f=d<200?(pc<v.x?-1:1):(Math.floor(v.t/240)%2?1:-1);}
+    if(v.kind!=='dog'){const d0=Math.abs(v.x-pc),spd={child:1.3,elder:.4,farmer:.6}[v.kind]||.8;v.walk=false;
+      if(d0<120){v.f=pc<v.x?-1:1;v.tx=null;}   // 話すときは立ち止まって こちらを向く
+      else{if(v.tx==null||(v.idle||0)>0){if(v.idle>0)v.idle--;else v.tx=v.home+(Math.random()*2-1)*(v.kind==='child'?140:90);}
+        if(v.tx!=null&&!(v.idle>0)){const dx=v.tx-v.x;if(Math.abs(dx)>2){v.x+=Math.sign(dx)*spd;v.f=Math.sign(dx);v.walk=true;}else{v.tx=null;v.idle=60+Math.floor(Math.random()*150);}}}}   // うろうろ歩いて、ときどき立ち止まる
+    const d=Math.abs(v.x-pc);if(d<best){best=d;near=v;}}
   if(near&&p.on){if(!talk||talk.v!==near){talk={v:near,line:0,chars:0,wait:0};tone(880,.05,'square',.03);}
     const L=villageLines(near.kind),txt=L[talk.line%L.length];
     if(talk.chars<txt.length){if(near.t%2===0){talk.chars++;if(talk.chars%2===0&&txt[talk.chars-1]!==' ')tone(near.kind==='child'?820:near.kind==='woman'?660:near.kind==='elder'?330:near.kind==='dog'?980:near.kind==='farmer'?380:440,.025,'square',.018);}}   // 1文字ずつ（ピピピ）
@@ -3353,9 +3357,9 @@ function drawVillageScenery(){const W2=world,t=Date.now();
   if(camera<260){x.fillStyle='#6a4428';x.fillRect(130,ground-80,8,80);x.fillStyle='#c89a5a';x.fillRect(90,ground-110,90,40);x.strokeStyle='#6a4428';x.lineWidth=3;x.strokeRect(90,ground-110,90,40);
     x.fillStyle='#3a2410';x.font='bold 14px system-ui';x.textAlign='center';x.fillText('この先 海',135,ground-84);x.textAlign='left';}}
 // 村人：りんかく・かげ・つやのある目で、キャラクターらしく
-function drawPerson(o){const OL='#2a1a14';
-  const leg=(lx,c)=>{x.fillStyle=c;x.beginPath();x.roundRect?x.roundRect(lx,-16,8,14,3):x.rect(lx,-16,8,14);x.fill();x.strokeStyle=OL;x.lineWidth=1.4;x.stroke();};
-  leg(-9,o.pants);leg(1,o.pants);ell(-5,-2,6,3,o.shoe);ell(5,-2,6,3,o.shoe);
+function drawPerson(o){const OL='#2a1a14',sw=o.step||0;
+  const leg=(lx,c,dx)=>{x.fillStyle=c;x.beginPath();x.roundRect?x.roundRect(lx+dx,-16,8,14,3):x.rect(lx+dx,-16,8,14);x.fill();x.strokeStyle=OL;x.lineWidth=1.4;x.stroke();};
+  leg(-9,o.pants,-sw*3);leg(1,o.pants,sw*3);ell(-5-sw*3,-2,6,3,o.shoe);ell(5+sw*3,-2,6,3,o.shoe);
   // 腕
   for(const sx of[-1,1]){x.fillStyle=o.sleeve||o.top;x.beginPath();x.roundRect?x.roundRect(sx*13-4,-36,8,18,4):x.rect(sx*13-4,-36,8,18);x.fill();x.strokeStyle=OL;x.lineWidth=1.4;x.stroke();ell(sx*13,-17,4,4,o.skin);}
   // 体
@@ -3392,7 +3396,7 @@ function drawDog(v){const run=v.run,ph=v.t*(run?.35:.08),wag=Math.sin(v.t*(run?.
   x.fillStyle='#d83a3a';x.fillRect(8,-22,5,3);ell(10.5,-19,1.6,1.6,'#ffd24a');   // くびわ
   x.restore();}
 function drawVillager(v){const k=v.kind;if(k==='dog'){drawDog(v);if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-70,24,'gold');x.restore();}return;}
-  const sc=k==='child'?.8:1,bob=Math.abs(Math.sin(v.t*.06))*1.5;
+  const sc=k==='child'?.8:1,bob=v.walk?Math.abs(Math.sin(v.t*.2))*2.5:Math.abs(Math.sin(v.t*.06))*1.5;
   x.save();x.translate(v.x,ground);x.scale(sc*1.7*v.f,sc*1.7);x.translate(0,-bob);ell(0,0,14,3,'#00000022');
   const P={
     man:{skin:'#ffd6b0',top:'#3f7a46',topDark:'#2a5430',sleeve:'#f4f0e8',pants:'#6a4a30',shoe:'#3a2414',
@@ -3420,7 +3424,7 @@ function drawVillager(v){const k=v.kind;if(k==='dog'){drawDog(v);if(talk&&talk.v
         x.beginPath();x.ellipse(0,-68,14,9,0,Math.PI,0);x.fill();x.stroke();x.fillStyle='#d83a3a';x.fillRect(-14,-67,28,4);
         x.strokeStyle='#c8a848';x.lineWidth=.8;for(let k=-22;k<24;k+=5){x.beginPath();x.moveTo(k,-65);x.lineTo(k*1.1,-61);x.stroke();}}}
   }[k];
-  drawPerson(P);
+  P.step=v.walk?Math.sin(v.t*.2):0;drawPerson(P);
   x.restore();
   if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-128*sc-bob,24,'gold');x.restore();}}
 function drawVillagers(){for(const v of villagers){if(v.x<camera-60||v.x>camera+W+60)continue;drawVillager(v);}}
