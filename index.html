@@ -515,7 +515,9 @@ function noteHiScore(){if(mode!=='game'||score<=hiScore)return;hiScore=score;new
 // ゲームオーバーのまま約10秒たつと、デモ画面（タイトル）にもどる
 let loseT=0,goKind='s1';const LOSE_TO_TITLE=600;   // goKind：'s1'＝1面／'s2'＝2面／'boss'＝ボス戦（それぞれ演出がちがう）
 function loseTap(){if(rankOn()&&rankAsked!==score&&rankPlace(score))maybeAskName();else retry();}
-function retry(){if(stage===2){score=stageStartScore;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else{reset();lives=3}}
+function retry(){   // ゲームオーバーから再挑戦：スコアは0から（ステージ2からの再挑戦でも）
+  roundBase=null;
+  if(stage===2){score=0;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else{reset();lives=3;score=0;stageStartScore=0}}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
 function inHole(h){return enemies.filter(e=>e.alive&&e.trapHole===h)}
