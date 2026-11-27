@@ -3410,14 +3410,15 @@ function drawVillageScenery(){if(insideHouse)return;const W2=world,t=Date.now();
   if(camera<260){x.fillStyle='#6a4428';x.fillRect(130,ground-80,8,80);x.fillStyle='#c89a5a';x.fillRect(90,ground-110,90,40);x.strokeStyle='#6a4428';x.lineWidth=3;x.strokeRect(90,ground-110,90,40);
     x.fillStyle='#3a2410';x.font='bold 14px system-ui';x.textAlign='center';x.fillText('この先 海',135,ground-84);x.textAlign='left';}}
 // 村人：等身を高くして、かげ・服のしわ・髪のボリュームで リアル寄りに（足もと=0、顔は+x向き）
-function drawPerson(o){const OL='#2a1a14',sw=o.step||0,skinD=o.skinD||'#d8a07a';
+function drawPerson(o){const OL='#2a1a14',sw=o.step||0,skinD=o.skinD||'#d8a07a',HS=1.38;   // HS：頭を大きめにして、よし太くんに合う かわいさに
+  const headOn=()=>{x.save();x.translate(0,-52);x.scale(HS,HS);x.translate(0,52);},headOff=()=>x.restore();
   const shade=(c1,c2,x0,y0,x1,y1)=>{const g=x.createLinearGradient(x0,y0,x1,y1);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;};
   const limb=(x0,y0,x1,y1,x2,y2,w,c)=>{x.strokeStyle=OL;x.lineWidth=w+2;x.lineCap='round';x.lineJoin='round';x.beginPath();x.moveTo(x0,y0);x.lineTo(x1,y1);x.lineTo(x2,y2);x.stroke();x.strokeStyle=c;x.lineWidth=w;x.stroke();};
   // うしろの腕と足
   const legA=sw*.45;
   limb(-3,-30,-3-Math.sin(legA)*7,-16,-3-Math.sin(legA)*9,-4,6,o.legBack||o.pants);ell(-3-Math.sin(legA)*9+2,-2.5,5,2.6,o.shoe);
   limb(-9,-48,-12-sw*3,-38,-11-sw*5,-29,4.4,o.sleeveD||o.sleeve||o.topDark);ell(-11-sw*5,-28.5,2.4,2.6,skinD);
-  if(o.hairBack)o.hairBack();
+  if(o.hairBack){headOn();o.hairBack();headOff();}
   // 手前の足
   limb(3,-30,3+Math.sin(legA)*7,-16,3+Math.sin(legA)*9,-4,6,o.pants);ell(3+Math.sin(legA)*9+2,-2.5,5,2.6,o.shoe);
   if(o.skirt)o.skirt();
@@ -3427,17 +3428,17 @@ function drawPerson(o){const OL='#2a1a14',sw=o.step||0,skinD=o.skinD||'#d8a07a';
   x.strokeStyle='#00000026';x.lineWidth=1;x.beginPath();x.moveTo(-6,-36);x.quadraticCurveTo(0,-34,6,-37);x.moveTo(-4,-44);x.quadraticCurveTo(1,-42,5,-45);x.stroke();   // 服のしわ
   if(o.body)o.body();
   // 首と頭
-  x.fillStyle=skinD;x.fillRect(-2.6,-55,5.2,6);
+  x.fillStyle=skinD;x.fillRect(-2.6,-55,5.2,6);headOn();
   const hg=x.createRadialGradient(2,-64,1.5,0,-61,11);hg.addColorStop(0,'#fff0e2');hg.addColorStop(.7,o.skin);hg.addColorStop(1,skinD);
   x.fillStyle=hg;x.beginPath();x.ellipse(.5,-61,8.4,9.6,0,0,7);x.fill();x.strokeStyle=OL;x.lineWidth=1.2;x.stroke();
   x.fillStyle=o.skin;x.beginPath();x.ellipse(-6.6,-61,2,2.8,0,0,7);x.fill();x.stroke();   // 耳
   // 目・まゆ・鼻・口
-  for(const ex of[2.2,6.4]){ell(ex,-62,1.7,1.25,'#ffffff');ell(ex+.4,-62,1,1.15,o.eye||'#3a2414');ell(ex+.75,-62.4,.35,.35,'#fff');}
+  for(const ex of[2,6.6]){ell(ex,-61.6,1.9,2.1,'#ffffff');ell(ex+.5,-61.4,1.4,1.7,o.eye||'#3a2414');ell(ex+.95,-62.2,.55,.55,'#fff');ell(ex+.1,-60.6,.3,.3,'#ffffffaa');}   // 大きめの つやのある目
   x.strokeStyle=o.brow||'#3a2414';x.lineWidth=1.1;x.beginPath();x.moveTo(.6,-64.8);x.quadraticCurveTo(2.2,-65.6,3.8,-65);x.moveTo(5,-65.2);x.quadraticCurveTo(6.6,-65.8,8,-65);x.stroke();
   x.strokeStyle=skinD;x.lineWidth=1.1;x.beginPath();x.moveTo(8.6,-62);x.quadraticCurveTo(10,-59.5,8.2,-58.8);x.stroke();   // 鼻
   x.strokeStyle='#8a3a2a';x.lineWidth=1;x.beginPath();x.moveTo(4,-56.6);x.quadraticCurveTo(6,-55.6,7.6,-56.8);x.stroke();
-  x.globalAlpha=.25;ell(5,-58.6,2.2,1.2,'#ff7a8a');x.globalAlpha=1;
-  if(o.hair)o.hair();
+  x.globalAlpha=.45;ell(5.4,-58.2,2.4,1.4,'#ff7a8a');ell(-1.4,-58.4,1.8,1.2,'#ff7a8a');x.globalAlpha=1;
+  if(o.hair)o.hair();headOff();
   // 手前の腕
   limb(9,-48,11+sw*3,-38,11+sw*5,-29,4.6,o.sleeve||o.top);ell(11+sw*5,-28.4,2.5,2.7,o.skin);
   if(o.extra)o.extra();}
@@ -3468,7 +3469,7 @@ function drawDog(v){const run=v.run,ph=v.t*(run?.38:.08),wag=Math.sin(v.t*(run?.
   x.restore();}
 function drawVillager(v){const k=v.kind;if(k==='dog'){drawDog(v);return;}
   const sc=k==='child'?.8:1,bob=v.walk?Math.abs(Math.sin(v.t*.2))*2:Math.abs(Math.sin(v.t*.05))*.8;
-  x.save();x.translate(v.x,ground);x.scale(sc*1.62*v.f,sc*1.62);x.translate(0,-bob);ell(0,0,13,2.6,'#00000026');
+  x.save();x.translate(v.x,ground);x.scale(sc*1.5*v.f,sc*1.5);x.translate(0,-bob);ell(0,0,13,2.6,'#00000026');
   const OL='#2a1a14';
   const P={
     man:{skin:'#f2c8a4',skinD:'#c89270',top:'#3f6a3e',topDark:'#284a2a',sleeve:'#f2eee6',sleeveD:'#d8d2c8',pants:'#6a4a30',legBack:'#5a3e28',shoe:'#3a2414',
@@ -3522,7 +3523,7 @@ function drawVillager(v){const k=v.kind;if(k==='dog'){drawDog(v);return;}
   }[k];
   P.step=v.walk?Math.sin(v.t*.2):0;drawPerson(P);
   x.restore();
-  if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-128*sc-bob,24,'gold');x.restore();}}
+  if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-140*sc-bob,24,'gold');x.restore();}}
 function drawVillagers(){for(const v of villagers){if(v.x<camera-60||v.x>camera+W+60)continue;drawVillager(v);}}
 function drawTalkBox(){const v=talk.v,L=villageLines(v.kind),txt=L[talk.line%L.length].slice(0,talk.chars);
   const bx=110,by=165,bw=W-220,bh=120;
