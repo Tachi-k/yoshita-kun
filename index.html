@@ -423,7 +423,8 @@ function swapStage1Side(toWest){
 }
 function followCamera(px){
   if(arenaOn)return AX;
-  if(westSide&&stage===1&&!inBasement)return Math.max(0,Math.min(world-W,px-(W-280)));   // 左へ進むので、前（左）が広く見えるように
+  if(westSide&&stage===1&&!inBasement)return Math.max(0,Math.min(world-W,px-(W-280)));
+  if(inBasement&&roomKind==='village')return Math.max(0,Math.min(world-W,px-(W-280)));   // 左へ進むので、前（左）が広く見えるように
   if(stage===2&&skyRope&&!inBasement)return Math.max(0,Math.min(world-W,px-420));   // 空のロープが見えるように
   const anchor=stage===2&&!inBasement?120:240;
   return Math.max(0,Math.min(world-W,px-anchor));
@@ -765,12 +766,22 @@ SONGS.wedding={len:48,dur:()=>60/84/2,step(i,t,sd){const bar=Math.floor(i/6),b=i
   if(b===2||b===4)bnote(mf(ch[0]),t,sd*.9,'triangle',.05),bnote(mf(ch[1]),t,sd*.9,'triangle',.04);    // ズン・チャッ・チャッ
   bnote(mf(ch[[0,1,2,1,2,1][b]]+24),t,sd*1.2,'sine',.018);                                           // オルゴール風の分散和音
   const m=WED_MEL[i];if(m){const L=holdLen6(WED_MEL,i);bnote(mf(m),t,sd*L*.95,'sine',.07);bnote(mf(m+12),t,sd*L*.8,'triangle',.022);}}};
+// ひだまり村の曲（オリジナル）：ヘ長調のゆったりした曲。笛のようなメロディと、ハープの分散和音
+const VIL_MEL=[77,0,0,76,74,0,72,0, 76,0,0,74,72,0,67,0, 74,0,72,74,77,0,76,74, 70,0,0,0,72,0,74,0,
+               77,0,0,79,81,0,79,77, 76,0,74,72,74,0,76,0, 74,0,72,70,72,0,74,76, 77,0,0,0,0,0,0,0];
+const VIL_CH=[[65,69,72],[60,64,67],[62,65,69],[58,62,65],[65,69,72],[60,64,67],[58,62,65],[65,69,72]];
+const VIL_ROOT=[41,36,38,34,41,36,34,41];
 // 2面道中の曲（オリジナル）：ホ短調、半音でにじり寄るベースと低い太鼓で「物騒な」感じ
 const F2_MEL=[64,0,0,0,0,0,65,64, 0,0,71,0,70,0,67,0, 65,0,0,69,0,0,72,71, 64,0,0,0,0,0,0,0,
               69,0,0,72,0,71,69,0, 70,0,0,74,0,0,77,76, 75,0,0,71,0,0,66,0, 64,0,0,0,63,0,64,0];
 const F2_CH=[[59,64,67],[59,64,67],[60,65,69],[59,64,67],[57,60,64],[58,62,65],[59,63,66],[59,64,67]];
 const F2_ROOT=[40,40,41,40,45,46,47,40];
 function darkPad(ms,t,dur,vol){const f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();f.type='lowpass';f.frequency.value=700;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.4);g.gain.setValueAtTime(vol,t+Math.max(.41,dur-.3));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.3);f.connect(g);g.connect(bus());for(const m of ms)for(const d of[-10,10]){const o=audioCtx.createOscillator();o.type='sawtooth';o.frequency.value=mf(m-12);o.detune.value=d;o.connect(f);o.start(t);o.stop(t+dur+.35)}}
+SONGS.village={len:64,dur:()=>60/92/2,step(i,t,sd){const bar=i>>3,b=i%8,late=bar===6&&b>=4,ch=late?[60,64,67]:VIL_CH[bar],r=late?36:VIL_ROOT[bar];
+  if(b===0){pad(ch,t,sd*8,.012);if(bar%2===0)bell(ch[2]+12,t,.018);}
+  if(b===0||b===4)bnote(mf(r),t,sd*3.5,'triangle',.1);   // やさしいベース
+  bnote(mf(ch[[0,1,2,1,0,1,2,1][b]]+12),t,sd*1.6,'triangle',.028);   // ハープの分散和音
+  const m=VIL_MEL[i];if(m){const L=holdLen(VIL_MEL,i,8);bnote(mf(m),t,sd*L*.95,'sine',.07);bnote(mf(m+12),t,sd*L*.8,'triangle',.012);}}};   // 笛のようなメロディ
 SONGS.field2={len:64,dur:()=>60/(player&&player.hole?140:118)/2/stage2Rush(),step(i,t,sd){const bar=i>>3,b=i%8,r=F2_ROOT[bar];
   if(b===0)darkPad(F2_CH[bar],t,sd*8,.03);
   const os=[0,0,12,0,1,0,7,0][b];bnote(mf(r+os),t,sd*.8,'sawtooth',.035);bnote(mf(r+os),t,sd*.9,'triangle',.09);   // にじり寄るベース
@@ -850,7 +861,7 @@ document.getElementById('videoBox').addEventListener('click',e=>{if(e.target.id=
 function currentSong(){if(endSong.on)return null;   // エンディングの曲が流れている間は、ほかのBGMを止める
   if(mode==='opening'||xmasIntro)return null;
   if(mode==='title')return null;   // デモ画面は音楽なし（とぎれとぎれになるので）
-  if(inBasement&&state==='play')return roomKind==='basement'?'basement':'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field';
+  if(inBasement&&state==='play')return roomKind==='basement'?'basement':roomKind==='village'?(villageCalm()>.35?'village':'field2'):'bonus';if(state==='ending'||state==='endingCut')return endingRare?'rare':endingPair?'wedding':'ending';if(state!=='play')return null;if(bossIntroLong()||(arenaOn&&boss&&boss.st==='dead'))return null;if(arenaOn&&boss&&boss.st!=='dead')return 'boss';return stage===2?'field2':'field';
 }
 // ===== MP3のBGM =====
 // 場面 → MP3ファイル（HTMLからの相対パス）。loopStart/loopEnd でループ区間を指定できる。
@@ -1194,13 +1205,13 @@ function enterBasement(h,returnX=VAULT_X+45,title=''){
   else{put('chest',460,ground);put('chest',790,ground);}
   p.x=46;p.y=40;p.vx=0;p.vy=2;p.hole=null;p.on=false;p.kickT=0;
   banner(title||(h?'隠し地下室':'ダイヤの宝物庫'),'お宝を集めて 右のはしごから戻ろう',150);sound('oneup');}
-function exitBasement(){const p=player,sf=surface,h=sf.hole,wasBonus=inBonus(),wasCloud=roomKind==='cloud';
-  if(wasBonus)finishBonus();
+function exitBasement(){const p=player,sf=surface,h=sf.hole,wasVillage=roomKind==='village',wasBonus=inBonus()&&!wasVillage,wasCloud=roomKind==='cloud';
+  if(wasBonus)finishBonus();talk=null;
   platforms=sf.platforms;coins=sf.coins;enemies=sf.enemies;items=sf.items;spots=sf.spots;world=sf.world;camera=sf.camera;
   holes=h?sf.holes.filter(x=>x!==h):sf.holes;inBasement=false;surface=null;parts=[];roomKind='basement';balls=[];cannonWarn=null;cannonShot=null;cannonT=Math.max(cannonT,240);
   p.x=h?h.x+h.w+6:sf.returnX;p.y=ground-p.h;p.vy=-8;p.moveLock=300;p.on=false;p.hole=null;p.inv=Math.max(p.inv,90);p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);
   for(const e of enemies){if(e.alive&&!e.trapHole&&Math.abs(e.x+16-(p.x+17))<170){e.x+=(e.x+16>=p.x+17?1:-1)*170;e.safe=90;}}
-  popup(p.x+17,ground-70,wasCloud?'雲の上から もどった！':wasBonus?'ボーナス終了！':'地上にもどった！','#fff',24,90);sound('jump');}
+  popup(p.x+17,ground-70,wasCloud?'雲の上から もどった！':wasVillage?'大王の谷へ もどった！':wasBonus?'ボーナス終了！':'地上にもどった！','#fff',24,90);sound('jump');}
 // ボーナス画面（1面：コインの雨）とボーナスステージ（2面：雲の上）
 function finishBonus(){
   const loot=bonusLoot;
@@ -1399,7 +1410,36 @@ function bossRush(){return arenaOn?1+.35*(1-timeLeft/(BOSS_TIME*60)):1}   // ボ
 function addTimeBonus(){timeBonus=Math.ceil(timeLeft/60)*10;score+=timeBonus}
 let lastSafeX=60;
 let roomKind='basement',roomT=0,bonusUsed={},rainGapCrossed=false;   // roomKind: basement=隠し地下室 / rain=ボーナス画面 / sky=ボーナスステージ
-function inBonus(){return inBasement&&roomKind!=='basement'}   // 最後に安全な地面に立っていた位置（ミスした時の再開地点）
+function inBonus(){return inBasement&&roomKind!=='basement'}
+// ===== 2面の左の先にある「ひだまり村」：敵のいない 平和な村。村人に近づくと話しかけてくる =====
+const VILLAGE_W=6*W;
+let villagers=[],talk=null,villageSeen=false;
+function villageCalm(){return inBasement&&roomKind==='village'?Math.max(0,Math.min(1,(world-1000-player.x)/1600)):0}   // 左へ進むほど 青空・平和に
+function villageLines(kind){const hero=princessRound?'ソラ姫さま':'よし太くん';
+  if(princessRound)return {man:['これは これは、ソラ姫さま！','大王が また わるさを しておるとか…','どうか おきを つけて！'],
+    woman:['まあ、ソラ姫さま！ おひさしぶりです。','よし太くんは いつも 姫さまの おはなしを していましたよ。'],
+    child:['お姫さまだ！ ほんものの お姫さまだ！','ねえねえ、大王を やっつけに いくの？ がんばって！'],
+    elder:['ほっほっほ。姫さまみずから 旅に でられるとは。','大王は 穴に落ちると しばらく うごけぬ。そのすきに 頭を ふむのじゃ。']}[kind];
+  return {man:['ここは 大王の谷の はずれにある、ひだまり村 だよ。','モグラ大王が ソラ姫さまを さらって いったんだ…','どうか 姫を とりもどしてくれ！ '+hero+'！'],
+    woman:['あら、旅のかた？ ゆっくりして いってね。','ソラ姫さまは 村のみんなの あこがれなの。','きっと 姫さまを 助けてあげてね。'],
+    child:['ぼく、大きくなったら '+hero+'みたいな ゆうしゃに なるんだ！','穴をほって 大王を おとすんでしょ？ がんばってね！'],
+    elder:['ほっほっほ。よくぞ ここまで 来なすった。','大王は 穴に落ちると しばらく うごけぬ。そのすきに 頭を ふむのじゃ。','…じゃが 最後の ひとふみは 大王も かしこくなる。気をつけるのじゃぞ。']}[kind];}
+const VILLAGER_NAME={man:'むらびとの おじさん',woman:'むらびとの おばさん',child:'村の 子ども',elder:'村の 長老'};
+function enterVillage(){const p=player;
+  surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX:8};inBasement=true;roomKind='village';skyRope=null;
+  world=VILLAGE_W;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;cannonShot=null;items=[];coins=[];
+  platforms=[{x:0,y:ground,w:world,h:75}];
+  villagers=[{kind:'man',x:world-1700},{kind:'woman',x:world-2350},{kind:'child',x:world-2950},{kind:'elder',x:world-3700}].map((v,i)=>({...v,f:-1,t:i*37}));
+  talk=null;p.x=world-p.w-8;p.y=ground-p.h;p.vy=0;p.on=true;p.hole=null;p.facing=-1;lastSafeX=p.x;camera=followCamera(p.x);
+  if(!villageSeen){villageSeen=true;banner('ひだまり村への道','大王の谷を はなれて、左へ 進んでみよう',150);}}
+function updateVillage(p){const pc=p.x+p.w/2;let near=null,best=80;
+  for(const v of villagers){v.t++;const d=Math.abs(v.x-pc);if(d<best){best=d;near=v;}v.f=d<200?(pc<v.x?-1:1):(Math.floor(v.t/240)%2?1:-1);}
+  if(near&&p.on){if(!talk||talk.v!==near){talk={v:near,line:0,chars:0,wait:0};tone(880,.05,'square',.03);}
+    const L=villageLines(near.kind),txt=L[talk.line%L.length];
+    if(talk.chars<txt.length){if(near.t%2===0){talk.chars++;if(talk.chars%2===0&&txt[talk.chars-1]!==' ')tone(near.kind==='child'?820:near.kind==='woman'?660:near.kind==='elder'?330:440,.025,'square',.018);}}   // 1文字ずつ（ピピピ）
+    else if(++talk.wait>170){talk.line++;talk.chars=0;talk.wait=0;}}
+  else talk=null;
+  if(villageCalm()>.35&&!p.villageBanner){p.villageBanner=true;banner('ひだまり村','大王の谷の はずれにある 小さな村',150);}}   // 最後に安全な地面に立っていた位置（ミスした時の再開地点）
 // ===== エンディングでも主人公を動かせる =====
 const QUEST_TRIAL_URL='https://tachi-k.github.io/ojiya-quest/?from=ending';
 const QUEST_ENDING_KEY='yoshita-quest-return';
@@ -2443,6 +2483,9 @@ if(mode==='game'&&stage===1&&!inBasement&&p.on&&!p.hole){
   if(westSide&&keys.right&&p.x>=world-p.w-1){swapStage1Side(false);return;}
   if(westSide&&!westVisited&&p.x<WEST_ROUTE-40){westVisited=true;banner('西のひみつの道','左はしの気球からも 2面へ行ける！',150);}   // 看板を通りすぎたら知らせる
 }
+// 2面の左はしから さらに左へ進むと、ひだまり村への道へ
+if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&p.on&&!p.hole&&!p.climb&&keys.left&&p.x<=0){enterVillage();return;}
+if(inBasement&&roomKind==='village'&&state==='play'){updateVillage(p);if(p.on&&keys.right&&p.x>=world-p.w-1){exitBasement();return;}}
 // 2面のスタートから左へ進むと、空からロープがスルスル降りてくる。つかまると空の上のボーナスステージへ
 if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!bonusUsed[2]){
   if(!skyRope&&p.x<STAGE2_START-12&&keys.left){   // スタートから左へ歩き出したら降りてくる
@@ -2513,7 +2556,7 @@ if(p.toCloud&&p.y+p.h<-20&&state==='play'){enterCloudWorld();return;}
 if(inBasement&&roomKind==='cloud'&&state==='play'){
   if(p.y>H+30){exitBasement();return;}   // 雲から落ちたら1面に戻る（ミスにはならない）
   if(p.x+p.w>world-90&&p.on){score+=2000;popup(p.x+17,p.y-40,'雲の上をクリア！ +2000','#ffdf50',26,100);sound('treasure');exitBasement();return;}}
-if(inBonus()&&roomKind!=='cloud'&&state==='play'){roomT--;
+if(inBonus()&&roomKind!=='cloud'&&roomKind!=='village'&&state==='play'){roomT--;
   if(roomKind==='rain'&&roomT>20&&roomT%7===0){const r=Math.random();items.push({type:r<.03?heartType():r<.12?'gem':'coin',x:40+Math.random()*(W-80),y:-20,vx:(Math.random()-.5)*1.2,vy:1,t:300});}
   if(roomT<=0){exitBasement();return;}}
 // 崖の底で横位置を判定すると、落ちながら移動したときに入口を通り過ぎてしまう。
@@ -3214,6 +3257,67 @@ function drawSnowman(cx){const b=ground;ell(cx,b-14,16,15,'#f4f9ff');ell(cx,b-38
   x.fillStyle='#ff8a2a';x.beginPath();x.moveTo(cx+1,b-37);x.lineTo(cx+12,b-35);x.lineTo(cx+1,b-34);x.closePath();x.fill();
   x.fillStyle='#d8202e';x.fillRect(cx-12,b-30,24,4);x.fillRect(cx+6,b-30,5,12);x.fillStyle='#222';x.fillRect(cx-9,b-51,18,4);x.fillRect(cx-6,b-62,12,12);
   x.strokeStyle='#6a4428';x.lineWidth=2;x.beginPath();x.moveTo(cx-14,b-20);x.lineTo(cx-26,b-30);x.moveTo(cx+14,b-20);x.lineTo(cx+26,b-30);x.stroke();}
+// ===== ひだまり村の絵 =====
+function drawVillageBg(){const k=villageCalm(),t=Date.now()*.004;
+  drawSky();   // 大王の谷の夕焼けの上に、左へ進むほど 青空を重ねる
+  x.save();x.globalAlpha=k;const sky=x.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#3d9be9');sky.addColorStop(.55,'#8fd0f7');sky.addColorStop(1,'#eaf8ff');x.fillStyle=sky;x.fillRect(0,0,W,H);
+  const glow=x.createRadialGradient(780,90,20,780,90,160);glow.addColorStop(0,'#fffbe0dd');glow.addColorStop(1,'#fff0');x.fillStyle=glow;x.fillRect(0,0,W,H);ell(780,90,32,32,'#fffbe6');
+  for(const c of CLOUD_SET){const span=W+400,cx=((c.x-camera*.12+t*3)%span+span)%span-200;drawCloud(cx,c.y,c.s*.85,'#c9dcef','#ffffff','#ffffff');}
+  drawRidge(RIDGE_FAR,camera*.08,'#9fc8e8','#f4f9ff');
+  x.fillStyle='#7cc47a';for(let i=-1;i<6;i++){const hx=((i*260-camera*.25)%1560+1560)%1560-200;x.beginPath();x.arc(hx,ground+30,170,Math.PI,0);x.fill();}
+  x.restore();}
+function drawVillageGround(b){const k=villageCalm();
+  const g=x.createLinearGradient(0,b.y,0,b.y+b.h);g.addColorStop(0,'#8a6440');g.addColorStop(1,'#5a3e26');x.fillStyle=g;x.fillRect(b.x,b.y,b.w,b.h);
+  x.fillStyle=k>.3?'#5fbf55':'#6a8a4a';x.fillRect(b.x,b.y-4,b.w,10);   // 草
+  x.fillStyle='#d8c08a';x.fillRect(Math.max(b.x,camera-10),b.y+14,W+20,16);   // 村の道
+  x.fillStyle='#c0a870';for(let gx=Math.floor(camera/60)*60;gx<camera+W;gx+=60)x.fillRect(gx+20,b.y+20,14,3);}
+function drawVillageHouse(hx,roof,wall){x.fillStyle=wall;x.fillRect(hx-70,ground-110,140,110);
+  x.strokeStyle='#00000022';x.lineWidth=1;for(let yy=ground-100;yy<ground;yy+=14){x.beginPath();x.moveTo(hx-70,yy);x.lineTo(hx+70,yy);x.stroke();}
+  x.fillStyle=roof;x.beginPath();x.moveTo(hx-90,ground-105);x.lineTo(hx,ground-170);x.lineTo(hx+90,ground-105);x.closePath();x.fill();
+  x.fillStyle='#00000022';x.fillRect(hx-90,ground-108,180,6);
+  x.fillStyle='#6a4428';x.fillRect(hx-16,ground-56,32,56);ell(hx+9,ground-28,2.5,2.5,'#ffd24a');   // とびら
+  for(const wx of[-45,45]){x.fillStyle='#ffe9a0';x.fillRect(hx+wx-12,ground-82,24,22);x.strokeStyle='#6a4428';x.lineWidth=3;x.strokeRect(hx+wx-12,ground-82,24,22);x.beginPath();x.moveTo(hx+wx,ground-82);x.lineTo(hx+wx,ground-60);x.stroke();}
+  x.fillStyle='#8a5a3a';x.fillRect(hx+40,ground-165,16,34);}   // えんとつ
+function drawVillageScenery(){const W2=world,t=Date.now();
+  // 谷のはずれ（右）：あれた岩。村に近づくと 家・畑・井戸・木・花
+  for(let i=0;i<6;i++){const rx=W2-200-i*160;if(rx<camera-100||rx>camera+W+100)continue;ell(rx,ground-10,40+(i%3)*10,22,'#6a5a7a');ell(rx-8,ground-18,22,12,'#8a7a9a');}
+  const houses=[[W2-2050,'#c8443a','#f4e6cc'],[W2-2650,'#3a6ac8','#f0e2c4'],[W2-3300,'#3a9a4a','#f6ead2'],[W2-4100,'#c8843a','#efe0c0']];
+  for(const [hx,r,w] of houses){if(hx<camera-120||hx>camera+W+120)continue;drawVillageHouse(hx,r,w);}
+  for(let tx=W2-1900;tx>200;tx-=330){if(tx<camera-80||tx>camera+W+80)continue;x.fillStyle='#7a5030';x.fillRect(tx-7,ground-70,14,70);ell(tx,ground-90,40,36,'#4fae52');ell(tx-14,ground-100,22,20,'#6fc86a');}   // 木
+  for(let fx=W2-1850;fx>300;fx-=36){if(fx<camera-40||fx>camera+W+40)continue;x.fillStyle='#d8b070';x.fillRect(fx,ground-30,5,30);if(fx%72===0)x.fillRect(fx-31,ground-24,36,4),x.fillRect(fx-31,ground-12,36,4);}   // さく
+  {const wx=W2-2500;if(wx>camera-80&&wx<camera+W+80){x.fillStyle='#8a8a9a';x.fillRect(wx-26,ground-34,52,34);x.fillStyle='#5a3a24';x.fillRect(wx-30,ground-80,6,46);x.fillRect(wx+24,ground-80,6,46);x.fillStyle='#b84a3a';x.beginPath();x.moveTo(wx-38,ground-80);x.lineTo(wx,ground-100);x.lineTo(wx+38,ground-80);x.closePath();x.fill();}}   // 井戸
+  for(let i=0;i<70;i++){const fx=W2-1800-i*53;if(fx<camera-10||fx>camera+W+10||fx<100)continue;ell(fx,ground-6,3.5,3.5,['#ff8ab8','#fff','#ffd84d','#9fd8ff'][i%4]);}   // 花
+  // 左はし：かんばん
+  if(camera<260){x.fillStyle='#6a4428';x.fillRect(130,ground-80,8,80);x.fillStyle='#c89a5a';x.fillRect(90,ground-110,90,40);x.strokeStyle='#6a4428';x.lineWidth=3;x.strokeRect(90,ground-110,90,40);
+    x.fillStyle='#3a2410';x.font='bold 14px system-ui';x.textAlign='center';x.fillText('この先 海',135,ground-84);x.textAlign='left';}}
+function drawVillager(v){const k=v.kind,sc=k==='child'?.78:1,bob=Math.abs(Math.sin(v.t*.06))*1.5;
+  x.save();x.translate(v.x,ground);x.scale(sc*1.6*v.f,sc*1.6);x.translate(0,-bob);
+  const skin='#ffd9b8',body={man:'#3f8a4a',woman:'#c8384a',child:'#ffcf3a',elder:'#6a4aa8'}[k];
+  ell(0,0,14,3,'#00000022');
+  x.fillStyle=k==='man'?'#5a4030':'#4a3a5a';x.fillRect(-8,-14,6,14);x.fillRect(2,-14,6,14);   // 足
+  x.fillStyle=body;x.beginPath();if(x.roundRect)x.roundRect(-12,-38,24,26,8);else x.rect(-12,-38,24,26);x.fill();   // 体
+  if(k==='woman'){x.fillStyle='#fff';x.fillRect(-8,-30,16,18);}   // エプロン
+  if(k==='elder'){x.fillStyle='#8a6a3a';x.fillRect(14,-40,3,40);}   // つえ
+  ell(0,-50,14,14,skin);   // 顔
+  if(k==='man'){x.fillStyle='#5a3a22';x.beginPath();x.arc(0,-54,14,Math.PI,0);x.fill();x.fillStyle='#5a3a22';x.fillRect(-6,-44,12,3);}   // かみ・ひげ
+  if(k==='woman'){x.fillStyle='#c86a2a';x.beginPath();x.arc(0,-54,15,Math.PI,0);x.fill();ell(-12,-60,7,7,'#c86a2a');}
+  if(k==='child'){x.fillStyle='#2a6ac8';x.beginPath();x.arc(0,-56,14,Math.PI,0);x.fill();x.fillRect(0,-58,18,4);}   // ぼうし
+  if(k==='elder'){x.fillStyle='#f4f4f4';x.beginPath();x.moveTo(-10,-46);x.lineTo(10,-46);x.lineTo(0,-30);x.closePath();x.fill();ell(-12,-54,4,6,'#eee');ell(12,-54,4,6,'#eee');}   // ひげ
+  ell(4,-51,1.8,2.2,'#2a1a10');ell(-3,-51,1.8,2.2,'#2a1a10');ell(6,-46,2.5,1.5,'#ff9bb0');
+  x.restore();
+  if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-110*sc-bob,24,'gold');x.restore();}}
+function drawVillagers(){for(const v of villagers){if(v.x<camera-60||v.x>camera+W+60)continue;drawVillager(v);}}
+function drawTalkBox(){const v=talk.v,L=villageLines(v.kind),txt=L[talk.line%L.length].slice(0,talk.chars);
+  const bx=110,by=165,bw=W-220,bh=120;
+  x.save();x.textAlign='left';x.fillStyle='#000000e0';x.beginPath();if(x.roundRect)x.roundRect(bx,by,bw,bh,10);else x.rect(bx,by,bw,bh);x.fill();
+  x.strokeStyle='#fff';x.lineWidth=4;x.stroke();x.lineWidth=1.5;x.strokeRect(bx+7,by+7,bw-14,bh-14);
+  x.fillStyle='#ffe36a';x.font='bold 18px system-ui';x.fillText(VILLAGER_NAME[v.kind],bx+24,by+34);
+  x.fillStyle='#fff';x.font='bold 22px system-ui';
+  // 長い文は2行に
+  const lines=[];let cur='';for(const ch of txt){if(x.measureText(cur+ch).width>bw-60){lines.push(cur);cur='';}cur+=ch;}lines.push(cur);
+  lines.slice(0,2).forEach((ln,i)=>x.fillText((i===0?'「':'　')+ln+(i===lines.length-1&&talk.chars>=L[talk.line%L.length].length?'」':''),bx+24,by+68+i*30));
+  if(talk.chars>=L[talk.line%L.length].length&&Math.floor(Date.now()/300)%2){x.fillStyle='#fff';x.beginPath();x.moveTo(bx+bw-34,by+bh-28);x.lineTo(bx+bw-22,by+bh-28);x.lineTo(bx+bw-28,by+bh-20);x.closePath();x.fill();}   // ▼
+  x.restore();}
 function drawSky(){
   const dusk=stage===2,t=Date.now()*.004;
   const sky=x.createLinearGradient(0,0,0,H);
@@ -3292,7 +3396,7 @@ function draw(){
   if(state==='endingCut'){drawEndingCut();return;}
   if(state==='ending'){drawEnding();return}
   x.save();if(shake>0)x.translate((realRandom()-.5)*shake*.8,(realRandom()-.5)*shake*.8);
-  if(inBasement){if(roomKind==='basement')drawBasementBg();else drawBonusBg();}else drawSky();
+  if(inBasement){if(roomKind==='basement')drawBasementBg();else if(roomKind==='village')drawVillageBg();else drawBonusBg();}else drawSky();
   x.save();x.translate(-camera,0);
   if(!inBasement){const hg=x.createLinearGradient(0,ground-70,0,ground);hg.addColorStop(0,XMAS?'#ffffff':stage===2?'#8a6aa4':'#9ad88f');hg.addColorStop(1,XMAS?(stage===2?'#c8bcd8':'#cfdcea'):stage===2?'#5a3f74':'#5fa865');
     for(let i=0;i<world/300;i++){const hx=i*300+90;if(hx+120<camera||hx-120>camera+W)continue;x.fillStyle=hg;x.beginPath();x.arc(hx,ground+50,115,Math.PI,0);x.fill();
@@ -3300,7 +3404,8 @@ function draw(){
       if(stage===1&&!XMAS)for(const bx of[-60,40]){ell(hx+bx,ground-4,16,10,'#4e9a52');ell(hx+bx+10,ground-8,12,9,'#5fb062');}}
     if(XMAS)for(let i=0;i<world/700;i++){const tx=i*700+380;if(tx+60<camera||tx-60>camera+W||(stage===2&&tx>AX-80))continue;if(i%2)drawSnowman(tx);else drawXmasTree(tx);}}   // 丘と茂み（クリスマスはツリーと雪だるま）
   if(stage===2&&!inBasement)drawArenaBg();
-  for(const b of platforms){if(b.cloudPad&&!inBasement){drawCloudPad(b);continue;}if(!inBasement){drawTerrain(b);continue;}if(roomKind!=='basement'){drawBonusPlatform(b);continue;}if(b.y>=ground-1){drawBasementFloor(b);continue;}drawStoneLedge(b);continue;x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
+  if(inBasement&&roomKind==='village')drawVillageScenery();
+  for(const b of platforms){if(b.cloudPad&&!inBasement){drawCloudPad(b);continue;}if(!inBasement){drawTerrain(b);continue;}if(roomKind==='village'){drawVillageGround(b);continue;}if(roomKind!=='basement'){drawBonusPlatform(b);continue;}if(b.y>=ground-1){drawBasementFloor(b);continue;}drawStoneLedge(b);continue;x.fillStyle=inBasement?(roomKind==='sky'?'#e8f4ff':roomKind==='rain'?'#5a4a8a':'#4a3a52'):stage===2?'#7a4c35':'#986039';x.fillRect(b.x,b.y,b.w,b.h);x.fillStyle=inBasement?(roomKind==='sky'?'#ffffff':roomKind==='rain'?'#ffdf50':'#6a5876'):stage===2?'#5f9a4c':'#50bb57';x.fillRect(b.x,b.y,b.w,12);x.fillStyle='#ba8150';for(let j=15;j<b.w;j+=38)x.fillRect(b.x+j,b.y+30,13,8);}
   if(vaultVisible()){
     const open=diamonds>=VAULT_DIAMONDS,dx=VAULT_X;
     x.fillStyle=open?'#3d627a':'#372b48';x.fillRect(dx-22,ground-59,44,59);
@@ -3360,6 +3465,7 @@ function draw(){
   for(const r of rocks)drawBossRock(r);
   for(const w of waves)drawShockwave(w);
   for(const it of items){if(it.t<120&&Math.floor(it.t/6)%2)continue;drawItem(it)}
+  if(inBasement&&roomKind==='village')drawVillagers();
   const p=player;
   if(p.climb)p.facing=Math.floor(p.climb.t/14)%2?1:-1;   // 手足を交互に動かして登る
   const pose=p.climb?'jump':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
@@ -3381,14 +3487,14 @@ function draw(){
   {let hx=22;const w=(t,size)=>{x.font='900 '+size+'px system-ui';return x.measureText(t).width;};
     const put=(label,value)=>{if(label){fancyText(label,hx,42,19,'gold');hx+=w(label,19)+6;}fancyText(String(value),hx,42,30,'white');hx+=w(String(value),30)+20;};
     if(mode!=='title'){put('SCORE',score);drawLifeHeart(hx+16,31,32,false);hx+=36;put('×',lives);put('STAGE',stage);if(!arenaOn){drawGem(hx+15,50,28,false);hx+=36;put('',diamonds);}if(hasKey){drawKeyIcon(hx+14,34,1);hx+=34;}}}   // 画面上のダイヤも絵で描く
-  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';{const cx0=22+x.measureText('コイン').width+6,ct=coinProgress+' / '+COINS_PER_LIFE;fancyText(ct,cx0,72,20,'white');x.font='900 20px system-ui';const hx0=cx0+x.measureText(ct).width+26;fancyText('HI',hx0,72,16,'gold');fancyText(String(hiScore),hx0+28,72,20,newRecord?'gold':'white');}const roomTimer=inBonus()&&roomKind!=='cloud',sec=Math.ceil((roomTimer?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';{const cx0=22+x.measureText('コイン').width+6,ct=coinProgress+' / '+COINS_PER_LIFE;fancyText(ct,cx0,72,20,'white');x.font='900 20px system-ui';const hx0=cx0+x.measureText(ct).width+26;fancyText('HI',hx0,72,16,'gold');fancyText(String(hiScore),hx0+28,72,20,newRecord?'gold':'white');}const roomTimer=inBonus()&&roomKind!=='cloud'&&roomKind!=='village',sec=Math.ceil((roomTimer?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
     const bx0=arenaOn?420:610,by0=6,bw=arenaOn?165:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
-    x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText(roomKind==='cloud'&&inBasement?'STOP':arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
+    x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText((roomKind==='cloud'||roomKind==='village')&&inBasement?'STOP':arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
   if(mode!=='title'&&!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
-  const hint=inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  const hint=inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText(boss.lv==='legend'?'黒大王 ドリモグ':'モグラ大王 ドリモグ',595,28,20,boss.lv==='legend'?'blue':'red');if(bossStars()){x.save();x.textAlign='right';fancyText(bossStars(),940,28,16,boss.lv==='legend'?'gold':boss.lv==='super'||boss.lv==='smart'?'red':boss.lv==='weak'?'blue':'gold');x.restore();}x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/(boss.maxHp||3),16);x.strokeStyle='#0008';x.lineWidth=2;{const n=boss.maxHp||3;for(let k=1;k<n;k++){const lx=597+341*k/n;x.beginPath();x.moveTo(lx,38);x.lineTo(lx,54);x.stroke();}}x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
@@ -3430,6 +3536,7 @@ function draw(){
     if(bannerText)fancyText(bannerText,W/2,212,58,'gold');
     if(bannerSub)fancyText(bannerSub,W/2,bannerText?262:200,28,'white');x.globalAlpha=1;}
   if(keyCelebrate)drawKeyCelebrate();
+  if(talk&&state==='play'&&!paused)drawTalkBox();
   if(bonusResult&&state==='play'&&!paused){
     const r=bonusResult;
     x.save();x.globalAlpha=Math.min(1,r.t/30);
