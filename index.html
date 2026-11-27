@@ -727,9 +727,9 @@ function bell(m,t,vol){bnote(mf(m),t,1.6,'sine',vol);bnote(mf(m)*2.76,t,.8,'sine
 function holdLen(arr,i,max){let n=1;while(n<max&&!arr[i+n]&&(i+n)%8!==0)n++;return n}
 
 // フィールド曲：C-Am-F-G
-// 1面のメロディ：ド・ドレミ・ソ！と元気に始まり、後半は高いドまで のぼって、最後は高いレへ駆けあがってくり返す
-const MEL=[72,0,72,74,76,0,79,0, 81,0,79,76,0,76,74,72, 77,0,77,76,77,0,81,0, 79,0,0,74,71,74,79,0,
-           84,0,83,84,79,0,76,79, 81,0,0,84,83,81,79,76, 77,0,81,0,79,77,76,74, 79,0,74,0,83,0,86,0];
+// 1面のメロディ：走り出したくなる軽快な8分音符。ド・レ・ミ・ソ！と駆けだし、後半は高いファまで のぼって、最後は駆けあがってくり返す
+const MEL=[72,74,76,79,0,76,79,84, 81,0,79,76,79,0,76,72, 77,76,77,81,0,77,81,84, 83,0,79,0,74,76,79,83,
+           84,0,79,84,0,79,88,86, 84,0,81,76,81,0,84,88, 89,88,86,84,81,0,84,86, 79,81,83,84,86,0,83,79];
 const ROOT=[48,45,41,43,48,45,41,43];
 const FIELD_CH=[[60,64,67],[57,60,64],[53,57,60],[55,59,62],[60,64,67],[57,60,64],[53,57,60],[55,59,62]];
 // ファミコン風の音色：矩形波（デューティ比をえらべる）・ノイズのスネア・キック
@@ -751,18 +751,18 @@ const END_MEL=[72,0,0,0,74,0,76,0, 79,0,0,0,0,0,77,76, 76,0,0,0,74,0,72,0, 74,0,
 const END_CH=[[60,64,67],[59,62,67],[57,60,64],[57,60,65],[60,64,67],[57,60,65],[59,62,67],[60,64,67]];
 const END_ROOT=[48,47,45,41,48,41,43,36];
 const SONGS={
-  field:{len:64,dur:()=>60/(player&&player.hole?172:140)/2/(stage===1?stage1Rush():1)/hurryMul(),step(i,t,sd){const T=stage===2?2:0,m=MEL[i],bar=i>>3,b=i%8,ch=FIELD_CH[bar];
+  field:{len:64,dur:()=>60/(player&&player.hole?184:160)/2/(stage===1?stage1Rush():1)/hurryMul(),step(i,t,sd){const T=stage===2?2:0,m=MEL[i],bar=i>>3,b=i%8,ch=FIELD_CH[bar];
     // メロディ：ファミコンの矩形波（25%）＋ビブラート、1拍おくれの「やまびこ」で広がりを出す
     if(m){const L=holdLen(MEL,i,3);pulse(mf(m+T),t,sd*L*.9,.045,.25,true);pulse(mf(m+T),t+sd,sd*L*.7,.014,.25,false);
       if(bar>=4)pulse(mf(m+T-(bar===6?5:4)),t,sd*L*.85,.016,.5,false);}   // 後半はハモリ
     // ベース：三角波でオクターブを行き来する
-    bnote(mf(ROOT[bar]+T+([0,12,0,12,0,12,7,12][b])),t,sd*.8,'triangle',.12);
+    bnote(mf(ROOT[bar]+T+([0,12,7,12,0,12,7,12][b])),t,sd*.7,'triangle',.12);   // 走るベース
     // 分散和音：細い矩形波（12.5%）の16分アルペジオ
     for(const k of [0,1]){const n=ch[(i*2+k)%3]+12+T;pulse(mf(n),t+k*sd/2,sd*.32,.011,.125,false);}
     // ドラム：キック・スネア・ハイハット＋小節の終わりのフィル
-    if(b===0||b===3&&bar%2===1||b===6)kick8(t,.26);
+    if(b%2===0)kick8(t,.24);   // ドン・ドン・ドン・ドンの4つ打ちで前へ前へ
     if(b===2||b===6)snare8(t,.09);
-    hat(t,b%2?.03:.02);
+    hat(t,.018);hat(t+sd/2,b%2?.035:.022,b%2?.07:.045);   // 16分のハイハット（うら拍は少し開いた音）
     if(i>=60)snare8(t+sd/2,.06);}},
   boss:{len:64,dur:()=>60/(boss&&boss.hp===1?166:152)/2/bossRush(),step(i,t,sd){const bar=i>>3,b=i%8,m=BOSS_MEL[i];if(m)brass(m,t,sd*holdLen(BOSS_MEL,i,4)*.92,.045);if(b===0)pad(BOSS_CH[bar],t,sd*8,.022);bnote(mf(BOSS_ROOT[bar]+(b%2?12:0)),t,sd*.8,'sawtooth',.045);if(b===0)timp(t,.34,98);if(b===4)timp(t,.2,98);if(i%16>=14)timp(t,.13,130);if(b%2===1)hat(t,.025);if(b===4)hat(t,.06,.1)}},
   ending:{len:64,dur:()=>60/72/2,step(i,t,sd){const bar=i>>3,b=i%8,ch=END_CH[bar];if(b===0){pad(ch,t,sd*8,.028);bnote(mf(END_ROOT[bar]),t,sd*8,'triangle',.12);timp(t,bar%4===0?.28:.12,82);bell(ch[2]+12,t,.035)}bnote(mf(ch[[0,1,2,1,2,1,0,1][b]]+12),t,sd*1.5,'triangle',.045);const m=END_MEL[i];if(m){const L=holdLen(END_MEL,i,8);brass(m,t,sd*L*.95,.03);bnote(mf(m+12),t,sd*L*.9,'sine',.025)}}}
