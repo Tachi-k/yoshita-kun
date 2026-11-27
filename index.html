@@ -3637,6 +3637,11 @@ const mb=document.getElementById('music');
   for(const id of ['rankBox','nameBox'])for(const ev of ['pointerdown','touchstart'])document.getElementById(id).addEventListener(ev,e=>e.stopPropagation());
   loadRanking();}
 document.getElementById('hapticSw').addEventListener('click',e=>e.stopPropagation());   // 手ごたえ用のスイッチは、ゲームの操作にひびかないように
+// 【ためし】iPhoneで「コツン」が出るか調べる：ジャンプは押した瞬間、掘るは指をはなした瞬間に出す
+function isIOS(){return /iP(hone|ad|od)/.test(navigator.userAgent)||/Macintosh/.test(navigator.userAgent)&&'ontouchend' in document}
+function hapticNow(){if(!isIOS())return;try{document.getElementById('hapticSw').click()}catch(_){}}
+document.getElementById('jump').addEventListener('pointerdown',hapticNow);
+document.getElementById('dig').addEventListener('touchend',hapticNow);
 function setMusic(on){musicOn=on;try{if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(endSongVolume(),audioCtx.currentTime,.05);END_SONG.volume=endSongVolume();}catch(_){}mb.textContent=on?'🎵':'🔇';mb.classList.toggle('off',!on);try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02)}
 mb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();unlockAudio();setMusic(!musicOn)});
 setMusic(musicOn);
