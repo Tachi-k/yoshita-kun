@@ -819,7 +819,19 @@ SONGS.basement={len:32,dur:()=>60/128/2/hurryMul(),step(i,t,sd){const bar=i>>3,b
   bnote(mf(BS_ROOT[bar]+(b%4===2?7:b%4===3?12:0)),t,sd*.7,'triangle',.1);
   if(b%4===0)bnote(140,t,.1,'sine',.18,50);if(b%4===2)hat(t,.05,.08);if(b%2===1)hat(t,.02);
   if(i%8===7)bell(m?m+12:88,t,.015);}};
-SONGS.bonus={len:32,dur:()=>60/150/2,step(i,t,sd){const bar=i>>3,b=i%8,m=BS_MEL[i];if(m){bnote(mf(m+5),t,sd*.7,'square',.04);bnote(mf(m+17),t,sd*.3,'sine',.04);}bnote(mf(BS_ROOT[bar]+5+(b%2?12:0)),t,sd*.7,'triangle',.11);if(b%2===0)bnote(150,t,.1,'sine',.18,50);hat(t,.025);if(b===4)hat(t,.06,.1);}};
+// ボーナス曲（オリジナル）：ニ長調のアップテンポ。時間との勝負で わくわくする感じ
+const BN_MEL=[74,78,81,78,86,0,81,0, 83,81,78,0,83,0,86,0, 79,83,86,83,91,0,86,83, 85,0,81,0,88,0,85,81,
+              86,0,85,86,90,0,86,0, 83,0,86,83,81,78,81,83, 79,0,83,0,81,0,85,0, 86,0,0,90,0,0,93,0].map(n=>n?n-12:0);
+const BN_CH=[[62,66,69],[59,62,66],[55,59,62],[57,61,64],[62,66,69],[59,62,66],[55,59,62],[62,66,69]];
+const BN_ROOT=[38,35,43,45,38,35,43,38];
+SONGS.bonus={len:64,dur:()=>60/160/2,step(i,t,sd){const bar=i>>3,b=i%8;
+  const ch=bar===6&&b>=4?[57,61,64]:BN_CH[bar],root=bar===6&&b>=4?45:BN_ROOT[bar];   // 7小節目の後半はAの和音
+  const m=BN_MEL[i];if(m){const L=holdLen(BN_MEL,i,3);pulse(mf(m),t,sd*L*.85,.04,.25,true);pulse(mf(m+12),t+sd*.5,sd*.4,.012,.125,false);   // メロディ＋キラッと1オクターブ上
+    if(bar>=4)pulse(mf(m-3),t,sd*L*.8,.014,.5,false);}
+  bnote(mf(root+[0,12,7,12,0,12,7,12][b]),t,sd*.6,'triangle',.11);   // はずむベース
+  for(const k of [0,1]){pulse(mf(ch[(i*2+k)%3]+12),t+k*sd/2,sd*.28,.01,.125,false);}   // 16分アルペジオ
+  if(b%2===0)kick8(t,.24);if(b===2||b===6)snare8(t,.08);hat(t,.022);hat(t+sd/2,.014);   // 4つ打ちのドラム
+  if(i>=60)snare8(t+sd/2,.06);if(i===63)bell(86,t+sd/2,.03);}};
 // ===== エンディングの最後に流す曲（Web Audioで鳴らす。🎵オフのときは音を出さない）=====
 const END_SONG=new Audio('audio/ending-song.mp3');END_SONG.preload='auto';
 let endSong={on:false,src:null,gain:null,where:'ending'};   // where：'ending'＝エンディング／'demo'＝ゲームオーバー後のデモ画面
