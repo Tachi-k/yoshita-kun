@@ -2093,7 +2093,7 @@ function drawCannon(){if(inBasement)return;
     const bx=camera+W-150,by=150;x.fillStyle='#e64040e0';x.beginPath();if(x.roundRect)x.roundRect(bx-80,by-26,190,40,10);else x.rect(bx-80,by-26,190,40);x.fill();x.fillStyle='#fff';x.font='900 22px system-ui';x.fillText('！'+cannonWarn.label+' ◀',bx+15,by+2);x.textAlign='left';}}
 let goalSX=0,goalSY=0,balloonLift=0,balloonVy=0;
 let mode='title',demoT=0,demoIdx=0,demoScene='field',demoDodge=0,demoBossShownAt=0,demoLadderAt=0,demoCannonHitAt=0;
-const DEMO_SCENES=['field','miss','enemyMiss','rain','basement','cannon','goal','stage2','boss'];
+const DEMO_SCENES=['field','miss','enemyMiss','rain','basement','village','cannon','goal','stage2','boss'];
 // デモは通常の操作入力だけで動かし、場面ごとに開始位置を変える。
 const realRandom=Math.random;
 function seeded(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^(t>>>14))>>>0)/4294967296}}
@@ -2102,7 +2102,8 @@ function startDemo(){
   Math.random=seeded(demoScene==='boss'?317:1);
   score=0;coinProgress=0;diamonds=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;
   demoT=0;demoDodge=0;demoBossShownAt=0;demoLadderAt=0;demoCannonHitAt=0;
-  loadStage(demoScene==='boss'||demoScene==='stage2'?2:1);
+  loadStage(demoScene==='boss'||demoScene==='stage2'||demoScene==='village'?2:1);
+  if(demoScene==='village'){const seen=villageSeen;enterVillage();villageSeen=seen;player.x=world-1300;camera=followCamera(player.x);banner('ひだまり村','大王の谷の はずれにある 小さな村',150);player.villageBanner=true;demoTalkT=0;}
   if(demoScene==='miss')player.x=1100;
   if(demoScene==='enemyMiss'){player.x=320;player.inv=0;}
   if(demoScene==='cannon'){player.x=1660;cannonT=61;enemies=[];}
@@ -2217,7 +2218,11 @@ function startGame(){stopEndSong();
 function beginGame(){mode='game';rankMine=null;loadRanking();roundBase=carry;carry=null;newRecord=false;secondRound=clearCount%3===1;princessRound=clearCount%3===2;   // 1周目よし太くん → 2周目 初代よし太くん → 3周目 ソラ姫 → 4周目からまたくり返す
 Math.random=realRandom;unlockAudio();preloadJingles();mp3Load(mp3Get('field1'));try{const m=mp3Enabled?mp3Get('field1'):null;if(m&&musicOn){m.pos=0;mp3Load(m);if(m.engine==='el'&&m.el){mp3Cur='field1';m.started=true;mp3PlayEl(m);}}}catch(_){}const b=document.getElementById('startBtn');if(b)b.style.display='none';keys={};digHold=false;padJump=false;digBuf=0;unlockAudio();reset();}
 // デモ用の自動操作
+let demoTalkT=0,demoTalkV=null;
 function demoAI(){const p=player;keys.left=keys.right=keys.jump=false;digHold=false;   // デモも無敵ではない（ぶつかればミス）
+  if(demoScene==='village'){   // 村の中を左へ歩き、村人に会うと 少し立ち止まって話を聞く
+    if(talk){if(talk.v!==demoTalkV){demoTalkV=talk.v;demoTalkT=0;}demoTalkT++;if(demoTalkT===100)advanceTalk();if(demoTalkT<170)return;}
+    keys.left=true;return;}
   if(demoScene==='miss'||demoScene==='enemyMiss'||demoScene==='goal'){keys.right=true;return;}
   if(demoScene==='basement'){
     if(inBasement){keys.right=true;if(p.x+p.w>W-80)keys.jump=demoT%30<3;return;}   // はしごでは上ボタン
@@ -2442,7 +2447,7 @@ if(mode==='title'){
   if(demoScene==='basement'&&secret.used&&!inBasement)return startDemo();
   if(state==='play')demoAI();
   else if(state!=='dying'&&state!=='goal'&&state!=='clear')return startDemo();
-  const limit=demoScene==='boss'?75:demoScene==='rain'?10:12;
+  const limit=demoScene==='boss'?75:demoScene==='rain'?10:demoScene==='village'?16:12;
   if(demoT>60*limit)return startDemo();
 }
 if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(shake>0)shake--;updateParts();
@@ -3768,7 +3773,7 @@ function draw(){
     if(bannerText)fancyText(bannerText,W/2,212,58,'gold');
     if(bannerSub)fancyText(bannerSub,W/2,bannerText?262:200,28,'white');x.globalAlpha=1;}
   if(keyCelebrate)drawKeyCelebrate();
-  if(talk&&state==='play'&&!paused)drawTalkBox();
+  if(talk&&state==='play'&&!paused&&mode!=='title')drawTalkBox();   // デモ画面では ロゴと重なるので出さない
   if(bonusResult&&state==='play'&&!paused){
     const r=bonusResult;
     x.save();x.globalAlpha=Math.min(1,r.t/30);
