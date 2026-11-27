@@ -1027,7 +1027,8 @@ function dig(){if(talk&&inBasement&&roomKind==='village'&&state==='play'&&!pause
   if(digCooldown>0||!player.on){digBuf=Math.min(2,digBuf+1);digBufT=24;return}
   if(!doDig()){const p=player,dir=p.facing===-1?-1:1;failMark={x:p.x+p.w/2+dir*(arenaOn?78:52),t:30};tone(150,.08,'square',.05)}}
 // 当たり判定は見た目より少し小さめ（かすっただけでミスにならない）
-function hitBox(p){return {x:p.x+6,y:p.y+5,w:p.w-12,h:p.h-6}}
+const HERO_GROW=1.15;   // よし太くんの見た目と、敵に当たる大きさを 少しだけ大きく（足場・穴の判定は そのまま）
+function hitBox(p){const w=(p.w-12)*HERO_GROW,h=(p.h-6)*HERO_GROW;return {x:p.x+p.w/2-w/2,y:p.y+p.h-h-1,w,h}}
 let deathCause='';
 function die(cause=''){if(state!=='play')return;deathCause=cause;state='dying';deathTick=0;player.vx=0;player.vy=-12.5;player.on=false;sound('hurt');}
 function clampToHole(p,h){p.x=Math.max(h.x+1,Math.min(h.x+h.w-p.w-1,p.x))}
@@ -3066,7 +3067,7 @@ function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='cl
 // キャラクターの見た目の大きさ（当たり判定は変えず、足もとを中心に絵だけ大きくする）
 const CHAR_SCALE=1.4;
 const VILLAGE_HERO_SCALE=2.1;   // ひだまり村では、村人に合わせて よし太くんも大きく
-function drawScaled(cx,footY,fn){const sc=inBasement&&roomKind==='village'?VILLAGE_HERO_SCALE:CHAR_SCALE;x.save();x.translate(cx,footY);x.scale(sc,sc);x.translate(-cx,-footY);fn();x.restore();}
+function drawScaled(cx,footY,fn,hero){const sc=inBasement&&roomKind==='village'?(hero?VILLAGE_HERO_SCALE:CHAR_SCALE):hero?CHAR_SCALE*HERO_GROW:CHAR_SCALE;x.save();x.translate(cx,footY);x.scale(sc,sc);x.translate(-cx,-footY);fn();x.restore();}
 // 敵キャラ：グラデーションの体・つやのある目・地面の影で立体的に（当たり判定は 32×32 のまま）
 const BOAR_SCALE=1.3;   // イノシシは ほかの敵より大きく描く
 function drawEnemy(e){
@@ -3701,8 +3702,8 @@ function draw(){
   if(p.climb)p.facing=Math.floor(p.climb.t/14)%2?1:-1;   // 手足を交互に動かして登る
   const pose=p.climb?'jump':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
-  if(p.digAnim>0&&p.on)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawDigging(p));   // スコップで掘る
-  else drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHero(p.x,p.y,p.facing,pose,p.stride));
+  if(p.digAnim>0&&p.on)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawDigging(p),true);   // スコップで掘る
+  else drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHero(p.x,p.y,p.facing,pose,p.stride),true);
   x.globalAlpha=1;
   if(stage===1&&!inBasement)drawBalloon('front');
   drawParts();drawPopups();
