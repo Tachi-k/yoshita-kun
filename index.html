@@ -2103,7 +2103,7 @@ function startDemo(){
   score=0;coinProgress=0;diamonds=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;
   demoT=0;demoDodge=0;demoBossShownAt=0;demoLadderAt=0;demoCannonHitAt=0;
   loadStage(demoScene==='boss'||demoScene==='stage2'||demoScene==='village'?2:1);
-  if(demoScene==='village'){const seen=villageSeen;enterVillage();villageSeen=seen;player.x=world-1300;camera=followCamera(player.x);banner('ひだまり村','大王の谷の はずれにある 小さな村',150);player.villageBanner=true;demoTalkT=0;}
+  if(demoScene==='village'){player.x=STAGE2_START+120;player.facing=-1;demoTalkT=0;demoTalkV=null;}   // 2面のスタートから 左へ歩いて 村へ向かう
   if(demoScene==='miss')player.x=1100;
   if(demoScene==='enemyMiss'){player.x=320;player.inv=0;}
   if(demoScene==='cannon'){player.x=1660;cannonT=61;enemies=[];}
@@ -2447,7 +2447,7 @@ if(mode==='title'){
   if(demoScene==='basement'&&secret.used&&!inBasement)return startDemo();
   if(state==='play')demoAI();
   else if(state!=='dying'&&state!=='goal'&&state!=='clear')return startDemo();
-  const limit=demoScene==='boss'?75:demoScene==='rain'?10:demoScene==='village'?16:12;
+  const limit=demoScene==='boss'?75:demoScene==='rain'?10:demoScene==='village'?22:12;
   if(demoT>60*limit)return startDemo();
 }
 if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(shake>0)shake--;updateParts();
@@ -2531,7 +2531,7 @@ if(mode==='game'&&stage===1&&!inBasement&&p.on&&!p.hole){
   if(westSide&&!westVisited&&p.x<WEST_ROUTE-40){westVisited=true;banner('西のひみつの道','左はしの気球からも 2面へ行ける！',150);}   // 看板を通りすぎたら知らせる
 }
 // 2面の左はしから さらに左へ進むと、ひだまり村への道へ
-if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&p.on&&!p.hole&&!p.climb&&keys.left&&p.x<=0){enterVillage();return;}
+if((mode==='game'||demoScene==='village')&&stage===2&&!inBasement&&!arenaOn&&p.on&&!p.hole&&!p.climb&&keys.left&&p.x<=0){const seen=villageSeen;enterVillage();if(mode==='title')villageSeen=seen;return;}
 if(inBasement&&roomKind==='village'&&state==='play'){updateVillage(p);if(!insideHouse&&p.on&&keys.right&&p.x>=world-p.w-1){exitBasement();return;}}
 // 2面のスタートから左へ進むと、空からロープがスルスル降りてくる。つかまると空の上のボーナスステージへ
 if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!bonusUsed[2]){
