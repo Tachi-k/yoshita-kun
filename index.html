@@ -1474,13 +1474,6 @@ function danceMove(i){const b=endBeat()+i*.5,ph=b%1,beat=Math.floor(b),part=Math
   if(part===2)return {dy:-hop*10,rot:0,face:beat%2?1:-1,arms:beat%2===0,dx:0};
   return {dy:-hop*18,rot:Math.sin(b*Math.PI)*.08,face:null,arms:true,dx:0};}
 function withDance(i,cx,footY,fn){if(!endDancing()){fn(null);return;}const m=danceMove(i);x.save();x.translate(cx+m.dx,footY+m.dy);x.rotate(m.rot);x.translate(-cx,-footY);fn(m);x.restore();}
-// エンディングのよし太くん：ヒーローのマント（うしろでひるがえる）
-function drawHeroCape(cx,foot,f,walking){const t=endT,fl=Math.sin(t*.12)*3+(walking?5:0),back=-(f>=0?1:-1);
-  x.save();x.translate(cx,foot);
-  const g=x.createLinearGradient(0,-30,0,0);g.addColorStop(0,'#e8283a');g.addColorStop(1,'#7a0a18');
-  x.fillStyle=g;x.beginPath();x.moveTo(-8,-29);x.lineTo(8,-29);x.quadraticCurveTo(10+back*6,-14,13+back*(8+fl),-1);x.quadraticCurveTo(back*4,2+fl*.3,-13+back*(8+fl*.6),-1);x.quadraticCurveTo(-10+back*6,-14,-8,-29);x.closePath();x.fill();
-  x.strokeStyle='#ffd24a';x.lineWidth=1.2;x.beginPath();x.moveTo(13+back*(8+fl),-1);x.quadraticCurveTo(back*4,2+fl*.3,-13+back*(8+fl*.6),-1);x.stroke();   // 金のすそ
-  x.restore();}
 function drawEndPlayer(){
   if(!endP)return;
   const pose=!endP.on?'jump':endP.walking?'walk':'front';
@@ -1488,7 +1481,7 @@ function drawEndPlayer(){
     const depth=(endP.doorFrame-28)/16;
     x.save();x.translate(endP.x+17,ground-4);x.scale(1-depth*.6,1-depth*.6);
     x.globalAlpha=1-depth;x.scale(END_SCALE,END_SCALE);drawHero(-17,-42,endP.f,pose,endP.stride);x.restore();
-  }else withDance(0,endP.x+17,endP.y+42,m=>drawEndScaled(endP.x+17,endP.y+42,()=>{const f=m&&m.face?m.face:endP.f;if(!princessRound)drawHeroCape(endP.x+17,endP.y+42,f,endP.walking);drawHero(endP.x,endP.y,f,m?(m.arms?'jump':'front'):pose,endP.stride);}));
+  }else withDance(0,endP.x+17,endP.y+42,m=>drawEndScaled(endP.x+17,endP.y+42,()=>{const f=m&&m.face?m.face:endP.f;drawHero(endP.x,endP.y,f,m?(m.arms?'jump':'front'):pose,endP.stride);}));
   if(endT<360&&Math.floor(endT/30)%2){x.textAlign='center';x.font='bold 15px system-ui';x.fillStyle='#ffffffcc';x.fillText('← → で うごける・ジャンプもできる',W/2,H-14);x.textAlign='left';}}
 // 秘密のはしごの先。ミニゲーム中は本編の時計を止める。
 const arcade=document.getElementById('arcade');
@@ -3585,18 +3578,11 @@ function drawStarLights(list){
   x.restore();
   list.forEach((c,i)=>{x.save();x.globalAlpha=.85;x.strokeStyle=`rgba(${c.col},.9)`;x.lineWidth=2;x.beginPath();x.ellipse(c.cx,ground+2,56+Math.sin(endT*.08+i)*4,10,0,0,7);x.stroke();x.restore();});   // 光の輪
 }
-function drawStarPlates(list){
-  // プレートが重ならないように、となり同士を少しはなす
-  const px=list.map(c=>c.cx),order=px.map((v,i)=>i).sort((a,b)=>px[a]-px[b]),GAP=100;
-  for(let k=1;k<order.length;k++){const a=order[k-1],b=order[k];if(px[b]-px[a]<GAP){const mid=(px[a]+px[b])/2;px[a]=mid-GAP/2;px[b]=mid+GAP/2;}}
-  list.forEach((c,i)=>{const pcx=Math.max(52,Math.min(W-52,px[i]));
+function drawStarPlates(list){   // 3人のまわりのキラキラ
+  list.forEach((c,i)=>{
     for(let k=0;k<4;k++){const a=endT*.04+k*Math.PI/2+i,r=58+Math.sin(endT*.05+k)*8,sx=c.cx+Math.cos(a)*r,sy=ground-70+Math.sin(a)*r*.55,len=3+Math.abs(Math.sin(endT*.12+k+i))*6;
       x.fillStyle='#fffbe0';x.beginPath();x.moveTo(sx,sy-len);x.lineTo(sx+len*.25,sy);x.lineTo(sx,sy+len);x.lineTo(sx-len*.25,sy);x.closePath();x.fill();
-      x.beginPath();x.moveTo(sx-len,sy);x.lineTo(sx,sy-len*.25);x.lineTo(sx+len,sy);x.lineTo(sx,sy+len*.25);x.closePath();x.fill();}   // まわりのキラキラ
-    x.save();x.textAlign='center';
-    const py=ground+34;x.fillStyle='#0d1830cc';x.beginPath();if(x.roundRect)x.roundRect(pcx-48,py-24,96,34,10);else x.rect(pcx-48,py-24,96,34);x.fill();
-    x.strokeStyle=`rgba(${c.col},1)`;x.lineWidth=2;x.stroke();
-    fancyText(c.role,pcx,py-11,11,'white');fancyText(c.name,pcx,py+5,c.name.length>4?15:17,c.style);x.restore();});   // 名前のプレート
+      x.beginPath();x.moveTo(sx-len,sy);x.lineTo(sx,sy-len*.25);x.lineTo(sx+len,sy);x.lineTo(sx,sy+len*.25);x.closePath();x.fill();}});
 }
 function drawEnding(){
   drawEndingBg();
