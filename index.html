@@ -1000,8 +1000,11 @@ const BOSS_HP=5;   // ボスは5回ふむと たおせる
 function newBoss(hp=BOSS_HP,short=false){return {maxHp:hp,x:AX+700,y:short?ground-88:ground+30,w:96,h:88,vx:0,vy:0,hp:hp,st:'intro',t:0,dir:-1,inv:0,flash:0,hole:null,landed:short,short}}
 function bossIntroLong(){return arenaOn&&boss&&boss.st==='intro'&&!boss.short}
 // ボスの強さ：1周目・2周目（4周目以降も）は「ふつう・かしこい・さいきょう」の3段階からランダム。3周目（ソラ姫）はいつも よわい
-function bossLevel(){if(mode==='title')return 'demo';if(princessRound)return 'weak';if(Math.random()<.1)return 'legend';   // 10回に1回くらい、伝説の黒大王
-  return ['normal','smart','super'][Math.floor(Math.random()*3)]}
+let lastBossLv=null;
+function bossLevel(){if(mode==='title')return 'demo';if(princessRound)return 'weak';
+  let lv;for(let k=0;k<10;k++){lv=Math.random()<.1?'legend':['normal','smart','super'][Math.floor(Math.random()*3)];   // 10回に1回くらい、伝説の黒大王
+    if(!((lv==='super'||lv==='legend')&&(lastBossLv==='super'||lastBossLv==='legend')))break;}   // 強いボス（さいきょう・でんせつ）は2回続けて出ない
+  lastBossLv=lv;return lv}
 function bossStars(){const lv=boss&&boss.lv;return lv==='legend'?'でんせつ ★★★★★':lv==='super'?'さいきょう ★★★★':lv==='smart'?'かしこい ★★★':lv==='normal'?'ふつう ★★':lv==='weak'?'よわい ★':''}
 function bossTip(){return boss&&boss.lv==='legend'?'伝説の 黒大王が あらわれた！ 体力7・穴をほとんど よける…！':boss&&boss.lv==='super'?'さいきょうの大王だ！ すばやく、穴もよく見ている…！':boss&&boss.lv==='smart'?'大王が かしこくなった！ 穴をよけることも…':boss&&boss.lv==='weak'?'大王は ちょっと おつかれ気味…？ 穴に落として ふめ！':'穴を掘って 大王を落とし、頭をふめ！'}
 function bgo(st){boss.st=st;boss.t=0}
