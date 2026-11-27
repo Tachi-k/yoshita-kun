@@ -730,6 +730,15 @@ function holdLen(arr,i,max){let n=1;while(n<max&&!arr[i+n]&&(i+n)%8!==0)n++;retu
 const MEL=[72,0,76,79,76,0,74,72, 69,0,72,76,74,72,69,0, 65,69,72,0,77,76,74,72, 71,0,74,0,79,77,74,71,
            76,0,79,84,83,79,76,0, 81,0,79,76,72,0,76,0, 77,76,74,72,69,72,74,0, 74,0,71,74,72,0,0,0];
 const ROOT=[48,45,41,43,48,45,41,43];
+const FIELD_CH=[[60,64,67],[57,60,64],[53,57,60],[55,59,62],[60,64,67],[57,60,64],[53,57,60],[55,59,62]];
+// ファミコン風の音色：矩形波（デューティ比をえらべる）・ノイズのスネア・キック
+const pulseWaves={};
+function pulseWave(d){if(!pulseWaves[d]){const N=40,re=new Float32Array(N),im=new Float32Array(N);for(let n=1;n<N;n++)re[n]=2/(n*Math.PI)*Math.sin(n*Math.PI*d);pulseWaves[d]=audioCtx.createPeriodicWave(re,im);}return pulseWaves[d]}
+function pulse(freq,t,dur,vol,duty,vib){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.setPeriodicWave(pulseWave(duty));o.frequency.setValueAtTime(freq,t);
+  if(vib&&dur>.2){const l=audioCtx.createOscillator(),lg=audioCtx.createGain();l.frequency.value=6;lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(freq*.012,t+.18);l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+dur+.05);}
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.008);g.gain.setValueAtTime(vol*.8,t+Math.max(.01,dur*.6));g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(bus());o.start(t);o.stop(t+dur+.02)}
+function kick8(t,vol){bnote(160,t,.14,'triangle',vol,40)}
+function snare8(t,vol){hat(t,vol,.09);bnote(220,t,.06,'triangle',vol*.6,120)}
 // ボス曲：Dm-B♭-C-A（短調・勇壮）
 const BOSS_MEL=[62,0,0,65,69,0,67,65, 70,0,69,67,65,0,62,0, 64,0,67,72,70,0,69,67, 69,0,0,0,73,0,76,0,
                 74,0,0,72,69,0,72,74, 77,0,74,70,74,0,70,67, 72,0,76,79,77,76,74,72, 73,0,69,73,76,0,0,0];
@@ -741,7 +750,19 @@ const END_MEL=[72,0,0,0,74,0,76,0, 79,0,0,0,0,0,77,76, 76,0,0,0,74,0,72,0, 74,0,
 const END_CH=[[60,64,67],[59,62,67],[57,60,64],[57,60,65],[60,64,67],[57,60,65],[59,62,67],[60,64,67]];
 const END_ROOT=[48,47,45,41,48,41,43,36];
 const SONGS={
-  field:{len:64,dur:()=>60/(player&&player.hole?172:140)/2/(stage===1?stage1Rush():1)/hurryMul(),step(i,t,sd){const T=stage===2?2:0,m=MEL[i];if(m)bnote(mf(m+T),t,sd*.85,'square',.04);const root=ROOT[i>>3]+T;if(i%2===0)bnote(mf(root+(i%4===2?12:0)),t,sd*1.6,'triangle',.11);if(i%4===0)bnote(150,t,.12,'sine',.22,45);if(i%8===4)hat(t,.07,.1);if(i%2===1)hat(t,.03)}},
+  field:{len:64,dur:()=>60/(player&&player.hole?172:140)/2/(stage===1?stage1Rush():1)/hurryMul(),step(i,t,sd){const T=stage===2?2:0,m=MEL[i],bar=i>>3,b=i%8,ch=FIELD_CH[bar];
+    // メロディ：ファミコンの矩形波（25%）＋ビブラート、1拍おくれの「やまびこ」で広がりを出す
+    if(m){const L=holdLen(MEL,i,3);pulse(mf(m+T),t,sd*L*.9,.045,.25,true);pulse(mf(m+T),t+sd,sd*L*.7,.014,.25,false);
+      if(bar>=4)pulse(mf(m+T-(bar===6?5:4)),t,sd*L*.85,.016,.5,false);}   // 後半はハモリ
+    // ベース：三角波でオクターブを行き来する
+    bnote(mf(ROOT[bar]+T+([0,12,0,12,0,12,7,12][b])),t,sd*.8,'triangle',.12);
+    // 分散和音：細い矩形波（12.5%）の16分アルペジオ
+    for(const k of [0,1]){const n=ch[(i*2+k)%3]+12+T;pulse(mf(n),t+k*sd/2,sd*.32,.011,.125,false);}
+    // ドラム：キック・スネア・ハイハット＋小節の終わりのフィル
+    if(b===0||b===3&&bar%2===1||b===6)kick8(t,.26);
+    if(b===2||b===6)snare8(t,.09);
+    hat(t,b%2?.03:.02);
+    if(i>=60)snare8(t+sd/2,.06);}},
   boss:{len:64,dur:()=>60/(boss&&boss.hp===1?166:152)/2/bossRush(),step(i,t,sd){const bar=i>>3,b=i%8,m=BOSS_MEL[i];if(m)brass(m,t,sd*holdLen(BOSS_MEL,i,4)*.92,.045);if(b===0)pad(BOSS_CH[bar],t,sd*8,.022);bnote(mf(BOSS_ROOT[bar]+(b%2?12:0)),t,sd*.8,'sawtooth',.045);if(b===0)timp(t,.34,98);if(b===4)timp(t,.2,98);if(i%16>=14)timp(t,.13,130);if(b%2===1)hat(t,.025);if(b===4)hat(t,.06,.1)}},
   ending:{len:64,dur:()=>60/72/2,step(i,t,sd){const bar=i>>3,b=i%8,ch=END_CH[bar];if(b===0){pad(ch,t,sd*8,.028);bnote(mf(END_ROOT[bar]),t,sd*8,'triangle',.12);timp(t,bar%4===0?.28:.12,82);bell(ch[2]+12,t,.035)}bnote(mf(ch[[0,1,2,1,2,1,0,1][b]]+12),t,sd*1.5,'triangle',.045);const m=END_MEL[i];if(m){const L=holdLen(END_MEL,i,8);brass(m,t,sd*L*.95,.03);bnote(mf(m+12),t,sd*L*.9,'sine',.025)}}}
 };
