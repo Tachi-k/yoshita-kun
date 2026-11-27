@@ -2820,6 +2820,9 @@ function drawPopups(){x.textAlign='center';for(const q of popups){x.globalAlpha=
 // 1面ゴールの熱気球（ロープで地面につながれている）
 // 気球は主人公に合わせて大きく描く（かごの底を中心に拡大）
 const BALLOON_SCALE=1.3;
+// 3周目（ソラ姫の周）は、よし太くんの絵が入った白い気球（本物の気球の写真から）
+const BALLOON3_IMG=new Image();BALLOON3_IMG.src='img/balloon-yoshita.png';
+function yoshitaBalloon(){return princessRound&&mode==='game'}
 function drawBalloon(part){const bx=goalBX(),lift=state==='goal'||state==='clear'?balloonLift:0,bottom=ground-lift;
   x.save();x.translate(bx,bottom);x.rotate(Math.sin(Date.now()*.0015)*.012);x.scale(BALLOON_SCALE,BALLOON_SCALE);x.translate(-bx,-bottom);drawBalloonRaw(part);x.restore();}
 function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=0;   // ゆれは気球全体をかたむけて表す（球皮・ワイヤー・かごがずれないように）
@@ -2834,12 +2837,21 @@ function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='cl
     // 球皮：上がまるく下がすぼまった形
     const ex=bx+sway,shape=()=>{x.beginPath();x.moveTo(ex-20,cy+70);x.bezierCurveTo(ex-58,cy+38,ex-78,cy-10,ex-62,cy-46);x.bezierCurveTo(ex-46,cy-82,ex+46,cy-82,ex+62,cy-46);x.bezierCurveTo(ex+78,cy-10,ex+58,cy+38,ex+20,cy+70);x.closePath();};
     x.save();shape();x.clip();
+    if(yoshitaBalloon()){
+      x.fillStyle='#f6f4ef';x.fillRect(ex-90,cy-95,180,190);   // 白い球皮
+      if(BALLOON3_IMG.complete&&BALLOON3_IMG.naturalWidth){const iw=74,ih=iw*BALLOON3_IMG.naturalHeight/BALLOON3_IMG.naturalWidth;x.drawImage(BALLOON3_IMG,ex-iw/2+2,cy-74,iw,ih);}
+      x.fillStyle='#1a1a1a';x.textAlign='center';x.font='900 11px system-ui';x.fillText('よし太くん',ex,cy+14);
+      x.font='700 5.6px system-ui';x.fillText('おぢやイメージキャラクター',ex,cy+22);x.textAlign='left';
+      // すそのしま：水色・赤・黒（下から見上げたように、まん中が下がった曲線）
+      for(const [y0,col] of [[cy+30,'#5aa8de'],[cy+41,'#e3263a'],[cy+54,'#26262e']]){x.fillStyle=col;x.beginPath();x.moveTo(ex-90,y0-10);x.quadraticCurveTo(ex,y0+12,ex+90,y0-10);x.lineTo(ex+90,cy+96);x.lineTo(ex-90,cy+96);x.closePath();x.fill();}
+    }else{
     x.fillStyle='#e8453c';x.fillRect(ex-90,cy-95,180,190);   // 下地をぬって、しまのすき間が透けないように
     const cols=['#e8453c','#ffd23a','#2f9ee8','#fff7ea'];
     for(let k=-4;k<4;k++){   // 縦のしま（球の丸みに合わせて曲げる）
       x.fillStyle=cols[(k+8)%4];x.beginPath();
       const a0=k/4,a1=(k+1)/4,xa=v=>Math.sin(v*Math.PI/2)*78;
       x.moveTo(ex+xa(a0)*.3,cy+78);x.quadraticCurveTo(ex+xa(a0)*1.25,cy-5,ex+xa(a0)*.1,cy-84);x.lineTo(ex+xa(a1)*.1,cy-84);x.quadraticCurveTo(ex+xa(a1)*1.25,cy-5,ex+xa(a1)*.3,cy+78);x.closePath();x.fill();}
+    }
     const shade=x.createRadialGradient(ex-26,cy-38,8,ex,cy,96);shade.addColorStop(0,'#ffffff66');shade.addColorStop(.45,'#ffffff00');shade.addColorStop(1,'#00000066');
     x.fillStyle=shade;x.fillRect(ex-90,cy-90,180,180);   // 光と影で丸く見せる
     x.strokeStyle='#00000022';x.lineWidth=1;for(let k=-3;k<=3;k++){x.beginPath();x.ellipse(ex,cy-5,Math.abs(k)*20+.5,82,0,0,7);x.stroke();}   // 縦の縫い目
@@ -2848,7 +2860,7 @@ function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='cl
     x.restore();
     x.strokeStyle='#00000033';x.lineWidth=1.5;shape();x.stroke();
     // すそ（口金）
-    const sk=x.createLinearGradient(ex-20,0,ex+20,0);sk.addColorStop(0,'#8a2a22');sk.addColorStop(.4,'#d94a4a');sk.addColorStop(1,'#7a2018');
+    const sk=x.createLinearGradient(ex-20,0,ex+20,0);if(yoshitaBalloon()){sk.addColorStop(0,'#141418');sk.addColorStop(.4,'#4a4a52');sk.addColorStop(1,'#101014');}else{sk.addColorStop(0,'#8a2a22');sk.addColorStop(.4,'#d94a4a');sk.addColorStop(1,'#7a2018');}
     x.fillStyle=sk;x.beginPath();x.moveTo(ex-20,cy+68);x.lineTo(ex+20,cy+68);x.lineTo(ex+13,cy+84);x.lineTo(ex-13,cy+84);x.closePath();x.fill();
     // バーナーの炎
     // バーナーの炎：枠の上から球皮の口へ向かって吹き上がる
