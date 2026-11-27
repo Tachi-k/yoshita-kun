@@ -1421,7 +1421,7 @@ function inBonus(){return inBasement&&roomKind!=='basement'}
 const VILLAGE_W=6*W,HOUSE_SCALE=1.35,ROOM_DOOR_X=90;
 function villageHouses(){const W2=VILLAGE_W;return [[W2-2300,'#b8483a','#f4e6cc',0],[W2-2900,'#3a5aa8','#f0e2c4',1],[W2-3550,'#3a8a4a','#f6ead2',2],[W2-4350,'#b8783a','#efe0c0',3]];}
 let insideHouse=null,housePots={};   // insideHouse：いま入っている家（村の状態をしまっておく）
-const ROOM_PEOPLE=[{kind:'grandma',name:'村の おばあさん'},{kind:'girl',name:'村の 女の子'},{kind:'baker',name:'パン屋の おにいさん'},{kind:'scholar',name:'もの知りの はかせ'}];
+const ROOM_PEOPLE=[{kind:'grandma',name:'村の おばあさん'},{kind:'girl',name:'村の 女の子'},{kind:'baker',name:'パン屋の おにいさん'},{kind:'scholar',name:'村の おまわりさん'}];
 function enterHouse(i){const p=player,h=villageHouses()[i];
   insideHouse={i,x:p.x,camera,world,platforms,villagers,talk};talk=null;
   world=W;camera=0;platforms=[{x:0,y:ground,w:W,h:75}];villagers=[{kind:ROOM_PEOPLE[i].kind,x:W/2+120,home:W/2+120,f:-1,t:0}];
@@ -1435,7 +1435,7 @@ function villageLines(kind){const hero=princessRound?'ソラ姫さま':'よし�
   const inside={grandma:['おや、いらっしゃい。あったかい お茶でも のんでおいき。','むかしは この谷も 花で いっぱいだったんだよ…','大王を こらしめたら、また 花が さくかねえ。'],
     girl:['わあ、'+hero+'だ！ サイン ちょうだい！','ソラ姫さまって、とっても やさしいんだよ。','大王なんかに まけないでね！'],
     baker:['いらっしゃい！ やきたての パンの いいにおい だろ？','力が でる パンを たくさん 食べて、大王を やっつけてくれよ！'],
-    scholar:['ふむふむ…。わしの しらべでは…','2面の 宝物庫は、ダイヤを 3こ あつめると ひらくらしいぞ。','雲の上の せかいには、ふしぎな カギが あるとか ないとか…']};
+    scholar:['本官は この村の おまわりさんで あります！（ビシッ）','2面の 宝物庫は、ダイヤを 3こ あつめると ひらくらしいであります。','雲の上の せかいには、ふしぎな カギが あるとか ないとか…']};
   if(inside[kind])return inside[kind];
   if(princessRound)return {man:['これは これは、ソラ姫さま！','大王が また わるさを しておるとか…','どうか おきを つけて！'],
     woman:['まあ、ソラ姫さま！ おひさしぶりです。','よし太くんは いつも 姫さまの おはなしを していましたよ。'],
@@ -1449,7 +1449,7 @@ function villageLines(kind){const hero=princessRound?'ソラ姫さま':'よし�
     elder:['ほっほっほ。よくぞ ここまで 来なすった。','大王は 穴に落ちると しばらく うごけぬ。そのすきに 頭を ふむのじゃ。','…じゃが 最後の ひとふみは 大王も かしこくなる。気をつけるのじゃぞ。'],
     farmer:['おう、旅のもんか！ うちの野菜は 谷いちばんの うまさだぞ！','大王のやつ、畑まで 穴だらけに しおって…',''+hero+'、姫さまを たのんだぞ！ 帰ったら 野菜を ごちそうするからな！'],
     dog:['ワン！','ワンワン！ （しっぽを ぶんぶん ふっている）','クゥーン… （なでてほしそうに 見ている）']}[kind];}
-const VILLAGER_NAME={grandma:'村の おばあさん',girl:'村の 女の子',baker:'パン屋の おにいさん',scholar:'もの知りの はかせ',man:'むらびとの おじさん',woman:'むらびとの おばさん',child:'村の 子ども',elder:'村の 長老',farmer:'畑の おやじさん',dog:'村の いぬ コロ'};
+const VILLAGER_NAME={grandma:'村の おばあさん',girl:'村の 女の子',baker:'パン屋の おにいさん',scholar:'村の おまわりさん',man:'むらびとの おじさん',woman:'むらびとの おばさん',child:'村の 子ども',elder:'村の 長老',farmer:'畑の おやじさん',dog:'村の いぬ コロ'};
 function enterVillage(){const p=player;insideHouse=null;
   surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX:8};inBasement=true;roomKind='village';skyRope=null;
   world=VILLAGE_W;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;cannonShot=null;items=[];coins=[];
@@ -3467,7 +3467,18 @@ function drawDog(v){const run=v.run,ph=v.t*(run?.38:.08),wag=Math.sin(v.t*(run?.
   x.restore();
   x.fillStyle='#c83a3a';x.beginPath();x.ellipse(13.5,-20,2.6,4.2,.3,0,7);x.fill();ell(15,-16.6,1.4,1.4,'#ffd24a');   // くびわ
   x.restore();}
-function drawVillager(v){const k=v.kind;if(k==='dog'){drawDog(v);return;}
+// 村人の絵（いただいたイラストから切り出した画像）。読みこめないときは 下の手描きの絵を使う
+const VILLAGER_IMG={},VILLAGER_IMG_SCALE=.5;
+for(const k of['farmer','man','woman','child','elder','grandma','girl','baker','scholar','dog']){const im=new Image();im.src='img/villagers/'+k+'.png';VILLAGER_IMG[k]=im;}
+function drawVillagerImg(v){const im=VILLAGER_IMG[v.kind];if(!im||!im.complete||!im.naturalWidth)return false;
+  const s=VILLAGER_IMG_SCALE,w=im.naturalWidth*s,h=im.naturalHeight*s,moving=v.walk||v.run;
+  const bob=moving?Math.abs(Math.sin(v.t*(v.run?.4:.2)))*4:Math.abs(Math.sin(v.t*.05))*1.2,tilt=moving?Math.sin(v.t*(v.run?.4:.2))*.06:0;
+  x.save();ell(v.x,ground,w*.36,3.4,'#00000026');x.translate(v.x,ground-bob);x.rotate(tilt);x.scale(v.f<0?-1:1,1);
+  if(!moving&&v.kind!=='dog'){const br=1+Math.sin(v.t*.05)*.012;x.scale(1,br);}   // 立っているときは 小さく息づく
+  x.drawImage(im,-w/2,-h,w,h);x.restore();
+  if(talk&&talk.v===v){x.save();x.textAlign='center';fancyText('！',v.x,ground-h-bob-12,24,'gold');x.restore();}
+  return true;}
+function drawVillager(v){const k=v.kind;if(drawVillagerImg(v))return;if(k==='dog'){drawDog(v);return;}
   const sc=k==='child'?.8:1,bob=v.walk?Math.abs(Math.sin(v.t*.2))*2:Math.abs(Math.sin(v.t*.05))*.8;
   x.save();x.translate(v.x,ground);x.scale(sc*1.5*v.f,sc*1.5);x.translate(0,-bob);ell(0,0,13,2.6,'#00000026');
   const OL='#2a1a14';
