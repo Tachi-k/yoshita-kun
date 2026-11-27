@@ -1019,7 +1019,8 @@ function updateBoss(p,oldY){
   const b=boss,K=bossK();b.t++;
   if(bossRage(b)){
     if(!b.raged&&b.st!=='stun'){b.raged=true;shake=Math.max(shake,16);sound('roar');banner('','大王が まっかになって おこった！',100);}
-    if(b.raged&&b.t%4===0){const cx=b.x+b.w/2;for(const side of[-1,1])parts.push({x:cx+side*(24+Math.random()*10)*BOSS_SCALE,y:b.y+b.h-(b.h-6)*BOSS_SCALE,vx:side*(.4+Math.random()*.6),vy:-1.6-Math.random()*1.2,g:-.015,s:5+Math.random()*4,life:42,max:42,col:'#f2f2f2',steam:true});}}   // 頭から湯気if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
+    if(b.raged&&b.t%4===0){const cx=b.x+b.w/2;for(const side of[-1,1])parts.push({x:cx+side*(24+Math.random()*10)*BOSS_SCALE,y:b.y+b.h-(b.h-6)*BOSS_SCALE,vx:side*(.4+Math.random()*.6),vy:-1.6-Math.random()*1.2,g:-.015,s:5+Math.random()*4,life:42,max:42,col:'#f2f2f2',steam:true});}}   // 頭から湯気
+  if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
   const phase=b.hp>=b.maxHp-1?1:b.hp>=2?2:3,L=AX,R=AX+960-b.w,top=ground-b.h;
   if(b.st==='intro'){if(b.t===1)playBossIntro();const cx=b.x+b.w/2;
     if(b.short){b.y=top;if(b.t>40){bgo('walk');banner('',bossTip(),120)}}
