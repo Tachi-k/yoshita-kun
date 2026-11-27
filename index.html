@@ -3545,6 +3545,30 @@ function drawEndingExtras(){const t=endT;
   // 打ち上げ中の花火の玉
   for(const r of endRockets){ell(r.x,r.y,3,3,'#fff6c0');ell(r.x,r.y,6,6,'#ffd98a55');}
 }
+// レアエンディングの3人を主役らしく：上からのスポットライト・光るステージ・キラキラ・名前のプレート
+function drawStarLights(list){
+  x.save();x.globalCompositeOperation='lighter';
+  list.forEach((c,i)=>{const sway=Math.sin(endT*.02+i*2)*30,top=c.cx+sway*1.5-(i-1)*120;
+    const g=x.createLinearGradient(0,-10,0,ground);g.addColorStop(0,`rgba(${c.col},.45)`);g.addColorStop(1,`rgba(${c.col},.06)`);
+    x.fillStyle=g;x.beginPath();x.moveTo(top-14,-10);x.lineTo(top+14,-10);x.lineTo(c.cx+62,ground);x.lineTo(c.cx-62,ground);x.closePath();x.fill();   // スポットライト
+    const fg=x.createRadialGradient(c.cx,ground,4,c.cx,ground,78);fg.addColorStop(0,`rgba(${c.col},.55)`);fg.addColorStop(1,`rgba(${c.col},0)`);
+    x.fillStyle=fg;x.beginPath();x.ellipse(c.cx,ground,78,16,0,0,7);x.fill();});   // 足もとの光
+  x.restore();
+  list.forEach((c,i)=>{x.save();x.globalAlpha=.85;x.strokeStyle=`rgba(${c.col},.9)`;x.lineWidth=2;x.beginPath();x.ellipse(c.cx,ground+2,56+Math.sin(endT*.08+i)*4,10,0,0,7);x.stroke();x.restore();});   // 光の輪
+}
+function drawStarPlates(list){
+  // プレートが重ならないように、となり同士を少しはなす
+  const px=list.map(c=>c.cx),order=px.map((v,i)=>i).sort((a,b)=>px[a]-px[b]),GAP=100;
+  for(let k=1;k<order.length;k++){const a=order[k-1],b=order[k];if(px[b]-px[a]<GAP){const mid=(px[a]+px[b])/2;px[a]=mid-GAP/2;px[b]=mid+GAP/2;}}
+  list.forEach((c,i)=>{const pcx=Math.max(52,Math.min(W-52,px[i]));
+    for(let k=0;k<4;k++){const a=endT*.04+k*Math.PI/2+i,r=58+Math.sin(endT*.05+k)*8,sx=c.cx+Math.cos(a)*r,sy=ground-70+Math.sin(a)*r*.55,len=3+Math.abs(Math.sin(endT*.12+k+i))*6;
+      x.fillStyle='#fffbe0';x.beginPath();x.moveTo(sx,sy-len);x.lineTo(sx+len*.25,sy);x.lineTo(sx,sy+len);x.lineTo(sx-len*.25,sy);x.closePath();x.fill();
+      x.beginPath();x.moveTo(sx-len,sy);x.lineTo(sx,sy-len*.25);x.lineTo(sx+len,sy);x.lineTo(sx,sy+len*.25);x.closePath();x.fill();}   // まわりのキラキラ
+    x.save();x.textAlign='center';
+    const py=ground+34;x.fillStyle='#0d1830cc';x.beginPath();if(x.roundRect)x.roundRect(pcx-48,py-24,96,34,10);else x.rect(pcx-48,py-24,96,34);x.fill();
+    x.strokeStyle=`rgba(${c.col},1)`;x.lineWidth=2;x.stroke();
+    fancyText(c.role,pcx,py-11,11,'white');fancyText(c.name,pcx,py+5,c.name.length>4?15:17,c.style);x.restore();});   // 名前のプレート
+}
 function drawEnding(){
   drawEndingBg();
   drawEndingExtras();
@@ -3552,9 +3576,14 @@ function drawEnding(){
   if(endingDone())drawQuestDoor();
   const princess=endingPrincessPosition();
   if(endingRare){drawRainbow();const jump=k=>Math.abs(Math.sin(endT*.13+k))*18;
+    const stars3=[{cx:endP?endP.x+17:W/2-113,col:'255,214,90',name:princessRound?'ソラ姫':'よし太くん',role:'HERO',style:'gold'},
+      {cx:princess.x+17,col:'255,140,210',name:princessRound?'よし太くん':'ソラ姫',role:princessRound?'FRIEND':'PRINCESS',style:'red'},
+      {cx:W/2+150,col:'255,120,60',name:'ドリモグ',role:'FRIEND',style:'blue'}];
+    drawStarLights(stars3);
     drawEndPlayer();
     withDance(1,princess.x+17,princess.y+46,m=>drawEndScaled(princess.x+17,princess.y+46,()=>princessRound?drawPlayerAt(princess.x,princess.y+4,m&&m.face?m.face:endP&&endP.x<princess.x?-1:1,m&&m.arms?'jump':'front'):drawPartner(princess.x,princess.y,m&&m.face?m.face:endP&&endP.x<princess.x?-1:1)));   // ソラ姫が主人公のときは、となりによし太くん
     withDance(2,W/2+150,ground,()=>drawMoleFriend(W/2+150,ground-88*.75*END_SCALE-(endDancing()?0:jump(2)),.75*END_SCALE,endT));
+    drawStarPlates(stars3);
     x.textAlign='center';fancyText('★ RARE ENDING ★',W/2,50,34,Math.floor(endT/20)%2?'gold':'white');x.textAlign='left';
   }else if(endingPair){
     // 花のアーチ
