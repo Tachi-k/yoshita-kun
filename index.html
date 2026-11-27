@@ -112,6 +112,17 @@ canvas{display:block;background:#17283c}
 #rankBox,#nameBox{position:fixed;inset:0;z-index:21;display:grid;place-items:center;background:rgba(0,0,10,.75)}
 #rankBox[hidden],#nameBox[hidden]{display:none}
 .rk-panel{width:min(400px,92vw);max-height:92vh;overflow:auto;box-sizing:border-box;padding:16px 18px 14px;border-radius:18px;border:3px solid #ffd45a;background:linear-gradient(#24365c,#121c34);color:#fff;font-family:system-ui;box-shadow:0 8px 30px #000a,inset 0 2px 0 #ffffff30;text-align:center}
+.rk-panel{position:relative}
+.rk-x{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;border:2px solid #fff;background:#e23a4a;color:#fff;font:900 18px system-ui;cursor:pointer;box-shadow:0 2px 0 #0006;z-index:2}
+.rk-sticky{position:sticky;bottom:-14px;padding:8px 0 4px;background:linear-gradient(#121c3400,#121c34 35%)}
+@media (max-height:520px){   /* 横向き：ランキングを2列にして、とじるボタンまで1画面に入れる */
+  .rk-panel{width:min(640px,92vw);padding:10px 14px}
+  .rk-panel h2{font-size:18px;margin:0 40px 6px}
+  #rankBox .rk-panel ol{display:grid;grid-template-columns:1fr 1fr;grid-auto-flow:column;grid-template-rows:repeat(5,auto);gap:3px 12px;margin-bottom:6px}
+  .rk-panel li{font-size:14px;padding:3px 8px}
+  .rk-panel .rk-msg{margin:2px 0 6px;font-size:13px}
+  .rk-btns button{height:38px}
+}
 .rk-panel h2{margin:0 0 10px;font:900 22px system-ui;color:#ffe36a;text-shadow:0 2px 0 #7a4a00}
 .rk-panel ol{list-style:none;margin:0 0 12px;padding:0;text-align:left}
 .rk-panel li{display:flex;gap:10px;align-items:center;padding:5px 10px;border-radius:8px;font:800 17px system-ui}
@@ -223,7 +234,7 @@ canvas{display:block;background:#17283c}
 <p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
 <button id="startBtn" aria-label="ゲームスタート"><span class="sb-body"><span class="sb-ic" aria-hidden="true">▶</span><span class="sb-tx">START<small>ゲームスタート</small></span></span></button>
 <div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING　「雪原の気球」</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a><button id="videoBtn" type="button">🎬 動画を見る</button></div>
-<div id="rankBox" hidden><div class="rk-panel"><h2>🏆 みんなのランキング TOP10</h2><ol id="rankList"></ol><div class="rk-msg" id="rankMsg"></div><div class="rk-btns"><button type="button" class="rk-ok" id="rankClose">とじる</button></div></div></div>
+<div id="rankBox" hidden><div class="rk-panel"><button type="button" class="rk-x" id="rankX" aria-label="とじる">✕</button><h2>🏆 みんなのランキング TOP10</h2><ol id="rankList"></ol><div class="rk-msg" id="rankMsg"></div><div class="rk-btns rk-sticky"><button type="button" class="rk-ok" id="rankClose">とじる</button></div></div></div>
 <div id="nameBox" hidden><div class="rk-panel"><h2 id="nameTitle">ランキング入り！</h2><div class="rk-msg" id="nameMsg"></div><div class="rk-row"><input id="nameInput" type="text" maxlength="8" placeholder="なまえ（8文字まで）" autocomplete="nickname" enterkeyhint="done"><button type="button" id="nameDice" aria-label="ほかの名前にする" title="ほかの名前にする">🎲</button></div><div class="rk-tip">そのまま登録しても、自由に書きかえてもOK！</div><div class="rk-btns"><button type="button" class="rk-no2" id="nameSkip">登録しない</button><button type="button" class="rk-ok" id="nameOk">登録する</button></div></div></div>
 <div id="videoBox" hidden><div class="vb-inner"><button id="videoClose" type="button" aria-label="とじる">✕</button><div class="vb-frame"></div></div></div>
 <div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="rank" aria-label="ランキング" hidden>🏆</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
@@ -3548,7 +3559,8 @@ document.getElementById('startBtn').addEventListener('click',e=>{e.stopPropagati
 const mb=document.getElementById('music');
 {const rb=document.getElementById('rank');if(rankOn())rb.hidden=false;
   rb.addEventListener('click',async e=>{e.stopPropagation();if(nameOpen)return;showRanking('読みこみ中…');await loadRanking();showRanking('');});
-  document.getElementById('rankClose').addEventListener('click',()=>{document.getElementById('rankBox').hidden=true;});
+  for(const id of ['rankClose','rankX'])document.getElementById(id).addEventListener('click',()=>{document.getElementById('rankBox').hidden=true;});
+  document.getElementById('rankBox').addEventListener('click',e=>{if(e.target.id==='rankBox')e.currentTarget.hidden=true;});   // 外側をタップしても閉じる
   document.getElementById('nameOk').addEventListener('click',submitName);
   document.getElementById('nameSkip').addEventListener('click',closeName);
   document.getElementById('nameDice').addEventListener('click',()=>{const i=document.getElementById('nameInput');i.value=randomName(i.value);});
