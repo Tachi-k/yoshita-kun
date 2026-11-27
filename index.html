@@ -1002,7 +1002,7 @@ function bossIntroLong(){return arenaOn&&boss&&boss.st==='intro'&&!boss.short}
 // ボスの強さ：1周目・2周目（4周目以降も）は「ふつう・かしこい・さいきょう」の3段階からランダム。3周目（ソラ姫）はいつも よわい
 let lastBossLv=null;
 function bossLevel(){if(mode==='title')return 'demo';if(princessRound)return 'weak';
-  let lv;for(let k=0;k<10;k++){lv=Math.random()<.1?'legend':['normal','smart','super'][Math.floor(Math.random()*3)];   // 10回に1回くらい、伝説の黒大王
+  let lv;for(let k=0;k<10;k++){const r=Math.random();lv=r<.1?'legend':r<.55?'normal':r<.8?'smart':'super';   // でんせつ10%・ふつう45%・かしこい25%・さいきょう20%
     if(!((lv==='super'||lv==='legend')&&(lastBossLv==='super'||lastBossLv==='legend')))break;}   // 強いボス（さいきょう・でんせつ）は2回続けて出ない
   lastBossLv=lv;return lv}
 function bossStars(){const lv=boss&&boss.lv;return lv==='legend'?'でんせつ ★★★★★':lv==='super'?'さいきょう ★★★★':lv==='smart'?'かしこい ★★★':lv==='normal'?'ふつう ★★':lv==='weak'?'よわい ★':''}
