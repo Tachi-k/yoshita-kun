@@ -1010,7 +1010,10 @@ function bossEscape(){const b=boss;holes=holes.filter(h=>h!==b.hole);b.hole=null
 // hop：前の穴をジャンプでよける確率／lead：岩でよし太くんの動きを先読みする強さ
 // 激怒：ソラ姫の周（よわい）とデモ以外で、残り2回になると まっかになって湯気を出し、少し速くなる
 function bossRage(b=boss){return !!b&&b.lv!=='weak'&&b.lv!=='demo'&&b.hp>0&&b.hp<=2&&b.st!=='dead'}
-function bossK(){const k=bossKBase();if(bossRage()){k.spd*=1.2;k.wait*=.85;}return k}
+function bossK(){const k=bossKBase();if(bossRage()){k.spd*=1.2;k.wait*=.85;}
+  if(bossLast()){k.hop=Math.max(k.hop,.7);k.lead=1;k.spread=Math.min(k.spread,20);k.stun*=.8;k.wait*=.85;}   // 最後のひと踏み：いちばん かしこくなる
+  return k}
+function bossLast(b=boss){return !!b&&b.lv!=='weak'&&b.lv!=='demo'&&b.hp===1}
 function bossKBase(){const lv=boss&&boss.lv;return lv==='super'?{spd:1.3,wait:.65,stun:.6,lead:1,spread:18,hop:.75}   // さいきょう
   :lv==='smart'?{spd:1.15,wait:.8,stun:.75,lead:1,spread:30,hop:.55}   // かしこい
   :lv==='weak'?{spd:.7,wait:1.35,stun:1.4,lead:0,spread:110,hop:0}   // よわい（3周目）
@@ -1019,7 +1022,8 @@ function bossKBase(){const lv=boss&&boss.lv;return lv==='super'?{spd:1.3,wait:.6
 function updateBoss(p,oldY){
   const b=boss,K=bossK();b.t++;
   if(bossRage(b)){
-    if(!b.raged&&b.st==='walk'){b.raged=true;bgo('rage');b.vx=0;}   // 地面にいるときに、立ち止まって怒りだす
+    if(!b.raged&&b.st==='walk'){b.raged=true;bgo('rage');b.vx=0;}
+    if(bossLast(b)&&!b.lastWarned&&b.st==='walk'){b.lastWarned=true;banner('あと1回！','大王は 穴を よく見ている…！ 気をつけて',110);}   // 地面にいるときに、立ち止まって怒りだす
     if(b.raged&&b.t%(b.st==='rage'?2:4)===0){const cx=b.x+b.w/2;for(const side of[-1,1])parts.push({x:cx+side*(24+Math.random()*10)*BOSS_SCALE,y:b.y+b.h-(b.h-6)*BOSS_SCALE,vx:side*(.4+Math.random()*.6),vy:-1.6-Math.random()*1.2,g:-.015,s:5+Math.random()*4,life:42,max:42,col:'#f2f2f2',steam:true});}}   // 頭から湯気
   if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
   const phase=b.hp>=b.maxHp-1?1:b.hp>=2?2:3,L=AX,R=AX+960-b.w,top=ground-b.h;
