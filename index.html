@@ -1018,8 +1018,8 @@ function bossKBase(){const lv=boss&&boss.lv;return lv==='super'?{spd:1.3,wait:.6
 function updateBoss(p,oldY){
   const b=boss,K=bossK();b.t++;
   if(bossRage(b)){
-    if(!b.raged&&b.st!=='stun'){b.raged=true;shake=Math.max(shake,16);sound('roar');banner('','大王が まっかになって おこった！',100);}
-    if(b.raged&&b.t%4===0){const cx=b.x+b.w/2;for(const side of[-1,1])parts.push({x:cx+side*(24+Math.random()*10)*BOSS_SCALE,y:b.y+b.h-(b.h-6)*BOSS_SCALE,vx:side*(.4+Math.random()*.6),vy:-1.6-Math.random()*1.2,g:-.015,s:5+Math.random()*4,life:42,max:42,col:'#f2f2f2',steam:true});}}   // 頭から湯気
+    if(!b.raged&&b.st==='walk'){b.raged=true;bgo('rage');b.vx=0;}   // 地面にいるときに、立ち止まって怒りだす
+    if(b.raged&&b.t%(b.st==='rage'?2:4)===0){const cx=b.x+b.w/2;for(const side of[-1,1])parts.push({x:cx+side*(24+Math.random()*10)*BOSS_SCALE,y:b.y+b.h-(b.h-6)*BOSS_SCALE,vx:side*(.4+Math.random()*.6),vy:-1.6-Math.random()*1.2,g:-.015,s:5+Math.random()*4,life:42,max:42,col:'#f2f2f2',steam:true});}}   // 頭から湯気
   if(b.inv>0)b.inv--;if(b.flash>0)b.flash--;
   const phase=b.hp>=b.maxHp-1?1:b.hp>=2?2:3,L=AX,R=AX+960-b.w,top=ground-b.h;
   if(b.st==='intro'){if(b.t===1)playBossIntro();const cx=b.x+b.w/2;
@@ -1052,6 +1052,12 @@ function updateBoss(p,oldY){
   else if(b.st==='throw'){if(b.t===30||(b.lv!=='weak'&&((phase>=2&&b.t===48)||(phase===3&&b.t===66))))throwRock(p);if(b.t>95)bgo('walk')}
   else if(b.st==='windup'){if(b.t%6===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.t>45)bgo('charge')}
   else if(b.st==='charge'){b.x+=b.dir*(4.5+phase)*K.spd;if(b.t%4===0)boom(b.x+b.w/2-b.dir*40,ground,2,['#c9a27a'],3);if(b.x<=L||b.x>=R){shake=14;sound('slam');bgo('walk')}}
+  else if(b.st==='rage'){b.y=top;const cx=b.x+b.w/2;   // 怒りのアニメーション：その場で地団駄 → 湯気がふき出す → 雄たけび
+    if(b.t===1){sound('roar');shake=Math.max(shake,10);}
+    if(b.t%18===0&&b.t<84){shake=Math.max(shake,9);sound('slam');boom(cx+(b.t%36?-28:28),ground,8,['#c9a27a','#8a6a4a'],5);}   // ドスン、ドスン
+    if(b.t===40){popup(cx,b.y-40,'ムキーーッ！！','#ff4a3a',34,80);for(let k=0;k<14;k++){const a=-Math.PI/2+(k-6.5)*.18;parts.push({x:cx,y:b.y+b.h-(b.h-6)*BOSS_SCALE,vx:Math.cos(a)*3.2,vy:Math.sin(a)*3.2,g:-.01,s:8+Math.random()*5,life:50,max:50,col:'#f4f4f4',steam:true});}}   // ぶしゅーっ
+    if(b.t===60){banner('','大王が まっかになって おこった！',100);sound('roar');shake=Math.max(shake,20);}
+    if(b.t>110)bgo('walk');}
   else if(b.st==='stun'){b.y=top+40;if(b.t>(phase===3?150:210)*K.stun)bossEscape()}
   else if(b.st==='dead'){
     if(!b.endingSong)b.endingSong=chooseEndingSong();
@@ -2324,7 +2330,7 @@ if(mode==='title'){
 if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(shake>0)shake--;updateParts();
 noteHiScore();   // エンディング中も記録する（エンディングの処理より先に）
 if(mode==='game'&&((state==='lose'&&loseT>=40)||(state==='ending'&&endingDone())))maybeAskName();   // ランキング入りなら名前入力（すぐ再挑戦のタップをしても、先にこちらが出る）
-if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT>60)startEndSong();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
+if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT-endDoneAt()>=600)startEndSong();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
 if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();}return;}   // ゲームオーバー後のデモは、ふつうのデモと同じ（1面の曲）。「雪原の気球」はエンディングだけ
@@ -3020,13 +3026,14 @@ const BOSS_SCALE=1.3;
 function drawBoss(b){
   if(b.st==='dead'&&b.t>=130&&b.t%6<3)return;if(b.st==='intro'&&!b.short&&b.phase==='rumble')return;
   const fl=(b.flash>0&&b.flash%6<3)||(b.st==='dead'&&b.t<36&&b.t%8<5),cx=b.x+b.w/2,d=b.dir,y=b.y,stun=b.st==='stun';
-  const C=c=>fl?'#fff':c,angry=b.st==='windup'||b.st==='charge',now=Date.now();
+  const C=c=>fl?'#fff':c,angry=b.st==='windup'||b.st==='charge'||b.st==='rage',now=Date.now();
   x.save();
   if(b.spin){const ry=y+b.h/2;x.translate(cx,ry);x.rotate(b.spin);x.translate(-cx,-ry);}
   if(stun&&b.hole){x.beginPath();x.rect(b.x-120,-2000,b.w+240,ground+2000);x.rect(b.hole.x,ground,b.hole.w,b.hole.h);x.clip();}
   {const fy=y+b.h;x.translate(cx,fy);x.scale(BOSS_SCALE,BOSS_SCALE);x.translate(-cx,-fy);}   // 見た目だけ大きく（当たり判定はそのまま）
   // 怒りのオーラ（突進の前・突進中）
-  const rage=bossRage(b)&&b.raged;
+  const rage=bossRage(b)&&b.raged&&(b.st!=='rage'||b.t>40||b.t%8<4),fuming=b.st==='rage';
+  if(fuming&&!fl){const j=b.t<90?2.5:0,pf=1+.05*Math.abs(Math.sin(b.t*.25)),fy=y+b.h;x.translate((Math.random()-.5)*j,(Math.random()-.5)*j);x.translate(cx,fy);x.scale(pf,pf);x.translate(-cx,-fy);}   // ぶるぶる ふるえて、ぷくっと ふくらむ
   if((angry||rage)&&!fl){x.globalAlpha=(rage?.32:.25)+.15*Math.sin(now*(rage?.02:.03));ell(cx,y+48,rage?70:62,rage?60:52,'#ff3b2f');x.globalAlpha=1;}
   // マント（後ろでひるがえる）
   const flap=Math.sin(now*.008)*6;
@@ -3430,6 +3437,7 @@ function drawTitleScores(){
   if(ranking&&ranking[0]){x.textAlign='right';fancyText('★みんなの1位',W-20,32,20,'gold');fancyText(ranking[0].name+' '+ranking[0].score,W-20,68,28,'white');}
   x.restore();
 }
+function endDoneAt(){return Math.ceil((H+40+credits().length*46-110)/.75)}   // スタッフロールが流れ終わるフレーム（このあと10秒で「雪原の気球」）
 function creditsY(){return H+40-endT*.75}
 function endingDone(){return creditsY()+credits().length*46<110}
 // レアエンディングのドリモグ：ボスと同じよろい・マント・王冠で、なかよしの笑顔
