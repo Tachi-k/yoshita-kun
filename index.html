@@ -2382,7 +2382,8 @@ if(bossIntroLong()){p.vx=0;}else if((jumpIn||(assist&&p.jumpBuf>0))&&(p.on||(ass
   p.fromPad=platforms.some(b=>b.cloudPad&&Math.abs(p.y+p.h-b.y)<3&&p.x+p.w>b.x&&p.x<b.x+b.w);   // 雲の台の上から跳んだか
   sound('jump');}
 else if(assist&&jumpPressed&&!p.on&&!p.hole&&(p.standJump||p.runJump)&&!p.doubleUsed&&Math.abs(p.vy)<DOUBLE_JUMP_WINDOW){
-  p.vy=p.runJump?-12.5:-14;   // 横ジャンプからの二段ジャンプは、少しだけ低めp.doubleUsed=true;p.jumpBuf=0;p.jumping=true;tone(720,.12,'square',.06,0,1180);
+  p.vy=p.runJump?-12.5:-14;   // 横ジャンプからの二段ジャンプは、少しだけ低め
+  p.doubleUsed=true;p.jumpBuf=0;p.jumping=true;tone(720,.12,'square',.06,0,1180);
   if(mode==='game'&&stage===1&&!inBasement&&!westSide&&!cloudUsed&&p.fromPad&&p.standJump){p.vy=-26;p.toCloud=true;sound('boing');popup(p.x+p.w/2,p.y-30,'ビューン！','#fff',24,50);}   // ひみつの場所：空の雲の面へ
   boom(p.x+p.w/2,p.y+p.h,10,['#fff','#bfe6ff','#ffdf50'],4);popup(p.x+p.w/2,p.y-8,'二段ジャンプ！','#bfe6ff',18,40);}
 if(!p.on&&p.runJump&&!p.kickT)p.vx*=RUN_JUMP_SPEED;   // 走りジャンプ中は横に速く進む
