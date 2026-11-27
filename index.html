@@ -779,19 +779,27 @@ SONGS.wedding={len:48,dur:()=>60/84/2,step(i,t,sd){const bar=Math.floor(i/6),b=i
   if(b===2||b===4)bnote(mf(ch[0]),t,sd*.9,'triangle',.05),bnote(mf(ch[1]),t,sd*.9,'triangle',.04);    // ズン・チャッ・チャッ
   bnote(mf(ch[[0,1,2,1,2,1][b]]+24),t,sd*1.2,'sine',.018);                                           // オルゴール風の分散和音
   const m=WED_MEL[i];if(m){const L=holdLen6(WED_MEL,i);bnote(mf(m),t,sd*L*.95,'sine',.07);bnote(mf(m+12),t,sd*L*.8,'triangle',.022);}}};
-// 2面道中の曲（オリジナル）：ホ短調、半音でにじり寄るベースと低い太鼓で「物騒な」感じ
-const F2_MEL=[64,0,0,0,0,0,65,64, 0,0,71,0,70,0,67,0, 65,0,0,69,0,0,72,71, 64,0,0,0,0,0,0,0,
-              69,0,0,72,0,71,69,0, 70,0,0,74,0,0,77,76, 75,0,0,71,0,0,66,0, 64,0,0,0,63,0,64,0];
+// 2面道中の曲（オリジナル）：ホ短調。暗く かっこいい「ダンジョン」風。うなるベースと 力強いドラム
+const F2_MEL=[64,0,67,71,0,67,76,0, 74,0,72,71,0,67,69,71, 72,0,0,69,65,0,69,72, 71,0,0,0,67,0,64,0,
+              69,0,72,76,0,72,81,0, 79,0,77,74,0,70,74,77, 75,0,0,78,0,75,71,75, 76,0,0,71,0,0,64,0];
 const F2_CH=[[59,64,67],[59,64,67],[60,65,69],[59,64,67],[57,60,64],[58,62,65],[59,63,66],[59,64,67]];
 const F2_ROOT=[40,40,41,40,45,46,47,40];
 function darkPad(ms,t,dur,vol){const f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();f.type='lowpass';f.frequency.value=700;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.4);g.gain.setValueAtTime(vol,t+Math.max(.41,dur-.3));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.3);f.connect(g);g.connect(bus());for(const m of ms)for(const d of[-10,10]){const o=audioCtx.createOscillator();o.type='sawtooth';o.frequency.value=mf(m-12);o.detune.value=d;o.connect(f);o.start(t);o.stop(t+dur+.35)}}
-SONGS.field2={len:64,dur:()=>60/(player&&player.hole?140:118)/2/stage2Rush(),step(i,t,sd){const bar=i>>3,b=i%8,r=F2_ROOT[bar];
-  if(b===0)darkPad(F2_CH[bar],t,sd*8,.03);
-  const os=[0,0,12,0,1,0,7,0][b];bnote(mf(r+os),t,sd*.8,'sawtooth',.035);bnote(mf(r+os),t,sd*.9,'triangle',.09);   // にじり寄るベース
-  if(b===0||b===3)timp(t,b===0?.32:.18,72);if(b===6)timp(t,.12,96);                                          // ドン…ドン　低い太鼓
-  if(b===4)hat(t,.05,.1);if(b%2===1)hat(t,.018);
-  const m=F2_MEL[i];if(m){const L=holdLen(F2_MEL,i,6);bnote(mf(m),t,sd*L*.9,'square',.028);bnote(mf(m)*1.006,t,sd*L*.9,'triangle',.03);}
-  if(i===28||i===60)bell(88,t,.02);}};                                                                       // 遠くで鳴る鐘
+SONGS.field2={len:64,dur:()=>60/(player&&player.hole?146:126)/2/stage2Rush(),step(i,t,sd){const bar=i>>3,b=i%8,r=F2_ROOT[bar],ch=F2_CH[bar];
+  if(b===0)darkPad(ch,t,sd*8,.022);
+  // ベース：ダダッ・ダダッと駆けるような低音（三角波＋うなる矩形波）
+  const os=[0,0,12,0,0,12,7,12][b];bnote(mf(r+os),t,sd*.6,'triangle',.11);pulse(mf(r+os),t,sd*.45,.016,.5,false);
+  // 分散和音：細い矩形波の16分アルペジオ（暗い和音）
+  for(const k of [0,1]){const n=ch[(i*2+k)%3]+12;pulse(mf(n),t+k*sd/2,sd*.3,.009,.125,false);}
+  // メロディ：太い矩形波（50%）＋ビブラート、やまびこ。後半は5度下を重ねて力強く
+  const m=F2_MEL[i];if(m){const L=holdLen(F2_MEL,i,4);pulse(mf(m),t,sd*L*.9,.042,.5,true);pulse(mf(m),t+sd,sd*L*.7,.012,.5,false);
+    if(bar>=4)pulse(mf(m-7),t,sd*L*.85,.018,.25,false);}
+  // ドラム：低い太鼓のキック、スネア、ハイハット。くり返しの前に太鼓のフィル
+  if(b===0||b===3||b===4&&bar%2===1)kick8(t,.3);
+  if(b===2||b===6)snare8(t,.085);
+  hat(t,b%2?.028:.016);
+  if(i>=60)timp(t,.16,[110,98,87,73][i-60]);
+  if(i===28)bell(88,t,.02);}};
 const toMajor=m=>{const pc=((m%12)+12)%12;return m+(pc===5||pc===10||pc===0?1:0)};
 const RARE_MEL=BOSS_MEL.map(m=>m?toMajor(m):0);
 const RARE_CH=[[62,66,69],[62,67,71],[61,64,69],[61,64,69],[62,66,69],[62,67,71],[61,64,69],[61,64,69]];
