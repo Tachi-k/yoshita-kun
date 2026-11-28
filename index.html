@@ -555,9 +555,8 @@ function heartType(){return Math.random()<GOLD_HEART_CHANCE?'goldHeart':'heart'}
 function collectCoins(count,cx,cy){
   if(bonusLoot&&count===1)bonusLoot.coins++;
   score+=count*COIN_POINTS;
-  coinProgress+=count;
-  if(coinProgress>=COINS_PER_LIFE){   // コイン100枚：ライフはふえず、ボーナス点
-    coinProgress-=COINS_PER_LIFE;
+  const before=coinProgress;coinProgress+=count;   // コインは上限なしで たまる（お店で使える）
+  if(Math.floor(coinProgress/COINS_PER_LIFE)>Math.floor(before/COINS_PER_LIFE)){   // 100枚ごとに ボーナス点
     score+=COIN_BONUS;popup(cx,cy,'コイン100枚！ +'+COIN_BONUS,'#ffd24a',26,100);sound('treasure');
   }
 }
@@ -4067,7 +4066,7 @@ function draw(){
   {let hx=22;const w=(t,size)=>{x.font='900 '+size+'px system-ui';return x.measureText(t).width;};
     const put=(label,value)=>{if(label){fancyText(label,hx,42,19,'gold');hx+=w(label,19)+6;}fancyText(String(value),hx,42,30,'white');hx+=w(String(value),30)+20;};
     if(mode!=='title'){put('SCORE',score);drawLifeHeart(hx+16,31,32,false);hx+=36;put('×',lives);put('STAGE',stage);if(!arenaOn){drawGem(hx+15,50,28,false);hx+=36;put('',diamonds);}if(hasKey){drawKeyIcon(hx+14,34,1);hx+=34;}}}   // 画面上のダイヤも絵で描く
-  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';{const cx0=22+x.measureText('コイン').width+6,ct=coinProgress+' / '+COINS_PER_LIFE;fancyText(ct,cx0,72,20,'white');x.font='900 20px system-ui';const hx0=cx0+x.measureText(ct).width+26;fancyText('HI',hx0,72,16,'gold');fancyText(String(hiScore),hx0+28,72,20,newRecord?'gold':'white');}const roomTimer=inBonus()&&roomKind!=='cloud'&&roomKind!=='village',sec=Math.ceil((roomTimer?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
+  if(mode==='game'){fancyText('コイン',22,72,16,'gold');x.font='900 16px system-ui';{const cx0=22+x.measureText('コイン').width+6,ct=String(coinProgress);fancyText(ct,cx0,72,20,'white');x.font='900 20px system-ui';const hx0=cx0+x.measureText(ct).width+26;fancyText('HI',hx0,72,16,'gold');fancyText(String(hiScore),hx0+28,72,20,newRecord?'gold':'white');}const roomTimer=inBonus()&&roomKind!=='cloud'&&roomKind!=='village',sec=Math.ceil((roomTimer?roomT:timeLeft)/60),warn=sec<=30&&!arenaOn&&!inBonus(),blink=warn&&Math.floor(Date.now()/250)%2;
     // タイム表示：大きな箱。ボス戦では「BONUS」（残り時間がボーナスになる）
     const bx0=arenaOn?420:610,by0=6,bw=arenaOn?165:170,bh=52;x.save();x.fillStyle=blink?'#e64040':(arenaOn||inBonus())?'#7a4a00cc':'#20304acc';x.beginPath();if(x.roundRect)x.roundRect(bx0,by0,bw,bh,12);else x.rect(bx0,by0,bw,bh);x.fill();
     x.fillStyle=(arenaOn||inBonus())?'#ffdf50':warn?'#ffb3b3':'#9fd8ff';x.font='bold 15px system-ui';x.fillText((roomKind==='cloud'||roomKind==='village')&&inBasement?'STOP':arenaOn||inBonus()?'BONUS':'TIME',bx0+12,by0+20);
