@@ -378,7 +378,7 @@ function drawSkyRope(){
   x.save();x.lineCap='round';
   x.strokeStyle='#6a4428';x.lineWidth=6;x.beginPath();x.moveTo(r.x,-30);x.quadraticCurveTo(r.x+sway,(bottom-30)/2,r.x+sway,bottom);x.stroke();
   x.strokeStyle='#c89858';x.lineWidth=4;x.setLineDash([5,4]);x.beginPath();x.moveTo(r.x,-30);x.quadraticCurveTo(r.x+sway,(bottom-30)/2,r.x+sway,bottom);x.stroke();x.setLineDash([]);
-  if(!held){x.strokeStyle='#8a5a32';x.lineWidth=4;x.beginPath();x.ellipse(r.x+sway,bottom+9,7,10,0,0,7);x.stroke();   // 下の輪っか
+  if(!held){
     if(r.bottom>=SKY_ROPE_BOTTOM-1&&Math.floor(r.t/12)%2){x.fillStyle='#fff';x.font='900 15px system-ui';x.textAlign='center';x.lineWidth=4;x.strokeStyle='#0d1830';x.strokeText('ジャンプで つかまれ！',r.x+sway,bottom-46);x.fillText('ジャンプで つかまれ！',r.x+sway,bottom-46);x.textAlign='left';}
     for(let k=0;k<3;k++){const a=r.t*.1+k*2.1;x.fillStyle='#fff8c0';x.fillRect(r.x+Math.cos(a)*14-1,bottom-10+Math.sin(a)*10-1,2.5,2.5);}}   // きらきら
   x.restore();
@@ -466,14 +466,14 @@ function loadStage(n){
     }
     [520,760,1320,1500,1700,1850,2250,2450,2730,3100,3510].forEach((ex,i)=>enemies.push(makeEnemy(STAGE2_OFFSET+ex,i===2||i===6||i>=8?'boar':i%2===1?'hop':'walk',i)));
     addPerchEnemies([1,3,6]);
-    [[2,'gem'],[5,'heart'],[7,'coins'],[9,'chest'],[12,'gem']].forEach(([k,t])=>spots.push({x:STAGE2_OFFSET+k*240+120,type:t,found:false}));
+    [[2,'gem'],[5,'heart'],[7,'coins'],[9,'chest'],[10,'heart'],[12,'gem'],[14,'heart']].forEach(([k,t])=>spots.push({x:STAGE2_OFFSET+k*240+120,type:t,found:false}));   // 2面は ハートを3か所に
     banner('STAGE 2','大王の谷');
   }
   player=newPlayer(120);player.x=stageStartX();camera=followCamera(player.x);state='play';resetTimer();timeBonus=0;   // スタート直後は2秒無敵
 }
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};mealStreak=0;breadAnim=null;hasKey=false;keyDoorUsed=false;
+function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};mealStreak=0;mealCount={};breadAnim=null;hasKey=false;keyDoorUsed=false;
   if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
@@ -1051,12 +1051,14 @@ function newBoss(hp=BOSS_HP,short=false){return {maxHp:hp,x:AX+700,y:short?groun
 function bossIntroLong(){return arenaOn&&boss&&boss.st==='intro'&&!boss.short}
 // ボスの強さ：1周目・2周目（4周目以降も）は「ふつう・かしこい・さいきょう」の3段階からランダム。3周目（ソラ姫）はいつも よわい
 let lastBossLv=null;
+let bossLostLast=false;   // 前回 ボス戦で ゲームオーバーになったか（次の大王は よわい）
 function bossLevel(){if(mode==='title')return 'demo';if(princessRound)return 'weak';
+  if(bossLostLast){bossLostLast=false;lastBossLv='weak';return 'weak';}
   let lv;for(let k=0;k<10;k++){const r=Math.random();lv=r<.1?'legend':r<.55?'normal':r<.8?'smart':'super';   // でんせつ10%・ふつう45%・かしこい25%・さいきょう20%
     if(!((lv==='super'||lv==='legend')&&(lastBossLv==='super'||lastBossLv==='legend')))break;}   // 強いボス（さいきょう・でんせつ）は2回続けて出ない
   lastBossLv=lv;return lv}
 function bossStars(){const lv=boss&&boss.lv;return lv==='legend'?'でんせつ ★★★★★':lv==='super'?'さいきょう ★★★★':lv==='smart'?'かしこい ★★★':lv==='normal'?'ふつう ★★':lv==='weak'?'よわい ★':''}
-function bossTip(){return boss&&boss.lv==='legend'?'伝説の 黒大王が あらわれた！ 体力7・穴をほとんど よける…！':boss&&boss.lv==='super'?'さいきょうの大王だ！ すばやく、穴もよく見ている…！':boss&&boss.lv==='smart'?'大王が かしこくなった！ 穴をよけることも…':boss&&boss.lv==='weak'?'大王は ちょっと おつかれ気味…？ 穴に落として ふめ！':'穴を掘って 大王を落とし、頭をふめ！'}
+function bossTip(){if(boss&&boss.lv==='weak'&&!princessRound)return '大王は 前の たたかいで つかれている…！ チャンスだ！';return boss&&boss.lv==='legend'?'伝説の 黒大王が あらわれた！ 体力7・穴をほとんど よける…！':boss&&boss.lv==='super'?'さいきょうの大王だ！ すばやく、穴もよく見ている…！':boss&&boss.lv==='smart'?'大王が かしこくなった！ 穴をよけることも…':boss&&boss.lv==='weak'?'大王は ちょっと おつかれ気味…？ 穴に落として ふめ！':'穴を掘って 大王を落とし、頭をふめ！'}
 function bgo(st){boss.st=st;boss.t=0}
 function throwRock(p){const b=boss,sx=b.x+b.w/2,sy=b.y+10,T=48+Math.random()*16,K=bossK(),tx=p.x+p.w/2+(p.vx||0)*T*K.lead*.8+(Math.random()-.5)*K.spread,ty=ground-14,g=.35;rocks.push({x:sx,y:sy,vx:(tx-sx)/T,vy:(ty-sy-.5*g*T*T)/T,r:13});sound('throw')}
 function bossEscape(){const b=boss;holes=holes.filter(h=>h!==b.hole);b.hole=null;b.y=ground-b.h;b.vy=-15;b.vx=b.x+b.w/2<AX+480?4.5:-4.5;bgo('escape')}
@@ -1433,7 +1435,7 @@ function inBonus(){return inBasement&&roomKind!=='basement'}
 const VILLAGE_W=6*W,HOUSE_SCALE=1.35,ROOM_DOOR_X=90;
 function houseDoorX(h){return h[0]+(h[3]===2?31*HOUSE_SCALE:0)}   // とびらの位置（パン屋は右よりに とびらがある）
 function villageHouses(){const W2=VILLAGE_W;return [[W2-2300,'#b8483a','#f4e6cc',0],[W2-2900,'#3a5aa8','#f0e2c4',1],[W2-3550,'#3a8a4a','#f6ead2',2],[W2-4350,'#b8783a','#efe0c0',3],[W2-3950,'#4a4a52','#3a2a1e',4],[W2-4950,'#c8302a','#f4e8d0',5]];}
-let insideHouse=null,housePots={},shopEaten={},shop=null,mealStreak=0;   // mealStreak：続けて食べた回数（3回目は 食べすぎで ことわられる）   // shop：お店の中での 食券・すわる・食べる の進み具合
+let insideHouse=null,housePots={},shopEaten={},shop=null,mealStreak=0,mealCount={};   // mealCount：お店ごとに食べた杯数（それぞれ3杯まで）   // mealStreak：続けて食べた回数（3回目は 食べすぎで ことわられる）   // shop：お店の中での 食券・すわる・食べる の進み具合
 const SHOP_SEATS=[360,480,600],SHOP_TICKET_X=220,TICKET_PRICE=10,BREAD_X=410,BREAD_PRICE=5;
 const BREADS=[{name:'メロンパン',k:1,pts:200},{name:'クロワッサン',k:2,pts:200},{name:'バゲット',k:0,pts:300}];
 let breadAnim=null,breadBuy=0;   // パン屋で買ったパン（上にポンと出る）
@@ -2473,7 +2475,7 @@ if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&en
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
 if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();}return;}   // ゲームオーバー後のデモは、ふつうのデモと同じ（1面の曲）。「雪原の気球」はエンディングだけ
-if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;startKeepAlive();if(!ranking)loadRanking();goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
+if(state==='dying'){deathTick++;player.vy+=.52;player.y+=player.vy;if(deathTick>105||player.y>H+110){lives--;if(lives>0){respawnHere();}else{state='lose';loseT=0;startKeepAlive();if(!ranking)loadRanking();bossLostLast=bossLostLast||(arenaOn&&!!boss&&mode==='game');goKind=arenaOn&&boss?'boss':stage===2?'s2':'s1';gameOverMusic();}}return;}
 if(state==='goal'){goalTick++;const p=player,bx=goalBX();
   if(goalTick<=28){const k=goalTick/28;p.x=goalSX+(bx-17-goalSX)*k;p.y=goalSY+(ground-38-28-goalSY)*k-Math.sin(k*Math.PI)*70;}   // ゴンドラに飛び乗る
   else{if(goalTick>45){balloonVy=Math.min(4.2,balloonVy+.045);balloonLift+=balloonVy;}if(goalTick===32||goalTick%26===0)sound('burner');p.x=bx-17;p.y=ground-38-28-balloonLift;}
@@ -2529,7 +2531,7 @@ if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=k
       if(shop.deluxe){score+=300;popup(p.x+17,p.y-80,'豪華セット！ +300','#ffdf50',20,100);}
       if(!shopEaten[i]){shopEaten[i]=true;if(lives<MAX_LIVES){lives++;popup(p.x+17,p.y-50,'おなか いっぱい！ ライフ+1','#ff8ab0',22,100);}else{score+=500;popup(p.x+17,p.y-50,'おなか いっぱい！ +500','#ffdf50',22,100);}sound('oneup');}
       else popup(p.x+17,p.y-50,'ごちそうさま！','#fff',22,80);
-      mealStreak++;shop.msg=i===4?'まいど！ また 来てね':'ありがとうございましたー！';shop.msgT=120;}
+      mealStreak++;mealCount[i]=(mealCount[i]||0)+1;shop.msg=i===4?'まいど！ また 来てね':'ありがとうございましたー！';shop.msgT=120;}
     if(shop.phase==='done'&&shop.t>=70){p.seated=false;shop.seat=-1;shop.phase='';shop.ticket=false;p.y=ground-p.h;p.x+=30;}
     return;}
   if(up&&i===5&&Math.abs(pc-SHOP_TICKET_X)<34){
@@ -2539,7 +2541,7 @@ if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=k
     p.jumpLock=true;}
   else if(up){const si=SHOP_SEATS.findIndex(sx=>Math.abs(pc-sx)<26);
     if(si>=0){if(i===5&&!shop.ticket){shop.msg='先に 食券を 買ってね（入口の 食券機）';shop.msgT=110;}
-      else if(mealStreak>=2){shop.msg=i===4?'こらっ！ 食べすぎだよ！ おなか こわすよ！':'ちょっと！ 食べすぎだって！ また今度ね！';shop.msgT=150;shop.angry=150;popup(SHOP_SEATS[si],ground-170,'💢 食べすぎ！','#ff5a4a',24,90);tone(180,.12,'sawtooth',.06);tone(140,.16,'sawtooth',.06,.12);shake=8;}   // 3回続けて食べようとすると 怒られる
+      else if((mealCount[i]||0)>=3){shop.msg=i===4?'こらっ！ 食べすぎだよ！ おなか こわすよ！':'ちょっと！ 食べすぎだって！ また今度ね！';shop.msgT=150;shop.angry=150;popup(SHOP_SEATS[si],ground-170,'💢 食べすぎ！','#ff5a4a',24,90);tone(180,.12,'sawtooth',.06);tone(140,.16,'sawtooth',.06,.12);shake=8;}   // 3回続けて食べようとすると 怒られる
       else{p.seated=true;shop.seat=si;shop.phase='order';shop.t=0;tone(440,.05,'triangle',.05);}
       p.jumpLock=true;}}}
 // 地下室の出口のはしご：重なっただけでは登らない。上（ジャンプ）ボタンを押すと、少し待ってから自動で登る
