@@ -2464,7 +2464,7 @@ if(mode==='title'){
 if(bannerT>0)bannerT--;if(bonusResult&&--bonusResult.t<=0)bonusResult=null;if(shake>0)shake--;updateParts();
 noteHiScore();   // エンディング中も記録する（エンディングの処理より先に）
 if(mode==='game'&&((state==='lose'&&loseT>=40)||(state==='ending'&&endingDone())))maybeAskName();   // ランキング入りなら名前入力（すぐ再挑戦のタップをしても、先にこちらが出る）
-if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT-endDoneAt()>=600)startEndSong();updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
+if(state==='ending'){endT++;updateEndPlayer();if(mode==='game'&&endingDone()&&endT-endDoneAt()>=60)startEndSong();/* スタッフロールが終わって「THE END」が出たら、すぐ（約1秒後） */updateEndRockets();if(endT%(endingRare?24:endingPair?55:38)===0)firework();if(endingRare&&endT%3===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*2,vy:1.5+realRandom()*1.5,life:360,max:360,col:`hsl(${Math.floor(realRandom()*360)},90%,62%)`,s:6,g:.01,petal:true});if(endingPair&&endT%6===0)parts.push({x:realRandom()*W,y:-10,vx:(realRandom()-.5)*.8,vy:.8+realRandom()*.8,life:400,max:400,col:['#ffc0d6','#ffd6e6','#fff0f5','#ffb3c8'][Math.floor(realRandom()*4)],s:5,g:.004,petal:true});return}
 if(state==='victoryFlight'){updateVictoryFlight();return}
 if(state==='clear'){clearT++;if(clearT>240){if(mode==='title')startDemo();else loadStage(2);}return}
 if(state==='lose'&&mode==='game'){if(nameOpen)return;if(++loseT>LOSE_TO_TITLE){toTitle();}return;}   // ゲームオーバー後のデモは、ふつうのデモと同じ（1面の曲）。「雪原の気球」はエンディングだけ
@@ -3922,7 +3922,7 @@ function drawTitleScores(){
   if(ranking&&ranking[0]){x.textAlign='right';fancyText('★みんなの1位',W-20,32,20,'gold');fancyText(ranking[0].name+' '+ranking[0].score,W-20,68,28,'white');}
   x.restore();
 }
-function endDoneAt(){return Math.ceil((H+40+credits().length*46-110)/.75)}   // スタッフロールが流れ終わるフレーム（このあと10秒で「雪原の気球」）
+function endDoneAt(){return Math.ceil((H+40+credits().length*46-110)/.75)}   // スタッフロールが流れ終わるフレーム（このあと約1秒で「雪原の気球」）
 function creditsY(){return H+40-endT*.75}
 function endingDone(){return creditsY()+credits().length*46<110}
 // レアエンディングのドリモグ：ボスと同じよろい・マント・王冠で、なかよしの笑顔
