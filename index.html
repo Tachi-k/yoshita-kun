@@ -485,15 +485,17 @@ let ranking=null,rankAsked=-1,nameOpen=false,rankMine=null;
 function rankOn(){return !!RANK_URL}
 // ランキングの リセット：この時刻より前の記録は 表示しない（みんなの ランキングが 0から やりなおしになる）
 const RANK_RESET_AT=Date.parse('2026-11-28T09:30:00Z');
-// 不自然な点数は のせない：リセット前の記録・キリが良すぎる点数（25000 など 1000の倍数）・10点単位でない点数
-function rankValid(v){return (v.at||0)>=RANK_RESET_AT&&v.score>0&&v.score%10===0&&v.score%1000!==0}
+// リセット前の記録と、10点単位でない（ふつうに遊んで出ない）点数は のせない
+function rankValid(v){return (v.at||0)>=RANK_RESET_AT&&v.score>0&&v.score%10===0}
+// リセット直後の 最初の顔ぶれ（キリの良すぎない 自然な点数で）
+const RANK_SEED=[['ドリモグ',28470],['ソラ姫',24310],['村の長老',19860],['はたけのおやじ',16240],['コロ',13590],['おまわりさん',11070],['パン屋',8930],['村の女の子',6480],['おばあさん',4170],['村の子ども',2360]].map(([name,score],i)=>({name,score,at:i,seed:true}));
 async function loadRanking(){if(!rankOn())return;
   try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000);
     const r=await fetch(RANK_URL+'/ranking.json?orderBy=%22score%22&limitToLast=300',{cache:'no-store',signal:ctl.signal});clearTimeout(tm);if(!r.ok)return;
     const d=await r.json()||{};
-    ranking=Object.values(d).filter(v=>v&&typeof v.score==='number'&&typeof v.name==='string'&&rankValid(v)).sort((a,b)=>b.score-a.score||(a.at||0)-(b.at||0)).slice(0,10);
+    ranking=Object.values(d).filter(v=>v&&typeof v.score==='number'&&typeof v.name==='string'&&rankValid(v)).concat(RANK_SEED).sort((a,b)=>b.score-a.score||(a.at||0)-(b.at||0)).slice(0,10);
   }catch(_){}}
-function rankPlace(sc){if(!ranking||sc<=0||sc%1000===0)return 0;const n=ranking.filter(v=>v.score>=sc).length+1;return n<=10?n:0}
+function rankPlace(sc){if(!ranking||sc<=0)return 0;const n=ranking.filter(v=>v.score>=sc).length+1;return n<=10?n:0}
 // 名前を考えなくてもいいように、ランダムな名前の候補（8文字まで）
 const NAME_A=['はやい','つよい','ひみつの','そらとぶ','げんきな','きらきら','ねむい','ふしぎな','ちいさな','まぼろし','さすらい','のんびり','ゴールド','スーパー'],
   NAME_B=['モグラ','カエル','ゆうしゃ','ききゅう','ほりや','くも','コイン','ダイヤ','ぼうけん家','ジャンパー','よし太','ひめ','たんけん隊','イノシシ'];
