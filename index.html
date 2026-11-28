@@ -2498,10 +2498,10 @@ if(p.climb){const c=p.climb;c.t++;p.x+=(c.tx-p.x)*.25;p.y-=c.speed?Math.min(c.sp
   if(p.y+p.h<-6){const done=c.done;p.climb=null;if(done)done();else exitBasement();}
   return;}
 // ひだまり村：家のとびらで ⬆ジャンプ → 家の中へ。家の中のとびらで ⬆ジャンプ → 外へ
-if(inBasement&&roomKind==='village'&&state==='play'&&p.on&&!p.hole){const upNow=keys.jump||padJump,pc=p.x+p.w/2;
-  if(upNow&&!p.prevJump){
-    if(insideHouse&&Math.abs(pc-ROOM_DOOR_X)<30){p.prevJump=true;exitHouse();return;}
-    if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-h[0])<26);if(hi>=0){p.prevJump=true;enterHouse(hi);return;}}}
+if(inBasement&&roomKind==='village'&&state==='play'&&p.on&&!p.hole){const upNow=keys.jump||padJump,pc=p.x+p.w/2,upPressed=upNow&&!p.prevUp;p.prevUp=upNow;
+  if(upPressed&&!p.jumpLock){
+    if(insideHouse&&Math.abs(pc-ROOM_DOOR_X)<30){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;exitHouse();return;}
+    if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-h[0])<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}}
   if(insideHouse&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;score+=300;popup(W-150,ground-80,'ツボの中に コインが！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
 // 地下室の出口のはしご：重なっただけでは登らない。上（ジャンプ）ボタンを押すと、少し待ってから自動で登る
 {const LADDER_TX=W-72+20-p.w/2,atLadder=inBasement&&roomKind==='basement'&&state==='play'&&p.on&&!p.hole&&p.x+p.w>W-80,upNow=keys.jump||padJump;
@@ -2519,7 +2519,8 @@ if(p.digAnim>0)p.digAnim--;
 if(p.moveLock>0){if(!keys.left&&!keys.right)p.moveLock=0;else{p.moveLock--;p.vx=0;}}
 // ジャンプの猶予（ゲーム中のみ）：着地の少し前に押しても着地した瞬間に跳ぶ（先行入力）／
 // 足場から落ち始めて少しの間はまだ跳べる（崖のぎりぎりで押し遅れても落ちにくい）
-const jumpIn=keys.jump||padJump,assist=mode==='game';
+if(p.jumpLock&&!(keys.jump||padJump))p.jumpLock=false;   // 家の出入りに使ったジャンプボタンは、はなすまで ジャンプしない
+const jumpIn=(keys.jump||padJump)&&!p.jumpLock,assist=mode==='game';
 const jumpPressed=jumpIn&&!p.prevJump;
 if(jumpPressed)p.jumpBuf=JUMP_BUFFER_FRAMES;else if(p.jumpBuf>0)p.jumpBuf--;
 p.prevJump=jumpIn;
