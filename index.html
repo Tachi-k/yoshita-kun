@@ -474,7 +474,7 @@ function loadStage(n){
 }
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
-function reset(){score=0;coinProgress=0;coinEarned=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};signState=null;onsenDone=false;onsen=null;shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
+function reset(){score=0;coinProgress=0;coinEarned=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};signState=null;cafeHearts=0;onsenDone=false;onsen=null;shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
   if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;coinEarned=coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
@@ -1245,7 +1245,7 @@ function exitBasement(){const p=player,sf=surface,h=sf.hole,wasVillage=roomKind=
 // マスター「いい曲 入ったんだけど 聞かない？」→ 聞いても 聞かなくても「雪原の気球」が流れる（Spotify などの リンクつき）
 const CAFE_X=STAGE2_OFFSET+1300,CAFE_SAFE=190,CAFE_DOOR_X=90,CAFE_MASTER_X=640;
 const CAFE_MENU=[{name:'コーヒー',price:3,kind:'coffee'},{name:'ココア',price:3,kind:'cocoa'}];
-let cafe=null;
+let cafe=null,cafeHearts=0;   // cafeHearts：喫茶店で もらった ハートの数（1ゲーム 2つまで）
 function enterCafe(){const p=player;
   surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX:CAFE_X-p.w/2};inBasement=true;roomKind='cafe';
   world=W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;cannonShot=null;items=[];coins=[];
@@ -1264,7 +1264,7 @@ function updateCafe(p){const c=cafe;c.t++;if(c.msgT>0)c.msgT--;const pc=p.x+p.w/
     if(c.order.t===80){c.msg='おまちどうさま。'+(c.order.kind==='coffee'?'コーヒー':'ココア')+'です';c.msgT=120;tone(660,.06,'triangle',.05);c.drink={kind:c.order.kind,t:0};c.order=null;}}
   if(c.drink){const d=c.drink,m=d.t++;p.vx=0;p.vy=0;p.walking=false;p.facing=1;p.jumpLock=true;p.standT=999;
     if(m>=40&&m<=130&&(m-40)%30===0){popup(pc+30,ground-190-((m-40)/30%2)*14,'ずずっ','#fff',20,30);tone(260,.08,'sine',.05);}
-    if(m===150){popup(pc,ground-215,d.kind==='coffee'?'ほっ… いい かおり':'ほっ… あまくて あったかい','#ffe0b0',24,110);sparkleFx(pc);tone(784,.1,'triangle',.05);tone(988,.14,'triangle',.05,.12);}
+    if(m===150){popup(pc,ground-215,d.kind==='coffee'?'ほっ… いい かおり':'ほっ… あまくて あったかい','#ffe0b0',24,110);sparkleFx(pc);if(cafeHearts<2){cafeHearts++;addLife(pc,ground-250);}   /* 飲むと ハート（2つまで） */tone(784,.1,'triangle',.05);tone(988,.14,'triangle',.05,.12);}
     if(m>=220)c.drink=null;
     return true;}
   if(up&&!p.jumpLock){
