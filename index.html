@@ -3388,7 +3388,21 @@ function drawHouseInterior(){const i=insideHouse.i,t=Date.now(),wallC=['#f4e2c0'
   if(i===2){x.fillStyle='#7a4a28';x.fillRect(560,ground-90,220,14);x.fillRect(575,ground-76,12,76);x.fillRect(755,ground-76,12,76);   // テーブル
     for(let k=0;k<4;k++){ell(600+k*45,ground-100,16,10,'#d89a4a');ell(600+k*45,ground-104,10,5,'#f0c070');}   // パン
     x.fillStyle='#8a8478';x.fillRect(220,ground-170,110,170);x.fillStyle='#2a1a14';ell(275,ground-60,34,30,'#2a1a14');x.fillStyle='#ff8a3a';ell(275,ground-50,20,12,'#ff8a3a');}   // パンがま
-  if(i===3){x.fillStyle='#6a4224';x.fillRect(560,ground-260,220,260);for(let r=0;r<5;r++){x.fillStyle='#4a2a14';x.fillRect(566,ground-254+r*50,208,6);for(let k=0;k<10;k++){x.fillStyle=['#c83a3a','#3a6ac8','#3a9a4a','#e8b040','#8a4aa8'][(k+r)%5];x.fillRect(570+k*20,ground-244+r*50,14,38-(k%3)*4);}}   // 本だな
+  if(i===3){   // 交番の中：つくえと電話・地図・おしらせの掲示板・落とし物の箱
+    x.fillStyle='#eef0f2';x.fillRect(0,0,W,ground-40);x.fillStyle='#24345a';x.fillRect(0,60,W,8);
+    x.fillStyle='#c8b48a';x.fillRect(540,ground-96,260,14);x.fillStyle='#a89468';x.fillRect(548,ground-82,244,82);x.fillStyle='#8a7a54';for(const dx of[570,670])x.fillRect(dx,ground-70,70,8);   // つくえ
+    x.fillStyle='#2a2a30';x.fillRect(720,ground-112,34,16);x.fillRect(726,ground-120,22,8);x.fillStyle='#c83a3a';x.fillRect(736,ground-108,8,4);   // 電話
+    x.fillStyle='#fafaf6';x.fillRect(600,ground-104,40,8);x.fillStyle='#3a3a40';x.fillRect(644,ground-108,3,12);   // 書類とペン
+    x.fillStyle='#e8f0d8';x.fillRect(560,ground-280,220,140);x.strokeStyle='#6a5a3a';x.lineWidth=6;x.strokeRect(560,ground-280,220,140);   // 村の地図
+    x.strokeStyle='#5aa8de';x.lineWidth=6;x.beginPath();x.moveTo(570,ground-200);x.quadraticCurveTo(660,ground-170,770,ground-230);x.stroke();
+    for(const [mx,my,c] of[[600,ground-240,'#c8443a'],[650,ground-220,'#3a5aa8'],[700,ground-250,'#3a8a4a'],[740,ground-180,'#24345a']]){x.fillStyle=c;x.fillRect(mx,my,16,12);}
+    x.fillStyle='#24345a';x.font='bold 13px system-ui';x.textAlign='center';x.fillText('ひだまり村 地図',670,ground-258);
+    x.fillStyle='#8a5a34';x.fillRect(200,ground-260,120,90);x.fillStyle='#c8a878';x.fillRect(206,ground-254,108,78);   // おしらせ
+    x.fillStyle='#fff';x.fillRect(214,ground-246,44,32);x.fillRect(264,ground-240,42,30);x.fillStyle='#c83a3a';ell(236,ground-246,3,3,'#c83a3a');ell(285,ground-240,3,3,'#c83a3a');
+    x.fillStyle='#24345a';x.font='bold 8px system-ui';x.fillText('大王に',236,ground-232);x.fillText('ちゅうい',236,ground-222);x.fillText('ひめを',285,ground-226);x.fillText('さがしてます',285,ground-216);
+    x.fillStyle='#c89a4a';x.fillRect(230,ground-60,70,60);x.fillStyle='#24345a';x.font='bold 10px system-ui';x.fillText('おとしもの',265,ground-28);x.textAlign='left';   // 落とし物の箱
+  }
+  if(false){x.fillStyle='#6a4224';x.fillRect(560,ground-260,220,260);for(let r=0;r<5;r++){x.fillStyle='#4a2a14';x.fillRect(566,ground-254+r*50,208,6);for(let k=0;k<10;k++){x.fillStyle=['#c83a3a','#3a6ac8','#3a9a4a','#e8b040','#8a4aa8'][(k+r)%5];x.fillRect(570+k*20,ground-244+r*50,14,38-(k%3)*4);}}   // 本だな
     ell(260,ground-120,40,40,'#3a6ac8');ell(250,ground-128,14,10,'#4fae52');x.fillStyle='#7a4a28';x.fillRect(256,ground-80,8,80);}   // 地球ぎ
   // とびら（出口）
   x.fillStyle='#5a3418';x.fillRect(ROOM_DOOR_X-32,ground-130,64,130);x.fillStyle='#7a4a28';x.fillRect(ROOM_DOOR_X-26,ground-124,52,124);ell(ROOM_DOOR_X+16,ground-64,3,3,'#ffd24a');
@@ -3439,6 +3453,32 @@ function drawVillageHouse(hx,roof,wall,t){const L=hx-74,R=hx+74,top=ground-112;
   x.fillStyle='#7a5a48';x.fillRect(hx+38,top-58,18,40);x.fillStyle='#5a4034';x.fillRect(hx+35,top-62,24,6);
   for(let k=0;k<4;k++){const ph=((t*.0006+k*.25)%1);x.globalAlpha=.45*(1-ph);ell(hx+47+ph*24,top-70-ph*60,6+ph*12,5+ph*10,'#f4f4f4');}x.globalAlpha=1;
   x.restore();}
+// 交番：白いかべ・平らな屋根・赤いランプ・「交番 KOBAN」の看板・自転車
+function drawKoban(hx,t){x.save();const L=hx-70,R=hx+70,top=ground-104;
+  x.fillStyle='#00000022';x.beginPath();x.ellipse(hx+8,ground+2,92,9,0,0,7);x.fill();
+  x.fillStyle='#8a8a92';x.fillRect(L-4,ground-10,148,10);   // 土台
+  const wg=x.createLinearGradient(L,0,R,0);wg.addColorStop(0,'#f6f6f2');wg.addColorStop(1,'#d8d8d2');x.fillStyle=wg;x.fillRect(L,top,140,94);
+  x.strokeStyle='#c8c8c0';x.lineWidth=1;for(let xx=L+14;xx<R;xx+=14){x.beginPath();x.moveTo(xx,top+30);x.lineTo(xx,ground-10);x.stroke();}   // かべのタイル
+  // 屋根（平らで、紺色のふち）
+  x.fillStyle='#24345a';x.fillRect(L-12,top-14,164,16);x.fillStyle='#3a4e7a';x.fillRect(L-12,top-14,164,4);
+  // 看板
+  x.fillStyle='#ffffff';x.fillRect(hx-46,top+4,92,24);x.strokeStyle='#24345a';x.lineWidth=2;x.strokeRect(hx-46,top+4,92,24);
+  x.fillStyle='#24345a';x.font='900 15px system-ui';x.textAlign='center';x.fillText('交 番',hx,top+21);x.font='bold 6px system-ui';x.fillText('KOBAN',hx,top+27);x.textAlign='left';
+  // 赤いランプ（くるくる光る）
+  const on=Math.floor(t/400)%2;x.fillStyle='#5a5a62';x.fillRect(hx-4,top-24,8,10);
+  const lg=x.createRadialGradient(hx,top-30,1,hx,top-30,on?22:10);lg.addColorStop(0,'#ff4a3a');lg.addColorStop(.4,on?'#ff3a2acc':'#c8202aaa');lg.addColorStop(1,'#ff3a2a00');
+  x.fillStyle=lg;x.fillRect(hx-24,top-52,48,44);ell(hx,top-30,6,7,on?'#ff6a5a':'#c8302a');ell(hx-1.5,top-32,2,2.4,'#ffffffaa');
+  // 大きなガラスのとびら
+  x.fillStyle='#4a5a7a';x.fillRect(hx-22,ground-70,44,60);x.fillStyle='#aed4f0';x.fillRect(hx-19,ground-67,18,54);x.fillRect(hx+1,ground-67,18,54);
+  x.fillStyle='#ffffff66';x.beginPath();x.moveTo(hx-17,ground-64);x.lineTo(hx-9,ground-64);x.lineTo(hx-17,ground-40);x.closePath();x.fill();
+  ell(hx-3,ground-40,1.6,1.6,'#ccc');ell(hx+3,ground-40,1.6,1.6,'#ccc');
+  // 窓
+  for(const wx of[hx-50,hx+50]){x.fillStyle='#aed4f0';x.fillRect(wx-12,ground-70,24,28);x.strokeStyle='#4a5a7a';x.lineWidth=3;x.strokeRect(wx-12,ground-70,24,28);}
+  // 自転車
+  x.save();x.translate(R+24,ground);x.strokeStyle='#2a2a30';x.lineWidth=2;for(const wx of[-12,12]){x.beginPath();x.arc(wx,-9,8,0,7);x.stroke();}
+  x.strokeStyle='#e8e8ec';x.lineWidth=2.4;x.beginPath();x.moveTo(-12,-9);x.lineTo(-2,-20);x.lineTo(8,-20);x.lineTo(12,-9);x.moveTo(-2,-20);x.lineTo(1,-9);x.lineTo(12,-9);x.moveTo(8,-20);x.lineTo(9,-26);x.stroke();
+  x.fillStyle='#2a2a30';x.fillRect(-6,-23,8,3);x.fillStyle='#ffffff';x.fillRect(5,-27,9,3);x.restore();
+  x.restore();}
 function drawBarn(bx){x.save();const L=bx-80,top=ground-120;
   x.fillStyle='#00000022';x.beginPath();x.ellipse(bx+8,ground+2,100,10,0,0,7);x.fill();
   const g=x.createLinearGradient(L,0,L+160,0);g.addColorStop(0,'#b8322a');g.addColorStop(1,'#7a1a14');x.fillStyle=g;x.fillRect(L,top,160,120);
@@ -3471,7 +3511,7 @@ function drawVillageScenery(){if(insideHouse)return;const W2=world,t=Date.now();
   if(W2-1700<camera+W+200&&W2-1150>camera-200){drawBarn(W2-1230);drawField(W2-1700,W2-1360);}
   const houses=villageHouses();
   for(let tx=W2-1850;tx>200;tx-=330){if(tx<camera-80||tx>camera+W+80)continue;drawTree(tx,t);}   // 木
-  for(const [hx,r,w] of houses){if(hx<camera-180||hx>camera+W+180)continue;x.save();x.translate(hx,ground);x.scale(HOUSE_SCALE,HOUSE_SCALE);x.translate(-hx,-ground);drawVillageHouse(hx,r,w,t);x.restore();
+  for(const [hx,r,w,hi] of houses){if(hx<camera-180||hx>camera+W+180)continue;x.save();x.translate(hx,ground);x.scale(HOUSE_SCALE,HOUSE_SCALE);x.translate(-hx,-ground);if(hi===3)drawKoban(hx,t);else drawVillageHouse(hx,r,w,t);x.restore();
     if(!insideHouse&&Math.abs(player.x+player.w/2-hx)<26&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで 入る',hx,ground-120*HOUSE_SCALE-24,18,'white');x.restore();}}
   for(let fx=W2-1850;fx>300;fx-=36){if(fx<camera-40||fx>camera+W+40)continue;x.fillStyle='#c8a070';x.fillRect(fx,ground-30,5,30);x.fillStyle='#a88050';x.fillRect(fx+3,ground-30,2,30);if(fx%72===0){x.fillStyle='#c8a070';x.fillRect(fx-31,ground-24,36,4);x.fillRect(fx-31,ground-12,36,4);}}   // さく
   {const wx=W2-2750;if(wx>camera-80&&wx<camera+W+80){x.fillStyle='#8a8a9a';x.fillRect(wx-26,ground-34,52,34);x.strokeStyle='#5a5a6a';x.lineWidth=1;for(let r=0;r<3;r++)for(let c=0;c<4;c++)x.strokeRect(wx-26+c*13+(r%2)*6,ground-34+r*11,13,11);x.fillStyle='#5a3a24';x.fillRect(wx-30,ground-80,6,46);x.fillRect(wx+24,ground-80,6,46);x.fillStyle='#a84a3a';x.beginPath();x.moveTo(wx-38,ground-80);x.lineTo(wx,ground-100);x.lineTo(wx+38,ground-80);x.closePath();x.fill();x.fillStyle='#6a4a2a';x.fillRect(wx-6,ground-70,12,10);}}   // 井戸
