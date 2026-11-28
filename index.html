@@ -2525,7 +2525,7 @@ const jumpIn=(keys.jump||padJump)&&!p.jumpLock,assist=mode==='game';
 const jumpPressed=jumpIn&&!p.prevJump;
 if(jumpPressed)p.jumpBuf=JUMP_BUFFER_FRAMES;else if(p.jumpBuf>0)p.jumpBuf--;
 p.prevJump=jumpIn;
-if(bossIntroLong()){p.vx=0;}else if((jumpIn||(assist&&p.jumpBuf>0))&&(p.on||(assist&&p.coyote>0&&!p.hole))){p.vy=-16.5;p.on=false;p.jumping=true;p.jumpBuf=0;p.coyote=0;
+if(bossIntroLong()){p.vx=0;}else if((jumpIn||(assist&&p.jumpBuf>0))&&(p.on||(assist&&p.coyote>0&&!p.hole))){p.vy=-16.5;p.on=false;p.jumping=true;p.jumpBuf=0;p.coyote=0;p.jumpSide=p.walking||(p.standT||0)<45;
   // 走りながら跳ぶと遠くまで（runJump）。その場でも、走りながら（横ジャンプ）でも、てっぺん近くで もう一回跳べる（二段ジャンプ）
   const moving=keys.left||keys.right;p.runJump=assist&&moving;p.standJump=assist&&!moving;p.doubleUsed=false;
   p.fromPad=platforms.some(b=>b.cloudPad&&Math.abs(p.y+p.h-b.y)<3&&p.x+p.w>b.x&&p.x<b.x+b.w);   // 雲の台の上から跳んだか
@@ -3861,8 +3861,9 @@ function draw(){
   if(p.climb)p.facing=Math.floor(p.climb.t/14)%2?1:-1;   // 手足を交互に動かして登る
   if(p.walking)p.standT=0;else p.standT=(p.standT||0)+1;   // 止まってからの時間
   const sideStand=state==='play'&&p.on&&!p.walking&&p.standT<45;   // 止まってすぐは横向きのまま（約0.75秒たつと前を向く）
-  const pose=p.climb?'jump':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&(p.walking||sideStand)?'walk':'front';
-  const strideNow=p.walking?p.stride:0;   // 立ち止まり中は 足をそろえた形
+  const airSide=state==='play'&&p.jumping&&!p.on&&(p.jumpSide||keys.left||keys.right);   // 横向きで跳んだときは、横向きのままジャンプ
+  const pose=p.climb?'jump':airSide?'walk':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&(p.walking||sideStand)?'walk':'front';
+  const strideNow=airSide?8.3:p.walking?p.stride:0;   // 空中では 足を前後にひらいた形   // 立ち止まり中は 足をそろえた形
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
   if(p.digAnim>0&&p.on)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawDigging(p),true);   // スコップで掘る
   else if(p.climb&&!p.climb.done)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHeroBack(p.x,p.y,p.climb.t),true);   // はしごを登るときは うしろ姿
