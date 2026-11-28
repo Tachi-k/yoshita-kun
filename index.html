@@ -1431,6 +1431,7 @@ let roomKind='basement',roomT=0,bonusUsed={},rainGapCrossed=false;   // roomKind
 function inBonus(){return inBasement&&roomKind!=='basement'}
 // ===== 2面の左の先にある「ひだまり村」：敵のいない 平和な村。村人に近づくと話しかけてくる =====
 const VILLAGE_W=6*W,HOUSE_SCALE=1.35,ROOM_DOOR_X=90;
+function houseDoorX(h){return h[0]+(h[3]===2?31*HOUSE_SCALE:0)}   // とびらの位置（パン屋は右よりに とびらがある）
 function villageHouses(){const W2=VILLAGE_W;return [[W2-2300,'#b8483a','#f4e6cc',0],[W2-2900,'#3a5aa8','#f0e2c4',1],[W2-3550,'#3a8a4a','#f6ead2',2],[W2-4350,'#b8783a','#efe0c0',3]];}
 let insideHouse=null,housePots={};   // insideHouse：いま入っている家（村の状態をしまっておく）
 const ROOM_PEOPLE=[{kind:'grandma',name:'村の おばあさん'},{kind:'girl',name:'村の 女の子'},{kind:'baker',name:'パン屋の おにいさん'},{kind:'scholar',name:'村の おまわりさん'}];
@@ -1440,7 +1441,7 @@ function enterHouse(i){const p=player,h=villageHouses()[i];
   p.x=ROOM_DOOR_X+20;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;tone(520,.06,'triangle',.05);tone(660,.06,'triangle',.05,.08);}
 function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];
   world=s0.world;camera=s0.camera;platforms=s0.platforms;villagers=s0.villagers;talk=null;insideHouse=null;
-  p.x=h[0]-p.w/2;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);tone(660,.06,'triangle',.05);tone(520,.06,'triangle',.05,.08);}
+  p.x=houseDoorX(h)-p.w/2;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);tone(660,.06,'triangle',.05);tone(520,.06,'triangle',.05,.08);}
 let villagers=[],talk=null,villageSeen=false;
 function villageCalm(){if(insideHouse)return 1;return inBasement&&roomKind==='village'?Math.max(0,Math.min(1,(world-1000-player.x)/1600)):0}   // 左へ進むほど 青空・平和に
 function villageLines(kind){const hero=princessRound?'ソラ姫さま':'よし太くん';
@@ -2501,7 +2502,7 @@ if(p.climb){const c=p.climb;c.t++;p.x+=(c.tx-p.x)*.25;p.y-=c.speed?Math.min(c.sp
 if(inBasement&&roomKind==='village'&&state==='play'&&p.on&&!p.hole){const upNow=keys.jump||padJump,pc=p.x+p.w/2,upPressed=upNow&&!p.prevUp;p.prevUp=upNow;
   if(upPressed&&!p.jumpLock){
     if(insideHouse&&Math.abs(pc-ROOM_DOOR_X)<30){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;exitHouse();return;}
-    if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-h[0])<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}}
+    if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-houseDoorX(h))<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}}
   if(insideHouse&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;score+=300;popup(W-150,ground-80,'ツボの中に コインが！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
 // 地下室の出口のはしご：重なっただけでは登らない。上（ジャンプ）ボタンを押すと、少し待ってから自動で登る
 {const LADDER_TX=W-72+20-p.w/2,atLadder=inBasement&&roomKind==='basement'&&state==='play'&&p.on&&!p.hole&&p.x+p.w>W-80,upNow=keys.jump||padJump;
@@ -3561,7 +3562,7 @@ function drawVillageScenery(){if(insideHouse)return;const W2=world,t=Date.now();
   const houses=villageHouses();
   for(let tx=W2-1850;tx>200;tx-=330){if(tx<camera-80||tx>camera+W+80)continue;drawTree(tx,t);}   // 木
   for(const [hx,r,w,hi] of houses){if(hx<camera-180||hx>camera+W+180)continue;x.save();x.translate(hx,ground);x.scale(HOUSE_SCALE,HOUSE_SCALE);x.translate(-hx,-ground);if(hi===3)drawKoban(hx,t);else if(hi===2)drawBakery(hx,t);else drawVillageHouse(hx,r,w,t);x.restore();
-    if(!insideHouse&&Math.abs(player.x+player.w/2-hx)<26&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで 入る',hx,ground-120*HOUSE_SCALE-24,18,'white');x.restore();}}
+    const dx0=houseDoorX([hx,r,w,hi]);if(!insideHouse&&Math.abs(player.x+player.w/2-dx0)<26&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで 入る',dx0,ground-120*HOUSE_SCALE-24,18,'white');x.restore();}}
   for(let fx=W2-1850;fx>300;fx-=36){if(fx<camera-40||fx>camera+W+40)continue;x.fillStyle='#c8a070';x.fillRect(fx,ground-30,5,30);x.fillStyle='#a88050';x.fillRect(fx+3,ground-30,2,30);if(fx%72===0){x.fillStyle='#c8a070';x.fillRect(fx-31,ground-24,36,4);x.fillRect(fx-31,ground-12,36,4);}}   // さく
   {const wx=W2-2750;if(wx>camera-80&&wx<camera+W+80){x.fillStyle='#8a8a9a';x.fillRect(wx-26,ground-34,52,34);x.strokeStyle='#5a5a6a';x.lineWidth=1;for(let r=0;r<3;r++)for(let c=0;c<4;c++)x.strokeRect(wx-26+c*13+(r%2)*6,ground-34+r*11,13,11);x.fillStyle='#5a3a24';x.fillRect(wx-30,ground-80,6,46);x.fillRect(wx+24,ground-80,6,46);x.fillStyle='#a84a3a';x.beginPath();x.moveTo(wx-38,ground-80);x.lineTo(wx,ground-100);x.lineTo(wx+38,ground-80);x.closePath();x.fill();x.fillStyle='#6a4a2a';x.fillRect(wx-6,ground-70,12,10);}}   // 井戸
   for(let i=0;i<70;i++){const fx=W2-1800-i*53;if(fx<camera-10||fx>camera+W+10||fx<100)continue;x.strokeStyle='#4a9a3a';x.lineWidth=1.5;x.beginPath();x.moveTo(fx,ground);x.lineTo(fx,ground-8);x.stroke();ell(fx,ground-9,3.5,3.5,['#ff8ab8','#fff','#ffd84d','#9fd8ff'][i%4]);ell(fx,ground-9,1.4,1.4,'#ffcf3a');}   // 花
