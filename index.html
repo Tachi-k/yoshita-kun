@@ -2651,8 +2651,8 @@ if(inBonus()&&roomKind!=='cloud'&&roomKind!=='village'&&state==='play'){roomT--;
 // 崖の底で横位置を判定すると、落ちながら移動したときに入口を通り過ぎてしまう。
 const fallX=p.x+p.w/2;
 if((mode==='game'||demoScene==='rain')&&stage===1&&!inBasement&&!westSide&&!bonusUsed[1]){
-  if(p.on&&!p.hole&&fallX>=1440)rainGapCrossed=true;
-  if(rainGapCrossed&&!p.hole&&fallX>=1200&&fallX<1440&&oldY+p.h<=ground&&p.y+p.h>ground){
+  if(p.on&&!p.hole&&p.y+p.h>=ground-1){if(fallX>=1440)rainGapCrossed=true;else if(fallX<1200)rainGapCrossed=false;}   // 最後に立っていた地面が 崖の向こう（右）か、手前（左）か
+  if(rainGapCrossed&&!p.hole&&!p.on&&fallX>=1170&&fallX<1470&&p.y+p.h>ground+6&&p.vy>0){   // 崖の向こうから 崖に落ちたら（はしにかすっても）入れる
     enterBonus('rain',1580);return;
   }
 }
