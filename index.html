@@ -231,13 +231,13 @@ canvas{display:block;background:#17283c}
   <div class="pad"><div id="dpad"><span>◀</span><span>▶</span></div></div>
   <div class="pad"><button class="btn" id="dig"><b>⛏</b>掘る</button><button class="btn" id="jump"><b>⬆</b>ジャンプ</button></div>
 </div>
-<p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M で音楽ON/OFF・R でやり直し</p>
+<p class="help">← → / A D 移動・スペースでジャンプ（移動キーと同時押しで斜めジャンプ）・X で穴掘り・M でサウンドON/OFF・R でやり直し</p>
 <button id="startBtn" aria-label="ゲームスタート"><span class="sb-body"><span class="sb-ic" aria-hidden="true">▶</span><span class="sb-tx">START<small>ゲームスタート</small></span></span></button>
 <div id="songInfo" hidden><div class="si-note">♪ NOW PLAYING　「雪原の気球」</div><div class="si-text">この曲は <b>Spotify</b>・<b>Apple Music</b>・<b>Amazon Music</b> で配信中！</div><a id="songLink" href="https://open.spotify.com/album/7H9VZET3hQNey5RYqa4HFk" target="_blank" rel="noopener">Spotifyで聴く ▶</a><button id="videoBtn" type="button">🎬 動画を見る</button></div>
 <div id="rankBox" hidden><div class="rk-panel"><button type="button" class="rk-x" id="rankX" aria-label="とじる">✕</button><h2>🏆 みんなのランキング TOP10</h2><ol id="rankList"></ol><div class="rk-msg" id="rankMsg"></div><div class="rk-btns rk-sticky"><button type="button" class="rk-ok" id="rankClose">とじる</button></div></div></div>
 <div id="nameBox" hidden><div class="rk-panel"><h2 id="nameTitle">ランキング入り！</h2><div class="rk-msg" id="nameMsg"></div><div class="rk-row"><input id="nameInput" type="text" maxlength="8" placeholder="なまえ（8文字まで）" autocomplete="nickname" enterkeyhint="done"><button type="button" id="nameDice" aria-label="ほかの名前にする" title="ほかの名前にする">🎲</button></div><div class="rk-tip">そのまま登録しても、自由に書きかえてもOK！</div><div class="rk-btns"><button type="button" class="rk-no2" id="nameSkip">登録しない</button><button type="button" class="rk-ok" id="nameOk">登録する</button></div></div></div>
 <div id="videoBox" hidden><div class="vb-inner"><button id="videoClose" type="button" aria-label="とじる">✕</button><div class="vb-frame"></div></div></div>
-<div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="rank" aria-label="ランキング" hidden>🏆</button><button id="music" aria-label="音楽">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
+<div class="topbtns"><div id="bgmSwitch" role="group" aria-label="BGMの種類"><span>♫ BGMをえらぶ</span><button type="button" data-bgm="chip" aria-pressed="true" title="ピコピコ音のレトロなBGM">ファミコン風</button><button type="button" data-bgm="mp3" aria-pressed="false" title="楽器の音で作った豪華なBGM">本格サウンド</button></div><button id="rank" aria-label="ランキング" hidden>🏆</button><button id="music" aria-label="サウンド">🎵</button><button id="fs" aria-label="全画面">⛶</button></div>
 </div>
 <dialog id="arcade" aria-labelledby="arcadeTitle">
   <div class="arcadeHeader">
@@ -621,7 +621,7 @@ function playJingle(audio,done=()=>{},failed=()=>{}){
     if(!buffer||!audioCtx||audioCtx.state!=='running'){failed();done();return}
     try{
       const source=audioCtx.createBufferSource(),gain=audioCtx.createGain();
-      source.buffer=buffer;gain.gain.value=MP3_VOLUME;source.connect(gain);gain.connect(audioCtx.destination);
+      source.buffer=buffer;gain.gain.value=MP3_VOLUME;source.connect(gain);gain.connect(audioOutput());
       m.source=source;source.onended=()=>{gain.disconnect();if(generation===m.generation){m.source=null;done()}};
       source.start();
     }catch(_){failed();done()}
@@ -667,7 +667,7 @@ function stageClearFanfare(){
   kick(end,.3);for(let k=0;k<6;k++)hat(end+k*.05,.05*(1-k/7),.11);
   whoosh(end+.35,500,2600,.6,.04);
 }
-function originalVictoryMusic(){if(mode==='title')return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();const notes=[[523,0,.13],[659,.14,.13],[784,.28,.13],[1047,.43,.25],[784,.72,.12],[1047,.86,.4],[1175,1.32,.13],[1319,1.47,.13],[1568,1.63,.55]];const start=audioCtx.currentTime+.03;for(const [hz,at,dur] of notes){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.value=hz;g.gain.setValueAtTime(.0001,start+at);g.gain.exponentialRampToValueAtTime(.13,start+at+.015);g.gain.exponentialRampToValueAtTime(.0001,start+at+dur);o.connect(g);g.connect(audioCtx.destination);o.start(start+at);o.stop(start+at+dur+.02)}}catch(e){}}
+function originalVictoryMusic(){if(mode==='title')return;try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();audioCtx.resume();const notes=[[523,0,.13],[659,.14,.13],[784,.28,.13],[1047,.43,.25],[784,.72,.12],[1047,.86,.4],[1175,1.32,.13],[1319,1.47,.13],[1568,1.63,.55]];const start=audioCtx.currentTime+.03;for(const [hz,at,dur] of notes){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='triangle';o.frequency.value=hz;g.gain.setValueAtTime(.0001,start+at);g.gain.exponentialRampToValueAtTime(.13,start+at+.015);g.gain.exponentialRampToValueAtTime(.0001,start+at+dur);o.connect(g);g.connect(audioOutput());o.start(start+at);o.stop(start+at+dur+.02)}}catch(e){}}
 // iPhone対策：①消音スイッチでも鳴るよう再生モードに ②指を離した瞬間に音声を解放 ③停止(interrupted)からの復帰
 let silentEl=null;
 function silentWavUrl(){const n=800,b=new ArrayBuffer(44+n),v=new DataView(b),w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);for(let i=0;i<n;i++)v.setUint8(44+i,128);return URL.createObjectURL(new Blob([b],{type:'audio/wav'}))}
@@ -676,12 +676,12 @@ function unlockAudio(){try{if(mp3Cur){const m=mp3[mp3Cur];if(m&&musicOn&&!paused
   if(navigator.audioSession){try{navigator.audioSession.type='playback'}catch(_){}}
   audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
   if(audioCtx.state!=='running'&&audioCtx.state!=='closed')audioCtx.resume().catch(()=>{});
-  if(!audioCtx._primed){const s=audioCtx.createBufferSource();s.buffer=audioCtx.createBuffer(1,1,22050);s.connect(audioCtx.destination);s.start(0);audioCtx._primed=true}
+  if(!audioCtx._primed){const s=audioCtx.createBufferSource();s.buffer=audioCtx.createBuffer(1,1,22050);s.connect(audioOutput());s.start(0);audioCtx._primed=true}
   // 古いiOS向け：無音の音声を流して再生モードに切り替える
   if(!navigator.audioSession&&!silentEl&&/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document){silentEl=new Audio(silentWavUrl());silentEl.loop=true;silentEl.setAttribute('playsinline','');const pr=silentEl.play();if(pr&&pr.catch)pr.catch(()=>{silentEl=null})}
 }catch(e){}}
 ['touchstart','pointerdown','touchend','pointerup','click','keydown'].forEach(ev=>document.addEventListener(ev,unlockAudio,{capture:true,passive:true}));
-function tone(hz,duration,type='square',volume=.09,delay=0,endHz=null){if(mode==='title'&&!xmasIntro)return;unlockAudio();if(!audioCtx)return;try{let t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,hz),t);if(endHz)o.frequency.exponentialRampToValueAtTime(Math.max(1,endHz),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+duration+.02);}catch(e){}}
+function tone(hz,duration,type='square',volume=.09,delay=0,endHz=null){if(mode==='title'&&!xmasIntro)return;unlockAudio();if(!audioCtx)return;try{let t=audioCtx.currentTime+delay,o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(Math.max(1,hz),t);if(endHz)o.frequency.exponentialRampToValueAtTime(Math.max(1,endHz),t+duration);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(volume,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+duration);o.connect(g);g.connect(audioOutput());o.start(t);o.stop(t+duration+.02);}catch(e){}}
 const vib={dig:12,stomp:30,bury:45,chain:[40,30,40,30,80],treasure:30,oneup:[30,30,30],hurt:[70,40,140],slam:40,bosshit:[60,30,90],boom:80};
 function buzz(kind){try{if(vib[kind]&&navigator.vibrate)navigator.vibrate(vib[kind])}catch(e){}}
 function pinSound(n){if(mode==='title')return;tone(420+n*55,.1,'square',.07,0,900+n*70);tone(1600+n*40,.05,'triangle',.04,.03);buzz('stomp');}
@@ -697,7 +697,7 @@ function sound(kind){if(mode==='title')return;unlockAudio();buzz(kind);
   if(kind==='bosshit'){tone(900,.12,'sawtooth',.1,0,300);tone(200,.3,'square',.08,.08,60);}
   if(kind==='boom'){tone(140,.5,'sawtooth',.11,0,30);}
   if(kind==='throw'){tone(300,.12,'triangle',.08,0,150);}
-  if(kind==='burner'){try{const t=audioCtx.currentTime,len=Math.floor(audioCtx.sampleRate*.7),buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;const n=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();n.buffer=buf;f.type='lowpass';f.frequency.value=900;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.22,t+.08);g.gain.exponentialRampToValueAtTime(.0001,t+.7);n.connect(f);f.connect(g);g.connect(audioCtx.destination);n.start(t);n.stop(t+.72)}catch(e){}tone(70,.5,'sawtooth',.05,0,55);}   // バーナーのゴォーッ
+  if(kind==='burner'){try{const t=audioCtx.currentTime,len=Math.floor(audioCtx.sampleRate*.7),buf=audioCtx.createBuffer(1,len,audioCtx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;const n=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();n.buffer=buf;f.type='lowpass';f.frequency.value=900;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.22,t+.08);g.gain.exponentialRampToValueAtTime(.0001,t+.7);n.connect(f);f.connect(g);g.connect(audioOutput());n.start(t);n.stop(t+.72)}catch(e){}tone(70,.5,'sawtooth',.05,0,55);}   // バーナーのゴォーッ
   if(kind==='rumble'){tone(42,1.3,'sawtooth',.09,0,32);tone(55,1.1,'triangle',.12,.1,40);}
   if(kind==='roar'){tone(240,1.0,'sawtooth',.11,0,85);tone(360,.9,'square',.05,.02,120);tone(120,1.1,'sawtooth',.08,0,60);}
   if(kind==='hurry'){[988,0,988,0,988].forEach((f,i)=>{if(f)tone(f,.09,'square',.07,i*.1)});}
@@ -711,12 +711,22 @@ function sound(kind){if(mode==='title')return;unlockAudio();buzz(kind);
 
 // ===== BGM（すべてオリジナル曲を Web Audio で生成） =====
 let musicOn=true;try{musicOn=localStorage.getItem('skyhop-music')!=='off'}catch(_){}
+// BGMと効果音の共通出力。再生中の音もまとめてミュートする。
+let masterGain=null;
+function audioOutput(){
+  if(!masterGain){
+    masterGain=audioCtx.createGain();
+    masterGain.gain.value=musicOn?1:0;
+    masterGain.connect(audioCtx.destination);
+  }
+  return masterGain;
+}
 let bgmBus=null,bgmNext=0,noiseBuf=null;
 const mf=m=>440*Math.pow(2,(m-69)/12);
 function bus(){
-  if(!bgmBus&&audioCtx){bgmBus=audioCtx.createGain();bgmBus.gain.value=musicOn?1:0;bgmBus.connect(audioCtx.destination);
+  if(!bgmBus&&audioCtx){bgmBus=audioCtx.createGain();bgmBus.gain.value=musicOn?1:0;bgmBus.connect(audioOutput());
     // ホールのような残響（壮大さ用）
-    try{const conv=audioCtx.createConvolver(),len=Math.floor(audioCtx.sampleRate*2.4),ir=audioCtx.createBuffer(2,len,audioCtx.sampleRate);for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}conv.buffer=ir;const rg=audioCtx.createGain();rg.gain.value=.3;bgmBus.connect(conv);conv.connect(rg);rg.connect(audioCtx.destination)}catch(_){}}
+    try{const conv=audioCtx.createConvolver(),len=Math.floor(audioCtx.sampleRate*2.4),ir=audioCtx.createBuffer(2,len,audioCtx.sampleRate);for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3)}conv.buffer=ir;const rg=audioCtx.createGain();rg.gain.value=.3;bgmBus.connect(conv);conv.connect(rg);rg.connect(audioOutput())}catch(_){}}
   return bgmBus}
 function bnote(freq,t,dur,type,vol,endF){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.setValueAtTime(freq,t);if(endF)o.frequency.exponentialRampToValueAtTime(endF,t+dur);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(bus());o.start(t);o.stop(t+dur+.02)}
 function hat(t,vol,len=.045){if(!noiseBuf){noiseBuf=audioCtx.createBuffer(1,Math.floor(audioCtx.sampleRate*.12),audioCtx.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}const s=audioCtx.createBufferSource(),f=audioCtx.createBiquadFilter(),g=audioCtx.createGain();s.buffer=noiseBuf;f.type='highpass';f.frequency.value=len>.05?2500:7000;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+len);s.connect(f);f.connect(g);g.connect(bus());s.start(t);s.stop(t+len+.01)}
@@ -829,7 +839,7 @@ function endSongVolume(){return musicOn?.85:0}
 // iPhoneは、音が止まったまましばらくたつと音を出す仕組みが眠ってしまうことがある。
 // ゲームオーバー中は聞こえないくらい小さな音を流しつづけて、10秒後の曲がちゃんと鳴るようにする
 let keepAlive=null;
-function startKeepAlive(){if(keepAlive||!audioCtx)return;try{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=40;g.gain.value=.0004;o.connect(g);g.connect(audioCtx.destination);o.start();keepAlive={o,g};}catch(_){}}
+function startKeepAlive(){if(keepAlive||!audioCtx)return;try{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=40;g.gain.value=.0004;o.connect(g);g.connect(audioOutput());o.start();keepAlive={o,g};}catch(_){}}
 function stopKeepAlive(){if(!keepAlive)return;try{keepAlive.o.stop();keepAlive.o.disconnect();}catch(_){}keepAlive=null}
 function wakeAudio(){try{if(audioCtx&&audioCtx.state!=='running')audioCtx.resume();}catch(_){}}
 function startEndSong(where='ending'){if(endSong.on)return;endSong.on=true;endSong.where=where;wakeAudio();
@@ -839,7 +849,7 @@ function startEndSong(where='ending'){if(endSong.on)return;endSong.on=true;endSo
   loadJingle(END_SONG).then(buffer=>{if(!endSong.on)return;
     if(buffer&&audioCtx){try{const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;src.loop=false;src.onended=()=>{if(endSong.src===src)endSong.done=true;};   // 1回だけ流す（くり返さない）
         g.gain.setValueAtTime(0,audioCtx.currentTime);g.gain.linearRampToValueAtTime(endSongVolume(),audioCtx.currentTime+1.5);   // ふわっと始まる
-        src.connect(g);g.connect(audioCtx.destination);src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;return;}catch(_){}}
+        src.connect(g);g.connect(audioOutput());src.start();endSong.src=src;endSong.gain=g;endSong.t0=audioCtx.currentTime;return;}catch(_){}}
     try{endSong.el=true;END_SONG.loop=false;END_SONG.volume=endSongVolume();END_SONG.currentTime=0;const pr=END_SONG.play();if(pr&&pr.catch)pr.catch(()=>{});}catch(_){}});}
 function stopEndSong(){if(!endSong.on)return;endSong.on=false;endSong.el=false;try{closeVideo();}catch(_){}
   const info=document.getElementById('songInfo');if(info)info.hidden=true;document.body.classList.remove('song-on');
@@ -889,7 +899,7 @@ function mp3Get(key){if(key in mp3)return mp3[key];const cfg=MP3_BGM[key];if(!cf
   const m=mp3[key]={cfg,el:null,elBad:false,buf:null,bufBad:false,loading:false,engine:mp3UseWebAudio?'buf':'el',src:null,gain:null,pos:0,lastCtxT:0,reqT:0,elT0:0,elOK:false};
   // iPhoneでは音声要素を作らず、全ステージ共通のWeb Audioだけを使う。
   if(mp3UseWebAudio)return m;
-  try{const a=new Audio(cfg.src);a.preload='auto';a.loop=false;a.volume=MP3_VOLUME;a.preservesPitch=true;a.mozPreservesPitch=true;a.webkitPreservesPitch=true;
+  try{const a=new Audio(cfg.src);a.preload='auto';a.loop=false;a.volume=MP3_VOLUME;a.muted=!musicOn;a.preservesPitch=true;a.mozPreservesPitch=true;a.webkitPreservesPitch=true;
     a.addEventListener('error',()=>{m.elBad=true});a.addEventListener('ended',()=>{if(mp3Cur===key){a.currentTime=cfg.loopStart||0;a.play().catch(()=>{})}});m.el=a;}catch(_){m.elBad=true}
   return m}
 function mp3Load(m){if(!m||m.buf||m.bufBad||m.loading||!audioCtx)return;m.loading=true;
@@ -899,7 +909,7 @@ function mp3Load(m){if(!m||m.buf||m.bufBad||m.loading||!audioCtx)return;m.loadin
 function mp3Wrap(m,t){const c=m.cfg;if(c.loopEnd&&t>=c.loopEnd)t=c.loopStart+((t-c.loopStart)%(c.loopEnd-c.loopStart));return Math.max(0,t)}
 function mp3StopBuf(m){if(m&&m.src){try{m.src.stop()}catch(_){}m.src=null}}
 function mp3StartBuf(m,rate){mp3StopBuf(m);const c=m.cfg,src=audioCtx.createBufferSource();src.buffer=m.buf;src.loop=true;src.loopStart=c.loopStart||0;src.loopEnd=c.loopEnd||m.buf.duration;src.playbackRate.value=rate;
-  if(!m.gain){m.gain=audioCtx.createGain();m.gain.gain.value=MP3_VOLUME;m.gain.connect(audioCtx.destination);}src.connect(m.gain);src.start(0,mp3Wrap(m,m.pos));m.src=src;m.lastCtxT=audioCtx.currentTime;}
+  if(!m.gain){m.gain=audioCtx.createGain();m.gain.gain.value=MP3_VOLUME;m.gain.connect(audioOutput());}src.connect(m.gain);src.start(0,mp3Wrap(m,m.pos));m.src=src;m.lastCtxT=audioCtx.currentTime;}
 function mp3Halt(key){const m=mp3[key];if(!m)return;if(m.src&&audioCtx)m.pos=mp3Wrap(m,m.pos+(audioCtx.currentTime-m.lastCtxT)*m.src.playbackRate.value);if(m.el&&!m.el.paused){try{m.el.pause()}catch(_){}}if(m.engine==='el'&&m.el)m.pos=m.el.currentTime;mp3StopBuf(m);}
 function mp3Restart(key){const m=mp3[key];if(!m)return;m.pos=0;try{if(m.el)m.el.currentTime=0}catch(_){}if(m.src&&audioCtx){mp3StopBuf(m);}}
 function mp3PlayEl(m){if(!m.el||m.elBad)return;try{m.el.currentTime=mp3Wrap(m,m.pos)}catch(_){}m.reqT=Date.now();m.elT0=m.el.currentTime;m.elOK=false;const pr=m.el.play();if(pr&&pr.catch)pr.catch(()=>{m.elBad=true});}
@@ -2185,7 +2195,7 @@ function toTitle(){loadRanking();if(mode==='game'){carry=state==='ending'?{score
 let clearedAdventure=false,secondRound=false,clearCount=0,princessRound=false;
 // クリスマス版：スタートを押すと「メリークリスマス！」と叫ぶ（用意した声の2種類から、毎回どちらかを流す＋鈴の音）
 // 送ってもらった2つの音源（「メリークリスマス」の声 → 鈴の音）をつなげて1つにした音声
-const XMAS_VOICES=['audio/xmas-greeting.mp3'].map(src=>{const a=new Audio(src);a.preload='auto';return a;});
+const XMAS_VOICES=['audio/xmas-greeting.mp3'].map(src=>{const a=new Audio(src);a.preload='auto';a.muted=!musicOn;return a;});
 // 声 →（声が終わったら）鈴 → done() の順に進める。声が鳴らない機種でも、決まった時間で先へ進む
 let xmasIntro=null,xmasVoiceNodes=null;
 function shoutMerryXmas(done){
@@ -2201,7 +2211,7 @@ function shoutMerryXmas(done){
     if(!buffer||!audioCtx){viaElement();return;}
     started=true;
     try{if(audioCtx.state!=='running')audioCtx.resume();
-      const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;g.gain.value=1;src.connect(g);g.connect(audioCtx.destination);
+      const src=audioCtx.createBufferSource(),g=audioCtx.createGain();src.buffer=buffer;g.gain.value=1;src.connect(g);g.connect(audioOutput());
       xmasVoiceNodes=[src,g];   // iPhoneのSafariは、どこからも参照していない音を途中で止めてしまうことがあるので、終わるまで持っておく
       src.start();
       setTimeout(()=>{xmasVoiceNodes=null;finish();},buffer.duration*1000+300);   // 終わる時間がわかっているので、その時間でスタート
@@ -4062,7 +4072,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)setPause(tr
 // スタートボタン（click で開始：iPhoneの音もこの操作で鳴らせる）
 document.getElementById('startBtn').addEventListener('click',e=>{e.stopPropagation();startGame()});
 
-// 音楽ON/OFFボタン（設定は次回も保持）
+// BGM・効果音のON/OFFボタン（設定は次回も保持）
 const mb=document.getElementById('music');
 {const rb=document.getElementById('rank');if(rankOn())rb.hidden=false;
   rb.addEventListener('click',async e=>{e.stopPropagation();if(nameOpen)return;showRanking('読みこみ中…');await loadRanking();showRanking('');});
@@ -4073,7 +4083,21 @@ const mb=document.getElementById('music');
   document.getElementById('nameDice').addEventListener('click',()=>{const i=document.getElementById('nameInput');i.value=randomName(i.value);});
   for(const id of ['rankBox','nameBox'])for(const ev of ['pointerdown','touchstart'])document.getElementById(id).addEventListener(ev,e=>e.stopPropagation());
   loadRanking();}
-function setMusic(on){musicOn=on;try{if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(endSongVolume(),audioCtx.currentTime,.05);END_SONG.volume=endSongVolume();}catch(_){}mb.textContent=on?'🎵':'🔇';mb.classList.toggle('off',!on);try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02)}
+function setMusic(on){
+  musicOn=on;
+  if(masterGain&&audioCtx)masterGain.gain.setValueAtTime(on?1:0,audioCtx.currentTime);
+  for(const audio of [stageClearAudio,bossIntroAudio,bossClearAudio,END_SONG,...XMAS_VOICES])audio.muted=!on;
+  for(const m of Object.values(mp3)){if(m?.el)m.el.muted=!on;}
+  try{
+    if(endSong.gain&&audioCtx)endSong.gain.gain.setTargetAtTime(endSongVolume(),audioCtx.currentTime,.05);
+    END_SONG.volume=endSongVolume();
+  }catch(_){}
+  mb.textContent=on?'🎵':'🔇';
+  mb.classList.toggle('off',!on);
+  mb.setAttribute('aria-label',on?'音をミュート':'音をオン');
+  try{localStorage.setItem('skyhop-music',on?'on':'off')}catch(_){}
+  if(bgmBus&&audioCtx)bgmBus.gain.setTargetAtTime(on?1:0,audioCtx.currentTime,.02);
+}
 mb.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();unlockAudio();setMusic(!musicOn)});
 setMusic(musicOn);
 
@@ -4088,8 +4112,7 @@ function setBgmMode(useMp3){
   if(mp3Cur){mp3Halt(mp3Cur);mp3Cur=null}
   mp3Enabled=useMp3;
   curSong=null;bgmNext=0;bgmStep=0;
-  if(mp3Enabled){
-    setMusic(true);
+  if(mp3Enabled&&musicOn){
     // 再生要求とAudioContextの復帰をクリック処理内で行い、iOSの操作制限に対応。
     unlockAudio();
     const key=mp3Key(currentSong());
