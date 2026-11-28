@@ -473,7 +473,7 @@ function loadStage(n){
 }
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};mealStreak=0;mealCount={};breadAnim=null;hasKey=false;keyDoorUsed=false;
+function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
   if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
@@ -1023,7 +1023,7 @@ function doDig(){const s=digSpot();if(!s)return false;player.digAnim=DIG_ANIM;
 function advanceTalk(){const L=villageLines(talk.v.kind),txt=L[talk.line%L.length];
   if(talk.chars<txt.length){talk.chars=txt.length;return;}
   talk.line=(talk.line+1)%L.length;talk.chars=0;tone(880,.04,'square',.03);}
-function dig(){if(talk&&inBasement&&roomKind==='village'&&state==='play'&&!paused){advanceTalk();return;}
+function dig(){if(shopMenu&&state==='play'&&!paused){closeMenu(true);return;}if(talk&&inBasement&&roomKind==='village'&&state==='play'&&!paused){advanceTalk();return;}
   if(state!=='play'||inBasement||paused)return;
   if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!keyDoorUsed&&player.on&&Math.abs(player.x+17-KEY_DOOR_X)<40){   // 鍵つきドア
     if(hasKey){keyDoorUsed=true;hasKey=false;sound('treasure');enterBasement(null,KEY_DOOR_X+50,'カギの宝物庫');}
@@ -1437,7 +1437,14 @@ function houseDoorX(h){return h[0]+(h[3]===2?31*HOUSE_SCALE:0)}   // とびら�
 function villageHouses(){const W2=VILLAGE_W;return [[W2-2300,'#b8483a','#f4e6cc',0],[W2-2900,'#3a5aa8','#f0e2c4',1],[W2-3550,'#3a8a4a','#f6ead2',2],[W2-4350,'#b8783a','#efe0c0',3],[W2-3950,'#4a4a52','#3a2a1e',4],[W2-4950,'#c8302a','#f4e8d0',5]];}
 let insideHouse=null,housePots={},shopEaten={},shop=null,mealStreak=0,mealCount={};   // mealCount：お店ごとに食べた杯数（それぞれ3杯まで）   // mealStreak：続けて食べた回数（3回目は 食べすぎで ことわられる）   // shop：お店の中での 食券・すわる・食べる の進み具合
 const SHOP_SEATS=[360,480,600],SHOP_TICKET_X=220,TICKET_PRICE=10,BREAD_X=410,BREAD_PRICE=5;
-const BREADS=[{name:'メロンパン',k:1,pts:200},{name:'クロワッサン',k:2,pts:200},{name:'バゲット',k:0,pts:300}];
+const BREADS=[{name:'メロンパン',k:1,pts:200,price:5},{name:'クロワッサン',k:2,pts:200,price:5},{name:'バゲット',k:0,pts:300,price:8}];
+const SOBA_MENU=[{name:'へぎそば',price:5,dish:'soba'},{name:'へぎそば＋天丼',price:10,dish:'sobaTen',deluxe:true}];
+const RAMEN_MENU=[{name:'生姜醤油ラーメン',price:8,dish:'ramen'},{name:'チャーシューメン',price:12,dish:'chashu'},{name:'チャーシューメン＋炒飯',price:16,dish:'chashuSet',deluxe:true}];
+const MEAL_LIMIT=2;   // ラーメン・そばは それぞれの店で 2杯まで
+// ドラクエの お店のような メニュー（◀▶で えらぶ・⬆ジャンプで 決定・⛏掘るで やめる）
+let shopMenu=null;
+function openMenu(title,items,onPick,onCancel){shopMenu={title,items:[...items,{name:'やめる',cancel:true}],cur:0,onPick,onCancel,msg:'',msgT:0,pl:true,pr:true,pu:true};tone(660,.04,'square',.04);}
+function closeMenu(cancel){const m=shopMenu;shopMenu=null;if(cancel&&m&&m.onCancel)m.onCancel();tone(440,.04,'square',.04);}
 let breadAnim=null,breadBuy=0;   // パン屋で買ったパン（上にポンと出る）
 function isShop(i){return i===4||i===5}   // insideHouse：いま入っている家（村の状態をしまっておく）
 const ROOM_PEOPLE=[{kind:'grandma',name:'村の おばあさん'},{kind:'girl',name:'村の 女の子'},{kind:'baker',name:'パン屋の おにいさん'},{kind:'scholar',name:'村の おまわりさん'}];
@@ -1445,7 +1452,7 @@ function enterHouse(i){const p=player,h=villageHouses()[i];
   insideHouse={i,x:p.x,camera,world,platforms,villagers,talk};talk=null;
   world=W;camera=0;platforms=[{x:0,y:ground,w:W,h:75}];villagers=isShop(i)?[]:[{kind:ROOM_PEOPLE[i].kind,x:W/2+120,home:W/2+120,f:-1,t:0}];shop=isShop(i)?{ticket:false,seat:-1,phase:'',t:0,msg:i===4?'いらっしゃい！ すきな せきに どうぞ':'いらっしゃい！ まずは 食券を 買ってね',msgT:160}:null;
   p.x=ROOM_DOOR_X+20;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;tone(520,.06,'triangle',.05);tone(660,.06,'triangle',.05,.08);}
-function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];shop=null;p.seated=false;
+function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];shop=null;shopMenu=null;p.seated=false;
   world=s0.world;camera=s0.camera;platforms=s0.platforms;villagers=s0.villagers;talk=null;insideHouse=null;
   p.x=houseDoorX(h)-p.w/2;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);tone(660,.06,'triangle',.05);tone(520,.06,'triangle',.05,.08);}
 let villagers=[],talk=null,villageSeen=false;
@@ -2510,21 +2517,31 @@ if(inBasement&&roomKind==='village'&&state==='play'&&p.on&&!p.hole){const upNow=
     if(insideHouse&&Math.abs(pc-ROOM_DOOR_X)<30){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;exitHouse();return;}
     if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-houseDoorX(h))<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}}
   if(insideHouse&&!isShop(insideHouse.i)&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;score+=300;popup(W-150,ground-80,'ツボの中に コインが！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
-// パン屋：カウンターで ⬆ジャンプ → コイン5まいで パンを買う
+// メニューが ひらいているあいだは 動かない。◀▶で えらび、⬆ジャンプで 決める
+if(shopMenu&&state==='play'){const m=shopMenu,L=keys.left,R=keys.right,U=keys.jump||padJump,n=m.items.length;
+  p.vx=0;p.walking=false;if(m.msgT>0)m.msgT--;
+  if(L&&!m.pl){m.cur=(m.cur+n-1)%n;tone(880,.03,'square',.03);}if(R&&!m.pr){m.cur=(m.cur+1)%n;tone(880,.03,'square',.03);}
+  if(U&&!m.pu){const it=m.items[m.cur];
+    if(it.cancel)closeMenu(true);
+    else if(coinProgress<it.price){m.msg='コインが たりないよ…（あと '+(it.price-coinProgress)+'まい）';m.msgT=100;tone(150,.1,'square',.05);}
+    else{coinProgress-=it.price;closeMenu(false);m.onPick(it);}}
+  m.pl=L;m.pr=R;m.pu=U;p.jumpLock=true;p.prevShopUp=true;p.prevBreadUp=true;
+  if(p.seated){p.x=SHOP_SEATS[shop.seat]-p.w/2;p.y=ground-p.h-26;p.on=true;}
+  return;}
+// パン屋：カウンターで ⬆ジャンプ → パンを えらんで 買う
 if(insideHouse&&insideHouse.i===2&&state==='play'&&p.on){const upNow=keys.jump||padJump,up=upNow&&!p.prevBreadUp;p.prevBreadUp=upNow;
   if(up&&!p.jumpLock&&Math.abs(p.x+p.w/2-BREAD_X)<60){p.jumpLock=true;p.jumpBuf=0;
-    if(coinProgress>=BREAD_PRICE){coinProgress-=BREAD_PRICE;const b=BREADS[breadBuy++%BREADS.length];score+=b.pts;breadAnim={b,t:0};
-      popup(BREAD_X,ground-170,b.name+'を 買った！ +'+b.pts,'#ffdf50',20,90);tone(880,.05,'square',.05);tone(1320,.08,'triangle',.05,.08);}
-    else{popup(BREAD_X,ground-170,'コインが '+BREAD_PRICE+'まい ひつよう','#fff',18,80);tone(150,.1,'square',.05);}}}
+    openMenu('パン屋',BREADS,b=>{score+=b.pts;breadAnim={b,t:0};popup(BREAD_X,ground-170,b.name+'を 買った！ +'+b.pts,'#ffdf50',20,90);tone(880,.05,'square',.05);tone(1320,.08,'triangle',.05,.08);});}}
 // お店：食券機で食券を買う（ラーメン屋）→ いすで ⬆ジャンプ → すわって待つ → 運ばれてきたら 食べる
 if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=keys.jump||padJump,up=upNow&&!p.prevShopUp;p.prevShopUp=upNow;
   if(shop.msgT>0)shop.msgT--;
   if(p.seated){p.vx=0;p.vy=0;p.x=SHOP_SEATS[shop.seat]-p.w/2;p.y=ground-p.h-26;p.on=true;p.walking=false;p.jumping=false;p.jumpLock=true;shop.t++;
-    const name=i===4?'へぎそば':'生姜醤油ラーメン';
-    if(shop.phase==='order'&&shop.t===2){shop.msg=i===4?'へぎそば ひとつ おねがいします！':'食券 おねがいします！';shop.msgT=80;tone(660,.05,'square',.04);}
-    if(shop.phase==='order'&&shop.t===90){shop.msg=i===4?'はい、へぎそば いっちょう！':'へい！ 生姜醤油 いっちょう！';shop.msgT=90;tone(520,.06,'triangle',.05);}
-    if(shop.phase==='order'&&shop.t>=200){shop.phase='eat';shop.t=0;shop.deluxe=Math.random()<.3;shop.popT=0;   // 3回に1回くらい 豪華セット
-      shop.msg='へい、おまち！ '+(shop.deluxe?(i===4?'へぎそばと 天丼です！':'チャーシューメンと 炒飯です！'):name+' です');shop.msgT=110;sound('treasure');if(shop.deluxe){tone(880,.08,'square',.05,.1);tone(1175,.12,'square',.05,.2);}}
+    if(shop.phase==='menu'){shop.t=0;return;}
+    const d=shop.dish||{name:i===4?'へぎそば':'生姜醤油ラーメン',dish:i===4?'soba':'ramen'},name=d.name;
+    if(shop.phase==='order'&&shop.t===2){shop.msg=i===4?name+' ひとつ おねがいします！':'食券 おねがいします！';shop.msgT=80;tone(660,.05,'square',.04);}
+    if(shop.phase==='order'&&shop.t===90){shop.msg=(i===4?'はい、':'へい！ ')+name+' いっちょう！';shop.msgT=90;tone(520,.06,'triangle',.05);}
+    if(shop.phase==='order'&&shop.t>=200){shop.phase='eat';shop.t=0;shop.deluxe=!!d.deluxe;shop.popT=0;   // えらんだ料理（豪華セットも）
+      shop.msg='へい、おまち！ '+name+' です！';shop.msgT=110;sound('treasure');if(shop.deluxe){tone(880,.08,'square',.05,.1);tone(1175,.12,'square',.05,.2);}}
     if(shop.phase==='eat')shop.popT++;
     if(shop.phase==='eat'&&shop.t>100&&shop.t%24===12){popup(p.x+p.w/2+14,p.y-30,i===4?'ツルツル':'ズルズル','#fff',18,30);tone(300+Math.random()*80,.05,'triangle',.04,0,200);}
     if(shop.phase==='eat'&&shop.t>=320){shop.phase='done';shop.t=0;
@@ -2532,17 +2549,20 @@ if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=k
       if(!shopEaten[i]){shopEaten[i]=true;if(lives<MAX_LIVES){lives++;popup(p.x+17,p.y-50,'おなか いっぱい！ ライフ+1','#ff8ab0',22,100);}else{score+=500;popup(p.x+17,p.y-50,'おなか いっぱい！ +500','#ffdf50',22,100);}sound('oneup');}
       else popup(p.x+17,p.y-50,'ごちそうさま！','#fff',22,80);
       mealStreak++;mealCount[i]=(mealCount[i]||0)+1;shop.msg=i===4?'まいど！ また 来てね':'ありがとうございましたー！';shop.msgT=120;}
-    if(shop.phase==='done'&&shop.t>=70){p.seated=false;shop.seat=-1;shop.phase='';shop.ticket=false;p.y=ground-p.h;p.x+=30;}
+    if(shop.phase==='done'&&shop.t>=70){p.seated=false;shop.seat=-1;shop.phase='';shop.ticket=false;shop.dish=null;p.y=ground-p.h;p.x+=30;}
     return;}
   if(up&&i===5&&Math.abs(pc-SHOP_TICKET_X)<34){
     if(shop.ticket){shop.msg='もう 食券は もってるよ。いすに すわってね';shop.msgT=90;}
-    else if(coinProgress>=TICKET_PRICE){coinProgress-=TICKET_PRICE;shop.ticket=true;shop.msg='食券を 買った！（コイン −'+TICKET_PRICE+'）';shop.msgT=110;tone(880,.05,'square',.05);tone(1180,.08,'square',.05,.08);popup(SHOP_TICKET_X,ground-150,'🎫 食券','#ffdf50',22,70);}
-    else{shop.msg='コインが '+TICKET_PRICE+'まい ひつようです…';shop.msgT=110;tone(150,.1,'square',.05);}
+    else if((mealCount[i]||0)>=MEAL_LIMIT){shop.msg='ちょっと！ 食べすぎだって！ また今度ね！';shop.msgT=150;shop.angry=150;tone(180,.12,'sawtooth',.06);}
+    else openMenu('食券機',RAMEN_MENU,it=>{shop.ticket=it;shop.msg=it.name+'の 食券を 買った！';shop.msgT=110;tone(880,.05,'square',.05);tone(1180,.08,'square',.05,.08);popup(SHOP_TICKET_X,ground-150,'🎫 食券','#ffdf50',22,70);});
     p.jumpLock=true;}
   else if(up){const si=SHOP_SEATS.findIndex(sx=>Math.abs(pc-sx)<26);
     if(si>=0){if(i===5&&!shop.ticket){shop.msg='先に 食券を 買ってね（入口の 食券機）';shop.msgT=110;}
-      else if((mealCount[i]||0)>=3){shop.msg=i===4?'こらっ！ 食べすぎだよ！ おなか こわすよ！':'ちょっと！ 食べすぎだって！ また今度ね！';shop.msgT=150;shop.angry=150;popup(SHOP_SEATS[si],ground-170,'💢 食べすぎ！','#ff5a4a',24,90);tone(180,.12,'sawtooth',.06);tone(140,.16,'sawtooth',.06,.12);shake=8;}   // 3回続けて食べようとすると 怒られる
-      else{p.seated=true;shop.seat=si;shop.phase='order';shop.t=0;tone(440,.05,'triangle',.05);}
+      else if((mealCount[i]||0)>=MEAL_LIMIT){shop.msg=i===4?'こらっ！ 食べすぎだよ！ おなか こわすよ！':'ちょっと！ 食べすぎだって！ また今度ね！';shop.msgT=150;shop.angry=150;popup(SHOP_SEATS[si],ground-170,'💢 食べすぎ！','#ff5a4a',24,90);tone(180,.12,'sawtooth',.06);tone(140,.16,'sawtooth',.06,.12);shake=8;}   // 3回続けて食べようとすると 怒られる
+      else{p.seated=true;shop.seat=si;shop.t=0;tone(440,.05,'triangle',.05);
+        if(i===5){shop.dish=shop.ticket;shop.phase='order';}
+        else{shop.phase='menu';shop.msg='いらっしゃい！ なにに します？';shop.msgT=120;
+          openMenu('おしながき',SOBA_MENU,it=>{shop.dish=it;shop.phase='order';shop.t=0;},()=>{p.seated=false;shop.seat=-1;shop.phase='';p.y=ground-p.h;p.x+=30;});}}
       p.jumpLock=true;}}}
 // 地下室の出口のはしご：重なっただけでは登らない。上（ジャンプ）ボタンを押すと、少し待ってから自動で登る
 {const LADDER_TX=W-72+20-p.w/2,atLadder=inBasement&&roomKind==='basement'&&state==='play'&&p.on&&!p.hole&&p.x+p.w>W-80,upNow=keys.jump||padJump;
@@ -3442,12 +3462,26 @@ function drawFoodPopup(i){const t=shop.popT;if(t>110)return;const soba=i===4,k=t
   for(let r=0;r<12;r++){x.save();x.rotate(r*Math.PI/6+t*.02);x.fillStyle=r%2?'#fff4b044':'#ffd27a55';x.beginPath();x.moveTo(0,0);x.lineTo(-24,-190);x.lineTo(24,-190);x.closePath();x.fill();x.restore();}
   x.scale(sc,sc);
   x.fillStyle='#fffaf0';x.beginPath();if(x.roundRect)x.roundRect(-170,-90,340,190,18);else x.rect(-170,-90,340,190);x.fill();x.strokeStyle=soba?'#2a3a6a':'#c8302a';x.lineWidth=6;x.stroke();
-  x.textAlign='center';fancyText(shop.deluxe?(soba?'へぎそば＋天丼！':'チャーシューメン＋炒飯！'):(soba?'へぎそば！':'生姜醤油ラーメン！'),0,-56,shop.deluxe?24:28,shop.deluxe?'red':'gold');
+  x.textAlign='center';const dk=shop.dish?shop.dish.dish:(soba?'soba':'ramen');fancyText((shop.dish?shop.dish.name:soba?'へぎそば':'生姜醤油ラーメン')+'！',0,-56,shop.deluxe?24:28,shop.deluxe?'red':'gold');
   if(shop.deluxe){if(soba){drawDish('soba',-62,56,1.9);drawDish('tendon',90,56,2);}else{drawDish('chashu',-62,60,2.2);drawDish('chahan',88,56,2);}
     fancyText('★ 豪華セット ★',0,92,16,'gold');}
-  else drawDish(soba?'soba':'ramen',soba?-10:0,soba?56:62,soba?2.7:3);
+  else drawDish(dk==='chashu'?'chashu':soba?'soba':'ramen',soba?-10:0,soba?56:62,soba?2.7:3);
   for(let j=0;j<6;j++){const a=t*.05+j*1.05,sx=Math.cos(a)*150,sy=Math.sin(a*1.3)*70,len=5+Math.abs(Math.sin(t*.1+j))*7;x.fillStyle='#ffe36a';x.beginPath();x.moveTo(sx,sy-len);x.lineTo(sx+len*.25,sy);x.lineTo(sx,sy+len);x.lineTo(sx-len*.25,sy);x.closePath();x.fill();}
   x.textAlign='left';x.restore();}
+function drawShopMenu(){const m=shopMenu,bx=W/2-200,by=112,rowH=34,bw=400,bh=70+m.items.length*rowH;
+  x.save();x.textAlign='left';
+  const box=(X0,Y0,w,h)=>{x.fillStyle='#000000ee';x.beginPath();if(x.roundRect)x.roundRect(X0,Y0,w,h,10);else x.rect(X0,Y0,w,h);x.fill();x.strokeStyle='#fff';x.lineWidth=4;x.stroke();x.lineWidth=1.5;x.strokeRect(X0+7,Y0+7,w-14,h-14);};
+  box(bx,by,bw,bh);
+  x.fillStyle='#ffe36a';x.font='bold 18px system-ui';x.fillText(m.title,bx+26,by+34);
+  x.textAlign='right';x.fillStyle='#fff';x.font='bold 15px system-ui';x.fillText('コイン '+coinProgress+'まい',bx+bw-24,by+34);x.textAlign='left';
+  m.items.forEach((it,k)=>{const yy=by+68+k*rowH;
+    if(k===m.cur&&Math.floor(Date.now()/250)%2===0){x.fillStyle='#fff';x.beginPath();x.moveTo(bx+24,yy-12);x.lineTo(bx+36,yy-5);x.lineTo(bx+24,yy+2);x.closePath();x.fill();}   // ▶
+    x.fillStyle=it.cancel?'#cfd8ea':(coinProgress<it.price?'#8a8a90':'#fff');x.font='bold 19px system-ui';x.fillText(it.name,bx+46,yy);
+    if(!it.cancel){x.textAlign='right';x.fillText(it.price+' コイン',bx+bw-26,yy);x.textAlign='left';}});
+  // 下の せつめい
+  const tip=m.msgT>0?m.msg:'◀ ▶ で えらぶ　⬆ジャンプで けってい　⛏ で やめる';
+  box(bx,by+bh+8,bw,44);x.fillStyle=m.msgT>0?'#ffb0a0':'#e8eefa';x.font='bold 14px system-ui';x.textAlign='center';x.fillText(tip,bx+bw/2,by+bh+36);
+  x.restore();}
 function drawShopInterior(i,t){const soba=i===4;
   // かべ・のれん・メニューのふだ
   x.fillStyle=soba?'#e8dcc0':'#f4e6d0';x.fillRect(0,0,W,H);x.fillStyle=soba?'#5a3a22':'#8a2a20';x.fillRect(0,60,W,12);
@@ -3473,13 +3507,13 @@ function drawShopInterior(i,t){const soba=i===4;
   // 料理（運ばれてきたら カウンターの上に）
   if(player.seated&&(shop.phase==='eat'||shop.phase==='done')){const bx=SHOP_SEATS[shop.seat]+62,by=ground-94,left=shop.phase==='done'?.15:1-Math.min(.85,Math.max(0,shop.t-100)/240);
     if(soba){drawDish('soba',bx,by,1,left);if(shop.deluxe)drawDish('tendon',bx+70,by,.9,left);}
-    else{drawDish(shop.deluxe?'chashu':'ramen',bx,by,1,left);if(shop.deluxe)drawDish('chahan',bx+62,by,.9,left);}}
+    else{drawDish(shop.dish&&shop.dish.dish!=='ramen'?'chashu':'ramen',bx,by,1,left);if(shop.deluxe)drawDish('chahan',bx+62,by,.9,left);}}
   // 食券機（ラーメン屋）
   if(!soba){const tx=SHOP_TICKET_X;x.fillStyle='#d8dce4';x.fillRect(tx-30,ground-150,60,150);x.strokeStyle='#8a909c';x.lineWidth=2;x.strokeRect(tx-30,ground-150,60,150);
     x.fillStyle='#2a3a5a';x.fillRect(tx-24,ground-144,48,18);x.fillStyle='#8adca0';x.font='bold 9px system-ui';x.textAlign='center';x.fillText('食券',tx,ground-131);
     const btn=['生姜醤油','大盛','味玉','ライス'];btn.forEach((b,k)=>{x.fillStyle=k===0?'#ffd24a':'#f4f4f4';x.fillRect(tx-24,ground-120+k*18,48,14);x.fillStyle='#2a1a10';x.font='bold 8px system-ui';x.fillText(b,tx,ground-110+k*18);});
     x.fillStyle='#2a2a30';x.fillRect(tx-16,ground-40,32,8);x.textAlign='left';
-    if(Math.abs(player.x+player.w/2-tx)<34&&player.on&&!player.seated){x.save();x.textAlign='center';fancyText(shop.ticket?'🎫 食券あり':'⬆ジャンプで 食券を買う（コイン'+TICKET_PRICE+'）',tx+40,ground-170,15,'white');x.restore();}}
+    if(Math.abs(player.x+player.w/2-tx)<34&&player.on&&!player.seated){x.save();x.textAlign='center';fancyText(shop.ticket?'🎫 '+shop.ticket.name:'⬆ジャンプで 食券を買う',tx+40,ground-170,15,'white');x.restore();}}
   // 店の人の ことば
   if(shop.angry>0){shop.angry--;x.save();x.textAlign='center';x.font='bold 30px system-ui';x.fillText('💢',W-220+Math.sin(t*.03)*3,ground-150);x.restore();}
   if(shop.msgT>0){const bx=W-250,by=ground-196;x.save();x.globalAlpha=Math.min(1,shop.msgT/15);x.font='bold 15px system-ui';const tw=x.measureText(shop.msg).width+24;
@@ -3508,7 +3542,7 @@ function drawHouseInterior(){const i=insideHouse.i,t=Date.now();if(isShop(i)){dr
     x.fillStyle='#c8945a';x.fillRect(330,ground-92,160,92);x.fillStyle='#a8743a';x.fillRect(330,ground-98,160,8);   // カウンター
     x.fillStyle='#3a3a44';x.fillRect(440,ground-124,40,26);x.fillStyle='#8adca0';x.fillRect(446,ground-120,28,8);x.fillStyle='#e8e8ec';for(let k=0;k<3;k++)x.fillRect(446+k*10,ground-108,7,5);   // レジ
     x.fillStyle='#fff8ec';x.fillRect(344,ground-110,70,10);breadShape(362,ground-112,0,1);breadShape(396,ground-112,1,1);   // トレーのパン
-    if(Math.abs(player.x+player.w/2-BREAD_X)<60&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで パンを買う（コイン'+BREAD_PRICE+'）',BREAD_X,ground-140,15,'white');x.restore();}
+    if(Math.abs(player.x+player.w/2-BREAD_X)<60&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで パンを買う',BREAD_X,ground-140,15,'white');x.restore();}
     x.fillStyle='#8a8478';x.fillRect(150,ground-170,130,170);x.fillStyle='#6a645a';for(let r=0;r<6;r++)for(let c=0;c<4;c++)x.fillRect(152+c*32+(r%2)*16,ground-168+r*28,30,2);
     x.fillStyle='#2a1a14';x.beginPath();x.arc(215,ground-60,36,Math.PI,0);x.lineTo(251,ground-20);x.lineTo(179,ground-20);x.closePath();x.fill();
     for(let k=0;k<4;k++){const fh=18+Math.sin(t*.012+k)*6;x.fillStyle=['#ff6a2a','#ffb03a','#ffe04a'][k%3];x.beginPath();x.moveTo(190+k*14,ground-20);x.quadraticCurveTo(197+k*14,ground-20-fh,204+k*14,ground-20);x.fill();}   // パンがまの火
@@ -4040,7 +4074,7 @@ function draw(){
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
   if(mode!=='title'&&!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
-  const hint=inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを買おう（コイン'+BREAD_PRICE+'まい）':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⛏掘るボタンで 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  const hint=inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを えらぼう':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⛏掘るボタンで 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText(boss.lv==='legend'?'黒大王 ドリモグ':'モグラ大王 ドリモグ',595,28,20,boss.lv==='legend'?'blue':'red');if(bossStars()){x.save();x.textAlign='right';fancyText(bossStars(),940,28,16,boss.lv==='legend'?'gold':boss.lv==='super'||boss.lv==='smart'?'red':boss.lv==='weak'?'blue':'gold');x.restore();}x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/(boss.maxHp||3),16);x.strokeStyle='#0008';x.lineWidth=2;{const n=boss.maxHp||3;for(let k=1;k<n;k++){const lx=597+341*k/n;x.beginPath();x.moveTo(lx,38);x.lineTo(lx,54);x.stroke();}}x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
@@ -4084,6 +4118,7 @@ function draw(){
   if(keyCelebrate)drawKeyCelebrate();
   if(inBasement&&roomKind==='village'&&talk&&state==='play'&&!paused&&mode==='game')drawTalkBox();
   if(insideHouse&&shop&&player.seated&&shop.phase==='eat'&&state==='play')drawFoodPopup(insideHouse.i);
+  if(shopMenu&&state==='play')drawShopMenu();
   if(breadAnim){const a=breadAnim;a.t++;const k=Math.min(1,a.t/12),fade=a.t>60?1-(a.t-60)/20:1;x.save();x.globalAlpha=Math.max(0,fade);x.translate(player.x+player.w/2-camera,player.y-40-a.t*.8);const sc=(.6+k*1.6)*(1+Math.sin(a.t*.3)*.05);for(let r=0;r<8;r++){x.save();x.rotate(r*Math.PI/4+a.t*.05);x.fillStyle='#ffe9a066';x.fillRect(-2,-40,4,22);x.restore();}breadShape(0,0,a.b.k,sc*1.4);x.restore();if(a.t>80)breadAnim=null;}
   if(bonusResult&&state==='play'&&!paused){
     const r=bonusResult;
