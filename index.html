@@ -3385,7 +3385,20 @@ function drawHouseInterior(){const i=insideHouse.i,t=Date.now(),wallC=['#f4e2c0'
     x.fillStyle='#6a4a3a';x.fillRect(590,ground-160,170,12);ell(780,ground-40,26,40,'#8a5a3a');}   // ゆりいす
   if(i===1){x.fillStyle='#c84a6a';x.fillRect(580,ground-80,200,50);x.fillStyle='#fff';x.fillRect(580,ground-90,60,22);x.fillStyle='#7a4a28';x.fillRect(570,ground-120,14,120);x.fillRect(776,ground-90,14,90);   // ベッド
     for(let k=0;k<3;k++)ell(240+k*30,ground-60,12,12,['#ffd84d','#ff8ab8','#9fd8ff'][k]);}   // ぬいぐるみ
-  if(i===2){x.fillStyle='#7a4a28';x.fillRect(560,ground-90,220,14);x.fillRect(575,ground-76,12,76);x.fillRect(755,ground-76,12,76);   // テーブル
+  if(i===2){   // パン屋の中：パンのたな・レジのカウンター・パンがま・メニュー
+    x.fillStyle='#f8ead0';x.fillRect(0,0,W,ground-40);x.fillStyle='#7a4a28';x.fillRect(0,60,W,10);
+    for(let k=0;k<8;k++){x.fillStyle=k%2?'#fff':'#d83a3a';x.fillRect(k*W/8,70,W/8,16);}   // しまのかざり
+    x.fillStyle='#8a5a34';x.fillRect(520,ground-250,280,250);for(let r=0;r<4;r++){x.fillStyle='#5a3418';x.fillRect(526,ground-244+r*58,268,6);for(let k=0;k<8;k++)breadShape(546+k*33,ground-252+r*58+42,(k+r)%3,1.15);}   // パンのたな
+    x.fillStyle='#c8945a';x.fillRect(330,ground-92,160,92);x.fillStyle='#a8743a';x.fillRect(330,ground-98,160,8);   // カウンター
+    x.fillStyle='#3a3a44';x.fillRect(440,ground-124,40,26);x.fillStyle='#8adca0';x.fillRect(446,ground-120,28,8);x.fillStyle='#e8e8ec';for(let k=0;k<3;k++)x.fillRect(446+k*10,ground-108,7,5);   // レジ
+    x.fillStyle='#fff8ec';x.fillRect(344,ground-110,70,10);breadShape(362,ground-112,0,1);breadShape(396,ground-112,1,1);   // トレーのパン
+    x.fillStyle='#8a8478';x.fillRect(150,ground-170,130,170);x.fillStyle='#6a645a';for(let r=0;r<6;r++)for(let c=0;c<4;c++)x.fillRect(152+c*32+(r%2)*16,ground-168+r*28,30,2);
+    x.fillStyle='#2a1a14';x.beginPath();x.arc(215,ground-60,36,Math.PI,0);x.lineTo(251,ground-20);x.lineTo(179,ground-20);x.closePath();x.fill();
+    for(let k=0;k<4;k++){const fh=18+Math.sin(t*.012+k)*6;x.fillStyle=['#ff6a2a','#ffb03a','#ffe04a'][k%3];x.beginPath();x.moveTo(190+k*14,ground-20);x.quadraticCurveTo(197+k*14,ground-20-fh,204+k*14,ground-20);x.fill();}   // パンがまの火
+    x.fillStyle='#2a3a30';x.fillRect(330,ground-280,150,90);x.strokeStyle='#8a5a34';x.lineWidth=6;x.strokeRect(330,ground-280,150,90);
+    x.fillStyle='#fff';x.font='bold 14px system-ui';x.textAlign='center';x.fillText('きょうの パン',405,ground-254);x.font='bold 12px system-ui';x.fillText('メロンパン 100G',405,ground-232);x.fillText('クロワッサン 80G',405,ground-214);x.fillText('バゲット 150G',405,ground-196);x.textAlign='left';
+  }
+  if(false){x.fillStyle='#7a4a28';x.fillRect(560,ground-90,220,14);x.fillRect(575,ground-76,12,76);x.fillRect(755,ground-76,12,76);   // テーブル
     for(let k=0;k<4;k++){ell(600+k*45,ground-100,16,10,'#d89a4a');ell(600+k*45,ground-104,10,5,'#f0c070');}   // パン
     x.fillStyle='#8a8478';x.fillRect(220,ground-170,110,170);x.fillStyle='#2a1a14';ell(275,ground-60,34,30,'#2a1a14');x.fillStyle='#ff8a3a';ell(275,ground-50,20,12,'#ff8a3a');}   // パンがま
   if(i===3){   // 交番の中：つくえと電話・地図・おしらせの掲示板・落とし物の箱
@@ -3453,6 +3466,41 @@ function drawVillageHouse(hx,roof,wall,t){const L=hx-74,R=hx+74,top=ground-112;
   x.fillStyle='#7a5a48';x.fillRect(hx+38,top-58,18,40);x.fillStyle='#5a4034';x.fillRect(hx+35,top-62,24,6);
   for(let k=0;k<4;k++){const ph=((t*.0006+k*.25)%1);x.globalAlpha=.45*(1-ph);ell(hx+47+ph*24,top-70-ph*60,6+ph*12,5+ph*10,'#f4f4f4');}x.globalAlpha=1;
   x.restore();}
+// パン屋：レンガのかべ・しまのテント・パンの看板・ショーウィンドウのパン・メニューの黒板・えんとつから いいにおい
+const breadShape=(bx,by,k,s=1)=>{x.save();x.translate(bx,by);x.scale(s,s);
+  if(k===0){ell(0,0,11,6,'#c8843a');ell(0,-1,9,4.4,'#e8a858');x.strokeStyle='#a8682a';x.lineWidth=1.2;for(const d of[-4,0,4]){x.beginPath();x.moveTo(d-2,-3);x.lineTo(d+2,1);x.stroke();}}   // バゲット
+  else if(k===1){ell(0,0,8,6.4,'#b8742a');ell(-1,-1.4,6.2,4.4,'#e0a050');ell(-2,-3,2,1.4,'#f8d090');}   // まるパン
+  else{x.fillStyle='#d8964a';x.beginPath();x.moveTo(-9,3);x.quadraticCurveTo(0,-10,9,3);x.closePath();x.fill();x.strokeStyle='#a8682a';x.lineWidth=1;x.beginPath();x.moveTo(-5,1);x.lineTo(-3,-3);x.moveTo(0,0);x.lineTo(0,-5);x.moveTo(5,1);x.lineTo(3,-3);x.stroke();}   // クロワッサン
+  x.restore();};
+function drawBakery(hx,t){x.save();const L=hx-74,R=hx+74,top=ground-112;
+  x.fillStyle='#00000022';x.beginPath();x.ellipse(hx+8,ground+2,96,10,0,0,7);x.fill();
+  // レンガのかべ
+  x.fillStyle='#c8724a';x.fillRect(L,top,148,112);x.strokeStyle='#a85a38';x.lineWidth=1;
+  for(let r=0,yy=top;yy<ground;yy+=9,r++){x.beginPath();x.moveTo(L,yy);x.lineTo(R,yy);x.stroke();for(let xx=L+(r%2)*9;xx<R;xx+=18){x.beginPath();x.moveTo(xx,yy);x.lineTo(xx,yy+9);x.stroke();}}
+  // 三角屋根（こげ茶）
+  x.fillStyle='#5a3420';x.beginPath();x.moveTo(L-18,top+4);x.lineTo(hx,top-58);x.lineTo(R+18,top+4);x.closePath();x.fill();x.fillStyle='#00000033';x.fillRect(L-18,top+1,184,5);
+  // 看板（パンの形）
+  x.fillStyle='#f4e2b8';x.beginPath();x.ellipse(hx,top-18,44,15,0,0,7);x.fill();x.strokeStyle='#8a5a2a';x.lineWidth=2.4;x.stroke();
+  x.fillStyle='#6a3a1a';x.font='900 15px system-ui';x.textAlign='center';x.fillText('パン屋',hx,top-14);x.font='bold 6px system-ui';x.fillText('BAKERY',hx,top-6);x.textAlign='left';
+  breadShape(hx-34,top-18,1,.7);breadShape(hx+34,top-18,2,.7);
+  // しまのテント
+  for(let k=0;k<10;k++){x.fillStyle=k%2?'#ffffff':'#d83a3a';x.beginPath();x.moveTo(L-6+k*16,top+18);x.lineTo(L+10+k*16,top+18);x.lineTo(L+10+k*16,top+34);x.quadraticCurveTo(L+2+k*16,top+40,L-6+k*16,top+34);x.closePath();x.fill();}
+  x.fillStyle='#a82a2a';x.fillRect(L-6,top+15,160,4);
+  // ショーウィンドウ（パンがならぶ）
+  const wx0=L+8,wy0=top+44;x.fillStyle='#ffeec8';x.fillRect(wx0,wy0,58,40);const gl=x.createLinearGradient(wx0,wy0,wx0+58,wy0+40);gl.addColorStop(0,'#ffffff88');gl.addColorStop(.4,'#ffffff00');
+  x.fillStyle='#c8a070';x.fillRect(wx0,wy0+26,58,3);x.fillRect(wx0,wy0+12,58,2);
+  for(const [bx,by,k] of[[wx0+12,wy0+8,1],[wx0+29,wy0+9,2],[wx0+46,wy0+8,1],[wx0+16,wy0+22,0],[wx0+42,wy0+22,2],[wx0+20,wy0+36,1],[wx0+40,wy0+36,0]])breadShape(bx,by,k,.8);
+  x.fillStyle=gl;x.fillRect(wx0,wy0,58,40);x.strokeStyle='#5a3420';x.lineWidth=3;x.strokeRect(wx0,wy0,58,40);
+  // とびら（ガラス窓つき）
+  x.fillStyle='#6a3a1a';x.fillRect(hx+14,ground-62,34,62);x.fillStyle='#ffe7a0';x.fillRect(hx+19,ground-56,24,22);ell(hx+42,ground-28,2.2,2.2,'#ffd24a');
+  x.fillStyle='#fff';x.font='bold 6px system-ui';x.textAlign='center';x.fillText('OPEN',hx+31,ground-40);x.textAlign='left';
+  // メニューの黒板
+  x.save();x.translate(R+16,ground);x.fillStyle='#6a4428';x.beginPath();x.moveTo(-12,0);x.lineTo(-8,-40);x.lineTo(8,-40);x.lineTo(12,0);x.lineTo(9,0);x.lineTo(6,-34);x.lineTo(-6,-34);x.lineTo(-9,0);x.closePath();x.fill();
+  x.fillStyle='#2a3a30';x.fillRect(-9,-38,18,24);x.fillStyle='#ffffff';x.font='bold 5px system-ui';x.textAlign='center';x.fillText('やきたて',0,-30);x.fillText('メロンパン',0,-23);x.fillText('100G',0,-17);x.restore();
+  // えんとつと いいにおいの湯気
+  x.fillStyle='#7a4a38';x.fillRect(hx+40,top-50,16,34);
+  for(let k=0;k<3;k++){const ph=((t*.0005+k*.33)%1);x.strokeStyle=`rgba(255,240,220,${.5*(1-ph)})`;x.lineWidth=2.4;x.beginPath();x.moveTo(hx+48,top-52-ph*50);x.bezierCurveTo(hx+58,top-62-ph*50,hx+38,top-70-ph*50,hx+48,top-80-ph*50);x.stroke();}
+  x.restore();}
 // 交番：白いかべ・平らな屋根・赤いランプ・「交番 KOBAN」の看板・自転車
 function drawKoban(hx,t){x.save();const L=hx-70,R=hx+70,top=ground-104;
   x.fillStyle='#00000022';x.beginPath();x.ellipse(hx+8,ground+2,92,9,0,0,7);x.fill();
@@ -3511,7 +3559,7 @@ function drawVillageScenery(){if(insideHouse)return;const W2=world,t=Date.now();
   if(W2-1700<camera+W+200&&W2-1150>camera-200){drawBarn(W2-1230);drawField(W2-1700,W2-1360);}
   const houses=villageHouses();
   for(let tx=W2-1850;tx>200;tx-=330){if(tx<camera-80||tx>camera+W+80)continue;drawTree(tx,t);}   // 木
-  for(const [hx,r,w,hi] of houses){if(hx<camera-180||hx>camera+W+180)continue;x.save();x.translate(hx,ground);x.scale(HOUSE_SCALE,HOUSE_SCALE);x.translate(-hx,-ground);if(hi===3)drawKoban(hx,t);else drawVillageHouse(hx,r,w,t);x.restore();
+  for(const [hx,r,w,hi] of houses){if(hx<camera-180||hx>camera+W+180)continue;x.save();x.translate(hx,ground);x.scale(HOUSE_SCALE,HOUSE_SCALE);x.translate(-hx,-ground);if(hi===3)drawKoban(hx,t);else if(hi===2)drawBakery(hx,t);else drawVillageHouse(hx,r,w,t);x.restore();
     if(!insideHouse&&Math.abs(player.x+player.w/2-hx)<26&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで 入る',hx,ground-120*HOUSE_SCALE-24,18,'white');x.restore();}}
   for(let fx=W2-1850;fx>300;fx-=36){if(fx<camera-40||fx>camera+W+40)continue;x.fillStyle='#c8a070';x.fillRect(fx,ground-30,5,30);x.fillStyle='#a88050';x.fillRect(fx+3,ground-30,2,30);if(fx%72===0){x.fillStyle='#c8a070';x.fillRect(fx-31,ground-24,36,4);x.fillRect(fx-31,ground-12,36,4);}}   // さく
   {const wx=W2-2750;if(wx>camera-80&&wx<camera+W+80){x.fillStyle='#8a8a9a';x.fillRect(wx-26,ground-34,52,34);x.strokeStyle='#5a5a6a';x.lineWidth=1;for(let r=0;r<3;r++)for(let c=0;c<4;c++)x.strokeRect(wx-26+c*13+(r%2)*6,ground-34+r*11,13,11);x.fillStyle='#5a3a24';x.fillRect(wx-30,ground-80,6,46);x.fillRect(wx+24,ground-80,6,46);x.fillStyle='#a84a3a';x.beginPath();x.moveTo(wx-38,ground-80);x.lineTo(wx,ground-100);x.lineTo(wx+38,ground-80);x.closePath();x.fill();x.fillStyle='#6a4a2a';x.fillRect(wx-6,ground-70,12,10);}}   // 井戸
