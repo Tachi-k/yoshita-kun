@@ -430,7 +430,7 @@ function followCamera(px){
   return Math.max(0,Math.min(world-W,px-anchor));
 }
 const VAULT_DIAMONDS=3,VAULT_X=STAGE2_OFFSET+2300;
-let coinProgress=0,stageStartCoinProgress=0,diamonds=0,stageStartDiamonds=0;
+let coinProgress=0,coinEarned=0,stageStartCoinProgress=0,diamonds=0,stageStartDiamonds=0;
 let diamondVaultUsed=false,bonusLoot=null,bonusResult=null;
 function loadStage(n){
   victoryFlight=null;
@@ -473,8 +473,8 @@ function loadStage(n){
 }
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};signState=null;onsenDone=false;onsen=null;shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
-  if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
+function reset(){score=0;coinProgress=0;coinEarned=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};signState=null;onsenDone=false;onsen=null;shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
+  if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;coinEarned=coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
 const HI_KEY='yoshita-hiscore';let hiScore=0,newRecord=false;try{hiScore=Number(localStorage.getItem(HI_KEY))||0}catch(_){}
@@ -519,7 +519,7 @@ let loseT=0,goKind='s1';const LOSE_TO_TITLE=600;   // goKind：'s1'＝1面／'s2
 function loseTap(){if(rankOn()&&rankAsked!==score&&rankPlace(score))maybeAskName();else retry();}
 function retry(){   // ゲームオーバーから再挑戦：スコアは0から（ステージ2からの再挑戦でも）
   roundBase=null;
-  if(stage===2){score=0;coinProgress=stageStartCoinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else{reset();lives=3;score=0;stageStartScore=0}}
+  if(stage===2){score=0;coinProgress=stageStartCoinProgress;coinEarned=coinProgress;diamonds=stageStartDiamonds;lives=3;keys={};loadStage(2)}else{reset();lives=3;score=0;stageStartScore=0}}
 function rect(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function trappedIn(h){return enemies.some(e=>e.alive&&e.trapHole===h)||(boss&&boss.hole===h)}
 function inHole(h){return enemies.filter(e=>e.alive&&e.trapHole===h)}
@@ -555,8 +555,8 @@ function heartType(){return Math.random()<GOLD_HEART_CHANCE?'goldHeart':'heart'}
 function collectCoins(count,cx,cy){
   if(bonusLoot&&count===1)bonusLoot.coins++;
   score+=count*COIN_POINTS;
-  const before=coinProgress;coinProgress+=count;   // コインは上限なしで たまる（お店で使える）
-  if(Math.floor(coinProgress/COINS_PER_LIFE)>Math.floor(before/COINS_PER_LIFE)){   // 100枚ごとに ボーナス点
+  const before=coinEarned;coinProgress+=count;coinEarned+=count;   // コインは上限なしで たまる（お店で使える）。ボーナスは 拾った合計で数える（使っても もう一度は もらえない）
+  if(Math.floor(coinEarned/COINS_PER_LIFE)>Math.floor(before/COINS_PER_LIFE)){   // 100枚ごとに ボーナス点
     score+=COIN_BONUS;popup(cx,cy,'コイン100枚！ +'+COIN_BONUS,'#ffd24a',26,100);sound('treasure');
   }
 }
@@ -2137,7 +2137,7 @@ function seeded(seed){let a=seed>>>0;return function(){a=(a+0x6D2B79F5)|0;let t=
 function startDemo(){
   mode='title';demoScene=DEMO_SCENES[demoIdx++%DEMO_SCENES.length];
   Math.random=seeded(demoScene==='boss'?317:1);
-  score=0;coinProgress=0;diamonds=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;
+  score=0;coinProgress=0;coinEarned=0;diamonds=0;lives=3;keys={};digHold=false;padJump=false;digBuf=0;
   demoT=0;demoDodge=0;demoBossShownAt=0;demoLadderAt=0;demoCannonHitAt=0;
   loadStage(demoScene==='boss'||demoScene==='stage2'||demoScene==='village'?2:1);
   if(demoScene==='village'){player.x=STAGE2_START+120;player.facing=-1;demoTalkT=0;demoTalkV=null;}   // 2面のスタートから 左へ歩いて 村へ向かう
@@ -2544,7 +2544,7 @@ if(shopMenu&&state==='play'){const m=shopMenu,L=keys.left,R=keys.right,U=keys.ju
 // パン屋：カウンターで ⬆ジャンプ → パンを えらんで 買う
 if(insideHouse&&insideHouse.i===2&&state==='play'&&p.on){const upNow=keys.jump||padJump,up=upNow&&!p.prevBreadUp;p.prevBreadUp=upNow;
   if(up&&!p.jumpLock&&Math.abs(p.x+p.w/2-BREAD_X)<60){p.jumpLock=true;p.jumpBuf=0;
-    openMenu('パン屋',BREADS,b=>{score+=b.pts;breadAnim={b,t:0};popup(BREAD_X,ground-170,b.name+'を 買った！ +'+b.pts,'#ffdf50',20,90);tone(880,.05,'square',.05);tone(1320,.08,'triangle',.05,.08);});}}
+    openMenu('パン屋',BREADS,b=>{breadAnim={b,t:0};popup(BREAD_X,ground-170,b.name+'を 買った！','#ffdf50',20,90);tone(880,.05,'square',.05);tone(1320,.08,'triangle',.05,.08);});}}
 // 温泉：受付で ⬆ジャンプ → 入浴料を はらう → のれんの奥の お風呂で ⬆ジャンプ → つかる
 if(insideHouse&&onsen&&state==='play'){const pc=p.x+p.w/2,upNow=keys.jump||padJump,up=upNow&&!p.prevOnsenUp;p.prevOnsenUp=upNow;
   if(onsen.msgT>0)onsen.msgT--;
@@ -2552,9 +2552,9 @@ if(insideHouse&&onsen&&state==='play'){const pc=p.x+p.w/2,upNow=keys.jump||padJu
     if(onsen.t===30){popup(ONSEN_BATH_X,ground-150,'いい湯だな〜 ♪','#fff',24,110);[523,587,659,784,659].forEach((f,k)=>tone(f,.18,'triangle',.04,k*.2));}
     if(onsen.t===150)popup(ONSEN_BATH_X+40,ground-130,'ぽかぽか〜','#ffb0c8',22,90);
     if(onsen.t%40===0)tone(900+Math.random()*300,.03,'sine',.02);   // ちゃぷん
-    if(onsen.t>=300){p.bathing=false;p.y=ground-p.h;p.x=ONSEN_BATH_X-240-p.w/2;p.facing=1;score+=100;
+    if(onsen.t>=300){p.bathing=false;p.y=ground-p.h;p.x=ONSEN_BATH_X-240-p.w/2;p.facing=1;
       if(!onsenDone){onsenDone=true;if(lives<MAX_LIVES){lives++;popup(p.x+17,ground-170,'ぽかぽか！ ライフ+1','#ff8ab0',24,110);}else{score+=500;popup(p.x+17,ground-170,'ぽかぽか！ +500','#ffdf50',24,110);}sound('oneup');}
-      else popup(p.x+17,ground-170,'さっぱり！ +100','#fff',22,90);
+      else popup(p.x+17,ground-170,'さっぱり！','#fff',22,90);
       onsen.milk=onsen.paid&&onsen.paid.milk?'coffee':'plain';onsen.milkT=1;   // おふろあがりは 牛乳（コーヒー牛乳つきなら コーヒー牛乳）
       onsen.paid=null;onsen.after=true;onsen.t=0;tone(660,.06,'triangle',.05);}
     return;}
@@ -2562,7 +2562,7 @@ if(insideHouse&&onsen&&state==='play'){const pc=p.x+p.w/2,upNow=keys.jump||padJu
     p.vx=0;p.vy=0;p.walking=false;p.facing=1;p.jumpLock=true;p.standT=999;
     if(m===2){popup(p.x+17,ground-210,cof?'おふろあがりの コーヒー牛乳！':'おかみさん「牛乳 サービスよ〜」','#fff',20,80);tone(880,.05,'square',.04);}
     if(m>=40&&m<=150&&(m-40)%22===0){popup(p.x+p.w/2+30,ground-190-((m-40)/22%2)*14,'ゴクッ','#fff',20,26);tone(180,.07,'sine',.07);tone(140,.06,'sine',.05,.05);}
-    if(m===165){const pts=cof?200:100;score+=pts;popup(p.x+17,ground-220,'ぷはー！ '+(cof?'コーヒー牛乳':'牛乳')+' +'+pts,'#ffe0b0',26,120);sound('treasure');sparkleFx(p.x+p.w/2);}
+    if(m===165){popup(p.x+17,ground-220,'ぷはー！ '+(cof?'コーヒー牛乳':'牛乳')+' うまい！','#ffe0b0',26,120);sound('treasure');sparkleFx(p.x+p.w/2);}
     if(m>=230)onsen.milkT=0;
     return;}
   if(onsen.after&&p.x+p.w<ONSEN_GATE_X-10)onsen.after=false;   // おふろあがりは のれんを くぐって もどれる
@@ -2586,7 +2586,7 @@ if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=k
     if(shop.phase==='eat')shop.popT++;
     if(shop.phase==='eat'&&shop.t>100&&shop.t%24===12){popup(p.x+p.w/2+14,p.y-30,i===4?'ツルツル':'ズルズル','#fff',18,30);tone(300+Math.random()*80,.05,'triangle',.04,0,200);}
     if(shop.phase==='eat'&&shop.t>=320){shop.phase='done';shop.t=0;
-      if(shop.deluxe){score+=300;popup(p.x+17,p.y-80,'豪華セット！ +300','#ffdf50',20,100);}
+      if(shop.deluxe){popup(p.x+17,p.y-80,'豪華セット！ まんぞく！','#ffdf50',20,100);}
       if(!shopEaten[i]){shopEaten[i]=true;if(lives<MAX_LIVES){lives++;popup(p.x+17,p.y-50,'おなか いっぱい！ ライフ+1','#ff8ab0',22,100);}else{score+=500;popup(p.x+17,p.y-50,'おなか いっぱい！ +500','#ffdf50',22,100);}sound('oneup');}
       else popup(p.x+17,p.y-50,'ごちそうさま！','#fff',22,80);
       mealStreak++;mealCount[i]=(mealCount[i]||0)+1;shop.msg=i===4?'まいど！ また 来てね':'ありがとうございましたー！';shop.msgT=120;}
