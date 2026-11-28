@@ -2515,7 +2515,7 @@ if(inBasement&&roomKind==='village'&&state==='play'&&p.on&&!p.hole){const upNow=
   if(upPressed&&!p.jumpLock){
     if(insideHouse&&Math.abs(pc-ROOM_DOOR_X)<30){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;exitHouse();return;}
     if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-houseDoorX(h))<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}}
-  if(insideHouse&&!isShop(insideHouse.i)&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;score+=300;popup(W-150,ground-80,'ツボの中に コインが！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
+  if(insideHouse&&!isShop(insideHouse.i)&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;collectCoins(30,W-150,ground-110);popup(W-150,ground-80,'ツボの中に コインが30枚！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
 // メニューが ひらいているあいだは 動かない。◀▶で えらび、⬆ジャンプで 決める
 if(shopMenu&&state==='play'){const m=shopMenu,L=keys.left,R=keys.right,U=keys.jump||padJump,n=m.items.length;
   p.vx=0;p.walking=false;if(m.msgT>0)m.msgT--;
