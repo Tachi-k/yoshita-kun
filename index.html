@@ -473,7 +473,7 @@ function loadStage(n){
 }
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};mealStreak=0;hasKey=false;keyDoorUsed=false;
+function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};mealStreak=0;breadAnim=null;hasKey=false;keyDoorUsed=false;
   if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
@@ -1434,7 +1434,9 @@ const VILLAGE_W=6*W,HOUSE_SCALE=1.35,ROOM_DOOR_X=90;
 function houseDoorX(h){return h[0]+(h[3]===2?31*HOUSE_SCALE:0)}   // とびらの位置（パン屋は右よりに とびらがある）
 function villageHouses(){const W2=VILLAGE_W;return [[W2-2300,'#b8483a','#f4e6cc',0],[W2-2900,'#3a5aa8','#f0e2c4',1],[W2-3550,'#3a8a4a','#f6ead2',2],[W2-4350,'#b8783a','#efe0c0',3],[W2-3950,'#4a4a52','#3a2a1e',4],[W2-4950,'#c8302a','#f4e8d0',5]];}
 let insideHouse=null,housePots={},shopEaten={},shop=null,mealStreak=0;   // mealStreak：続けて食べた回数（3回目は 食べすぎで ことわられる）   // shop：お店の中での 食券・すわる・食べる の進み具合
-const SHOP_SEATS=[360,480,600],SHOP_TICKET_X=220,TICKET_PRICE=10;
+const SHOP_SEATS=[360,480,600],SHOP_TICKET_X=220,TICKET_PRICE=10,BREAD_X=410,BREAD_PRICE=5;
+const BREADS=[{name:'メロンパン',k:1,pts:200},{name:'クロワッサン',k:2,pts:200},{name:'バゲット',k:0,pts:300}];
+let breadAnim=null,breadBuy=0;   // パン屋で買ったパン（上にポンと出る）
 function isShop(i){return i===4||i===5}   // insideHouse：いま入っている家（村の状態をしまっておく）
 const ROOM_PEOPLE=[{kind:'grandma',name:'村の おばあさん'},{kind:'girl',name:'村の 女の子'},{kind:'baker',name:'パン屋の おにいさん'},{kind:'scholar',name:'村の おまわりさん'}];
 function enterHouse(i){const p=player,h=villageHouses()[i];
@@ -2506,6 +2508,12 @@ if(inBasement&&roomKind==='village'&&state==='play'&&p.on&&!p.hole){const upNow=
     if(insideHouse&&Math.abs(pc-ROOM_DOOR_X)<30){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;exitHouse();return;}
     if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-houseDoorX(h))<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}}
   if(insideHouse&&!isShop(insideHouse.i)&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;score+=300;popup(W-150,ground-80,'ツボの中に コインが！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
+// パン屋：カウンターで ⬆ジャンプ → コイン5まいで パンを買う
+if(insideHouse&&insideHouse.i===2&&state==='play'&&p.on){const upNow=keys.jump||padJump,up=upNow&&!p.prevBreadUp;p.prevBreadUp=upNow;
+  if(up&&!p.jumpLock&&Math.abs(p.x+p.w/2-BREAD_X)<60){p.jumpLock=true;p.jumpBuf=0;
+    if(coinProgress>=BREAD_PRICE){coinProgress-=BREAD_PRICE;const b=BREADS[breadBuy++%BREADS.length];score+=b.pts;breadAnim={b,t:0};
+      popup(BREAD_X,ground-170,b.name+'を 買った！ +'+b.pts,'#ffdf50',20,90);tone(880,.05,'square',.05);tone(1320,.08,'triangle',.05,.08);}
+    else{popup(BREAD_X,ground-170,'コインが '+BREAD_PRICE+'まい ひつよう','#fff',18,80);tone(150,.1,'square',.05);}}}
 // お店：食券機で食券を買う（ラーメン屋）→ いすで ⬆ジャンプ → すわって待つ → 運ばれてきたら 食べる
 if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=keys.jump||padJump,up=upNow&&!p.prevShopUp;p.prevShopUp=upNow;
   if(shop.msgT>0)shop.msgT--;
@@ -3495,6 +3503,7 @@ function drawHouseInterior(){const i=insideHouse.i,t=Date.now();if(isShop(i)){dr
     x.fillStyle='#c8945a';x.fillRect(330,ground-92,160,92);x.fillStyle='#a8743a';x.fillRect(330,ground-98,160,8);   // カウンター
     x.fillStyle='#3a3a44';x.fillRect(440,ground-124,40,26);x.fillStyle='#8adca0';x.fillRect(446,ground-120,28,8);x.fillStyle='#e8e8ec';for(let k=0;k<3;k++)x.fillRect(446+k*10,ground-108,7,5);   // レジ
     x.fillStyle='#fff8ec';x.fillRect(344,ground-110,70,10);breadShape(362,ground-112,0,1);breadShape(396,ground-112,1,1);   // トレーのパン
+    if(Math.abs(player.x+player.w/2-BREAD_X)<60&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで パンを買う（コイン'+BREAD_PRICE+'）',BREAD_X,ground-140,15,'white');x.restore();}
     x.fillStyle='#8a8478';x.fillRect(150,ground-170,130,170);x.fillStyle='#6a645a';for(let r=0;r<6;r++)for(let c=0;c<4;c++)x.fillRect(152+c*32+(r%2)*16,ground-168+r*28,30,2);
     x.fillStyle='#2a1a14';x.beginPath();x.arc(215,ground-60,36,Math.PI,0);x.lineTo(251,ground-20);x.lineTo(179,ground-20);x.closePath();x.fill();
     for(let k=0;k<4;k++){const fh=18+Math.sin(t*.012+k)*6;x.fillStyle=['#ff6a2a','#ffb03a','#ffe04a'][k%3];x.beginPath();x.moveTo(190+k*14,ground-20);x.quadraticCurveTo(197+k*14,ground-20-fh,204+k*14,ground-20);x.fill();}   // パンがまの火
@@ -4026,7 +4035,7 @@ function draw(){
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
   if(mode!=='title'&&!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
-  const hint=inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⛏掘るボタンで 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  const hint=inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを買おう（コイン'+BREAD_PRICE+'まい）':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⛏掘るボタンで 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText(boss.lv==='legend'?'黒大王 ドリモグ':'モグラ大王 ドリモグ',595,28,20,boss.lv==='legend'?'blue':'red');if(bossStars()){x.save();x.textAlign='right';fancyText(bossStars(),940,28,16,boss.lv==='legend'?'gold':boss.lv==='super'||boss.lv==='smart'?'red':boss.lv==='weak'?'blue':'gold');x.restore();}x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/(boss.maxHp||3),16);x.strokeStyle='#0008';x.lineWidth=2;{const n=boss.maxHp||3;for(let k=1;k<n;k++){const lx=597+341*k/n;x.beginPath();x.moveTo(lx,38);x.lineTo(lx,54);x.stroke();}}x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
@@ -4070,6 +4079,7 @@ function draw(){
   if(keyCelebrate)drawKeyCelebrate();
   if(inBasement&&roomKind==='village'&&talk&&state==='play'&&!paused&&mode==='game')drawTalkBox();
   if(insideHouse&&shop&&player.seated&&shop.phase==='eat'&&state==='play')drawFoodPopup(insideHouse.i);
+  if(breadAnim){const a=breadAnim;a.t++;const k=Math.min(1,a.t/12),fade=a.t>60?1-(a.t-60)/20:1;x.save();x.globalAlpha=Math.max(0,fade);x.translate(player.x+player.w/2-camera,player.y-40-a.t*.8);const sc=(.6+k*1.6)*(1+Math.sin(a.t*.3)*.05);for(let r=0;r<8;r++){x.save();x.rotate(r*Math.PI/4+a.t*.05);x.fillStyle='#ffe9a066';x.fillRect(-2,-40,4,22);x.restore();}breadShape(0,0,a.b.k,sc*1.4);x.restore();if(a.t>80)breadAnim=null;}
   if(bonusResult&&state==='play'&&!paused){
     const r=bonusResult;
     x.save();x.globalAlpha=Math.min(1,r.t/30);
