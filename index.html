@@ -1224,12 +1224,12 @@ function enterBasement(h,returnX=VAULT_X+45,title=''){
   p.x=46;p.y=40;p.vx=0;p.vy=2;p.hole=null;p.on=false;p.kickT=0;
   banner(title||(h?'隠し地下室':'ダイヤの宝物庫'),'お宝を集めて 右のはしごから戻ろう',150);sound('oneup');}
 function exitBasement(){const p=player,sf=surface,h=sf.hole,wasVillage=roomKind==='village',wasBonus=inBonus()&&!wasVillage,wasCloud=roomKind==='cloud';
-  if(wasBonus)finishBonus();talk=null;
+  if(wasBonus)finishBonus();talk=null;if(wasVillage)bannerT=0;
   platforms=sf.platforms;coins=sf.coins;enemies=sf.enemies;items=sf.items;spots=sf.spots;world=sf.world;camera=sf.camera;
   holes=h?sf.holes.filter(x=>x!==h):sf.holes;inBasement=false;surface=null;parts=[];roomKind='basement';balls=[];cannonWarn=null;cannonShot=null;cannonT=Math.max(cannonT,240);
   p.x=h?h.x+h.w+6:sf.returnX;p.y=ground-p.h;p.vy=-8;p.moveLock=300;p.on=false;p.hole=null;p.inv=Math.max(p.inv,90);p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);
   for(const e of enemies){if(e.alive&&!e.trapHole&&Math.abs(e.x+16-(p.x+17))<170){e.x+=(e.x+16>=p.x+17?1:-1)*170;e.safe=90;}}
-  popup(p.x+17,ground-70,wasCloud?'雲の上から もどった！':wasVillage?'大王の谷へ もどった！':wasBonus?'ボーナス終了！':'地上にもどった！','#fff',24,90);sound('jump');}
+  popup(Math.max(camera+140,Math.min(camera+W-140,p.x+17)),ground-70,wasCloud?'雲の上から もどった！':wasVillage?'大王の谷へ もどった！':wasBonus?'ボーナス終了！':'地上にもどった！','#fff',24,90);sound('jump');}
 // ボーナス画面（1面：コインの雨）とボーナスステージ（2面：雲の上）
 function finishBonus(){
   const loot=bonusLoot;
