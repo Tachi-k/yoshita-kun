@@ -1030,8 +1030,9 @@ function doDig(){const s=digSpot();if(!s)return false;player.digAnim=DIG_ANIM;
 function advanceTalk(){const L=villageLines(talk.v.kind),txt=L[talk.line%L.length];
   if(talk.chars<txt.length){talk.chars=txt.length;return;}
   if(talk.v.kind==='girl'&&!signState&&talk.line===0){askSign();return;}
+  if(talk.v.kind==='master'&&talk.line%L.length===L.length-1){cafeOrder();return;}   // マスターの さいごの ことば「なにか 飲んでくかい？」→ 注文
   talk.line=(talk.line+1)%L.length;talk.chars=0;tone(880,.04,'square',.03);}
-function dig(){if(shopMenu&&state==='play'&&!paused){closeMenu(true);return;}if(talk&&inBasement&&roomKind==='village'&&state==='play'&&!paused){advanceTalk();return;}
+function dig(){if(shopMenu&&state==='play'&&!paused){closeMenu(true);return;}if(talk&&inBasement&&(roomKind==='village'||roomKind==='cafe')&&state==='play'&&!paused){advanceTalk();return;}
   if(state!=='play'||inBasement||paused)return;
   if(mode==='game'&&stage===2&&!inBasement&&!arenaOn&&!keyDoorUsed&&player.on&&Math.abs(player.x+17-KEY_DOOR_X)<40){   // 鍵つきドア
     if(hasKey){keyDoorUsed=true;hasKey=false;sound('treasure');enterBasement(null,KEY_DOOR_X+50,'カギの宝物庫');}
@@ -1249,7 +1250,7 @@ function enterCafe(){const p=player;
   surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX:CAFE_X-p.w/2};inBasement=true;roomKind='cafe';
   world=W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;cannonShot=null;items=[];coins=[];
   platforms=[{x:0,y:ground,w:W,h:75}];
-  cafe={t:0,asked:false,songAt:0,msg:'いらっしゃい。ゆっくり していって',msgT:140,order:null,drink:null};
+  talk=null;cafe={t:0,asked:false,songAt:0,msg:'いらっしゃい。ゆっくり していって',msgT:140,order:null,drink:null};
   p.x=CAFE_DOOR_X+24;p.y=ground-p.h;p.vx=0;p.vy=0;p.on=true;p.hole=null;p.kickT=0;p.facing=1;lastSafeX=p.x;
   tone(988,.08,'triangle',.05);tone(1319,.12,'triangle',.05,.1);}   // カランコロン
 function cafeAsk(){cafe.asked=true;
@@ -1268,9 +1269,16 @@ function updateCafe(p){const c=cafe;c.t++;if(c.msgT>0)c.msgT--;const pc=p.x+p.w/
     return true;}
   if(up&&!p.jumpLock){
     if(Math.abs(pc-CAFE_DOOR_X)<30){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;tone(1319,.08,'triangle',.05);tone(988,.12,'triangle',.05,.1);exitBasement();return true;}
-    if(Math.abs(pc-CAFE_MASTER_X)<200&&c.asked&&!c.order){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;
-      openMenu('喫茶 ゆきあかり',CAFE_MENU,it=>{c.order={kind:it.kind,t:0};c.msg=(it.kind==='coffee'?'コーヒー':'ココア')+' いっちょう。少々 おまちを';c.msgT=100;tone(880,.05,'square',.05);});}}
+    if(talk){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;advanceTalk();}}   // 会話中は ⬆も ⛏も 話の つづき
+  // マスターの そばに行くと 話しかけてくる（ことばの ふきだしが 出ている間は まつ）
+  const near=c.asked&&!c.order&&!c.songAt&&c.msgT<=0&&p.on&&Math.abs(pc-CAFE_MASTER_X)<200;
+  if(near){if(!talk){talk={v:CAFE_MASTER_V,line:0,chars:0,wait:0};tone(880,.05,'square',.03);}
+    const L=villageLines('master'),txt=L[talk.line%L.length];if(talk.chars<txt.length&&c.t%2===0){talk.chars++;if(talk.chars%2===0&&txt[talk.chars-1]!==' ')tone(400,.025,'square',.018);}}
+  else talk=null;
   return false;}
+const CAFE_MASTER_V={kind:'master'};
+function cafeOrder(){const c=cafe;if(!c||c.order||c.drink)return;
+  openMenu('喫茶 ゆきあかり',CAFE_MENU,it=>{talk=null;c.order={kind:it.kind,t:0};c.msg=(it.kind==='coffee'?'コーヒー':'ココア')+' いっちょう。少々 おまちを';c.msgT=100;tone(880,.05,'square',.05);});}
 // ボーナス画面（1面：コインの雨）とボーナスステージ（2面：雲の上）
 function finishBonus(){
   const loot=bonusLoot;
@@ -1508,6 +1516,8 @@ function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];shop=
 let villagers=[],talk=null,villageSeen=false,signState=null;   // signState：女の子に サインを かいた('yes')／ことわった('no')
 function villageCalm(){if(insideHouse)return 1;return inBasement&&roomKind==='village'?Math.max(0,Math.min(1,(world-1000-player.x)/1600)):0}   // 左へ進むほど 青空・平和に
 function villageLines(kind){const hero=princessRound?'ソラ姫さま':'よし太くん';
+  if(kind==='master')return princessRound?['これは ソラ姫さま。ようこそ、喫茶 ゆきあかりへ。','よし太くんも よく ここで ココアを のんでいったんですよ。','あの子は この曲を 聞きながら、姫さまの はなしばかり していました…','姫さま、きっと よし太くんを つれもどしてくださいね。','なにか 飲んでいかれますか？']
+    :['いらっしゃい。ここは 谷で いちばん しずかな 喫茶店さ。','この曲は、雪の 原っぱに 気球が うかぶ 景色を 思って 作られたんだって。','大王の 城は この先だ。ここで ひと休みして いきな。','そうそう、空の 上には 雲の せかいが あるって うわさだよ。','なにか 飲んでくかい？'];
   // 3周目（ソラ姫の周）：姫が 大王に つれさられた よし太くんを さがしにきた
   const insideP={grandma:['おや、ソラ姫さま。こんな ところまで よく来なすった。','よし太くんを さがしておいでかい？ あの子は この前、お茶を のみに 来てくれたよ…','あったかい お茶でも のんで、元気を だしておいき。'],
     girl:signState==='yes'?['わあい！ 姫さまの サイン！ 一生の たからものに するね！','おれいに とくべつな ハートを あげる！ よし太くんを ぜったい たすけてね！']:signState==='no'?['ふーんだ！ 姫さまの ケチ！','…もう しらないっ！ （ぷいっ）']:['わあ、ほんものの ソラ姫さまだ！ ねえねえ、サイン かいて！','よし太くん、大王に つれていかれちゃったんでしょ…？','姫さま、よし太くんを たすけてあげてね！'],
@@ -1531,7 +1541,7 @@ function villageLines(kind){const hero=princessRound?'ソラ姫さま':'よし�
     elder:['ほっほっほ。よくぞ ここまで 来なすった。','大王は 穴に落ちると しばらく うごけぬ。そのすきに 頭を ふむのじゃ。','…じゃが 最後の ひとふみは 大王も かしこくなる。気をつけるのじゃぞ。'],
     farmer:['おう、旅のもんか！ うちの野菜は 谷いちばんの うまさだぞ！','大王のやつ、畑まで 穴だらけに しおって…',''+hero+'、姫さまを たのんだぞ！ 帰ったら 野菜を ごちそうするからな！'],
     dog:['ワン！','ワンワン！ （しっぽを ぶんぶん ふっている）','クゥーン… （なでてほしそうに 見ている）']}[kind];}
-const VILLAGER_NAME={grandma:'村の おばあさん',girl:'村の 女の子',baker:'パン屋の おにいさん',scholar:'村の おまわりさん',man:'むらびとの おじさん',woman:'むらびとの おばさん',child:'村の 子ども',elder:'村の 長老',farmer:'畑の おやじさん',dog:'村の いぬ コロ'};
+const VILLAGER_NAME={master:'喫茶店の マスター',grandma:'村の おばあさん',girl:'村の 女の子',baker:'パン屋の おにいさん',scholar:'村の おまわりさん',man:'むらびとの おじさん',woman:'むらびとの おばさん',child:'村の 子ども',elder:'村の 長老',farmer:'畑の おやじさん',dog:'村の いぬ コロ'};
 function enterVillage(){const p=player;insideHouse=null;
   surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX:8};inBasement=true;roomKind='village';skyRope=null;
   world=VILLAGE_W;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;cannonShot=null;items=[];coins=[];
@@ -3723,7 +3733,7 @@ function drawCafeBg(){const t=Date.now(),c=cafe,playing=endSong.on&&endSong.wher
   x.fillStyle='#e8c070';x.fillRect(CAFE_DOOR_X-6,ground-150,12,10);   // ドアベル
   // ことば・案内
   const pc=player.x+player.w/2;x.textAlign='center';
-  if(c&&!c.drink&&player.on){if(Math.abs(pc-CAFE_DOOR_X)<30)fancyText('⬆ジャンプで 外へ',CAFE_DOOR_X,ground-160,18,'white');else if(c.asked&&!c.order&&Math.abs(pc-CAFE_MASTER_X)<200)fancyText('⬆ジャンプで 注文',CAFE_MASTER_X,ground-200,16,'white');}
+  if(c&&!c.drink&&player.on){if(Math.abs(pc-CAFE_DOOR_X)<30)fancyText('⬆ジャンプで 外へ',CAFE_DOOR_X,ground-160,18,'white');}
   if(c&&c.msgT>0){const bx=CAFE_MASTER_X-60,by=ground-240;x.save();x.globalAlpha=Math.min(1,c.msgT/15);x.font='bold 15px system-ui';const tw=x.measureText(c.msg).width+24,cx0=Math.min(W-tw/2-8,Math.max(tw/2+8,bx));
     x.fillStyle='#ffffffee';x.beginPath();if(x.roundRect)x.roundRect(cx0-tw/2,by-22,tw,32,10);else x.rect(cx0-tw/2,by-22,tw,32);x.fill();x.strokeStyle='#2a1a10';x.lineWidth=2;x.stroke();
     x.fillStyle='#2a1a10';x.fillText(c.msg,cx0,by-1);x.restore();}
@@ -4175,7 +4185,7 @@ function drawTalkBox(){const v=talk.v,L=villageLines(v.kind),txt=L[talk.line%L.l
   const lines=[];let cur='';for(const ch of txt){if(x.measureText(cur+ch).width>bw-60){lines.push(cur);cur='';}cur+=ch;}lines.push(cur);
   lines.slice(0,2).forEach((ln,i)=>x.fillText((i===0?'「':'　')+ln+(i===lines.length-1&&talk.chars>=L[talk.line%L.length].length?'」':''),bx+24,by+68+i*30));
   const done=talk.chars>=L[talk.line%L.length].length,more=talk.line%L.length<L.length-1;
-  x.fillStyle='#ffffffaa';x.font='bold 13px system-ui';x.textAlign='right';x.fillText(done?(more?'⬆ / ⛏ で つづき':'⬆ / ⛏ で もう一度'):'',bx+bw-44,by+bh-16);x.textAlign='left';
+  x.fillStyle='#ffffffaa';x.font='bold 13px system-ui';x.textAlign='right';x.fillText(done?(more?'⬆ / ⛏ で つづき':v.kind==='master'?'⬆ / ⛏ で 注文する':'⬆ / ⛏ で もう一度'):'',bx+bw-44,by+bh-16);x.textAlign='left';
   if(done&&more&&Math.floor(Date.now()/300)%2){x.fillStyle='#fff';x.beginPath();x.moveTo(bx+bw-34,by+bh-28);x.lineTo(bx+bw-22,by+bh-28);x.lineTo(bx+bw-28,by+bh-20);x.closePath();x.fill();}   // ▼
   x.restore();}
 function drawSky(){
@@ -4364,7 +4374,7 @@ function draw(){
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
   if(mode!=='title'&&!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
-  const hint=inBasement&&roomKind==='cafe'?'喫茶 ゆきあかり — カウンターで ⬆ジャンプして 注文。左のとびらで ⬆ジャンプで 外へ':!inBasement&&stage===2&&Math.abs(player.x+player.w/2-CAFE_X)<260?'喫茶店が ある！ とびらの前で ⬆ジャンプで 入れるよ':inBasement&&roomKind==='village'&&insideHouse&&isOnsen(insideHouse.i)?'ひだまり温泉 — 受付で ⬆ジャンプ → のれんの奥の お風呂で ⬆ジャンプ':inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを えらぼう':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⬆か⛏で 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  const hint=inBasement&&roomKind==='cafe'?'喫茶 ゆきあかり — マスターと 話そう（⬆か⛏で つづき・さいごに 注文）。左のとびらで ⬆ジャンプで 外へ':!inBasement&&stage===2&&Math.abs(player.x+player.w/2-CAFE_X)<260?'喫茶店が ある！ とびらの前で ⬆ジャンプで 入れるよ':inBasement&&roomKind==='village'&&insideHouse&&isOnsen(insideHouse.i)?'ひだまり温泉 — 受付で ⬆ジャンプ → のれんの奥の お風呂で ⬆ジャンプ':inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを えらぼう':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⬆か⛏で 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText(boss.lv==='legend'?'黒大王 ドリモグ':'モグラ大王 ドリモグ',595,28,20,boss.lv==='legend'?'blue':'red');if(bossStars()){x.save();x.textAlign='right';fancyText(bossStars(),940,28,16,boss.lv==='legend'?'gold':boss.lv==='super'||boss.lv==='smart'?'red':boss.lv==='weak'?'blue':'gold');x.restore();}x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/(boss.maxHp||3),16);x.strokeStyle='#0008';x.lineWidth=2;{const n=boss.maxHp||3;for(let k=1;k<n;k++){const lx=597+341*k/n;x.beginPath();x.moveTo(lx,38);x.lineTo(lx,54);x.stroke();}}x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
@@ -4406,7 +4416,7 @@ function draw(){
     if(bannerText)fancyText(bannerText,W/2,212,58,'gold');
     if(bannerSub)fancyText(bannerSub,W/2,bannerText?262:200,28,'white');x.globalAlpha=1;}
   if(keyCelebrate)drawKeyCelebrate();
-  if(inBasement&&roomKind==='village'&&talk&&!shopMenu&&state==='play'&&!paused&&mode==='game')drawTalkBox();
+  if(inBasement&&(roomKind==='village'||roomKind==='cafe')&&talk&&!shopMenu&&state==='play'&&!paused&&mode==='game')drawTalkBox();
   if(insideHouse&&shop&&player.seated&&shop.phase==='eat'&&state==='play')drawFoodPopup(insideHouse.i);
   if(insideHouse&&onsen&&onsen.milkT>0&&state==='play')drawMilkPopup();
   if(inBasement&&roomKind==='cafe'&&cafe&&cafe.drink&&state==='play')drawCafePopup();
