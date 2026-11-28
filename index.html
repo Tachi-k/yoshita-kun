@@ -3016,7 +3016,8 @@ function drawPopups(){x.textAlign='center';for(const q of popups){x.globalAlpha=
 const BALLOON_SCALE=1.3;
 // 3周目（ソラ姫の周）は、よし太くんの絵が入った白い気球（本物の気球の写真から）
 const BALLOON3_IMG=new Image();BALLOON3_IMG.src='img/balloon-yoshita.png';
-function yoshitaBalloon(){return princessRound&&mode==='game'}
+function yoshitaBalloon(){return princessRound&&mode==='game'&&!westSide}
+function koiBalloon(){return westSide&&stage===1}   // 1面の西（左）の気球：錦鯉の「おぢや」気球
 function drawBalloon(part){const bx=goalBX(),lift=state==='goal'||state==='clear'?balloonLift:0,bottom=ground-lift;
   x.save();x.translate(bx,bottom);x.rotate(Math.sin(Date.now()*.0015)*.012);x.scale(BALLOON_SCALE,BALLOON_SCALE);x.translate(-bx,-bottom);drawBalloonRaw(part);x.restore();}
 function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='clear'?balloonLift:0,top=ground-38-lift,cy=top-150,sway=0;   // ゆれは気球全体をかたむけて表す（球皮・ワイヤー・かごがずれないように）
@@ -3031,7 +3032,27 @@ function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='cl
     // 球皮：上がまるく下がすぼまった形
     const ex=bx+sway,shape=()=>{x.beginPath();x.moveTo(ex-20,cy+70);x.bezierCurveTo(ex-58,cy+38,ex-78,cy-10,ex-62,cy-46);x.bezierCurveTo(ex-46,cy-82,ex+46,cy-82,ex+62,cy-46);x.bezierCurveTo(ex+78,cy-10,ex+58,cy+38,ex+20,cy+70);x.closePath();};
     x.save();shape();x.clip();
-    if(yoshitaBalloon()){
+    if(koiBalloon()){
+      // 青い球皮に、紅白の錦鯉・白い輪（あわ）・「おぢや」の文字、すそは虹色のしまに「OJIYA」
+      x.fillStyle='#2f8ae0';x.fillRect(ex-90,cy-95,180,190);
+      const koi=(kx,ky,rot,s,dark)=>{x.save();x.translate(kx,ky);x.rotate(rot);x.scale(s,s);
+        x.fillStyle='#fbfbf6';x.beginPath();x.moveTo(0,-34);x.quadraticCurveTo(13,-20,10,6);x.quadraticCurveTo(7,22,0,28);x.quadraticCurveTo(-7,22,-10,6);x.quadraticCurveTo(-13,-20,0,-34);x.closePath();x.fill();   // 体
+        x.beginPath();x.moveTo(0,26);x.quadraticCurveTo(12,34,14,44);x.quadraticCurveTo(4,38,0,34);x.quadraticCurveTo(-4,38,-14,44);x.quadraticCurveTo(-12,34,0,26);x.closePath();x.fill();   // 尾びれ
+        for(const sx of[-1,1]){x.beginPath();x.moveTo(sx*9,-14);x.quadraticCurveTo(sx*20,-12,sx*20,-2);x.quadraticCurveTo(sx*13,-6,sx*9,-6);x.closePath();x.fill();}   // 胸びれ
+        x.fillStyle='#e0392e';ell(-2,-22,7,7,'#e0392e');ell(3,-4,7,9,'#e0392e');ell(-3,12,5,6,'#e0392e');
+        if(dark){ell(4,-14,3,4,'#26262c');ell(-5,4,2.6,3.4,'#26262c');ell(4,18,2.4,3,'#26262c');}
+        x.restore();};
+      koi(ex-46,cy-20,.25,1,true);koi(ex+48,cy-4,-.35,1.05,false);
+      x.strokeStyle='#ffffffdd';x.lineWidth=2.2;for(const [rx,ry,rr] of[[ex-70,cy+8,8],[ex+30,cy-62,7],[ex+66,cy+30,6],[ex-18,cy-40,5]]){x.beginPath();x.arc(rx,ry,rr,0,7);x.stroke();}   // 白い輪
+      x.save();x.textAlign='center';x.font='900 19px "Hiragino Mincho ProN","Yu Mincho",serif';x.lineWidth=3;x.strokeStyle='#1a2a4a';
+      for(const [i,ch] of['お','ぢ','や'].entries()){x.strokeText(ch,ex+2,cy-48+i*22);x.fillStyle='#f4f4f4';x.fillText(ch,ex+2,cy-48+i*22);}
+      x.font='700 6.5px system-ui';x.fillStyle='#e8f2ff';[...'錦鯉発祥の地'].forEach((ch,i)=>x.fillText(ch,ex+20,cy-54+i*8));x.restore();
+      // すその虹色のしま
+      const rb=['#e83a4a','#ff8a2a','#ffd23a','#3ab04a','#2a5ad8','#8a3ab8','#e8509a','#ff8a2a','#ffd23a','#3ab04a'];
+      x.save();x.beginPath();x.moveTo(ex-90,cy+28);x.quadraticCurveTo(ex,cy+46,ex+90,cy+28);x.lineTo(ex+90,cy+96);x.lineTo(ex-90,cy+96);x.closePath();x.clip();
+      for(let k=0;k<rb.length;k++){x.fillStyle=rb[k];x.beginPath();const a0=-1+k*2/rb.length,a1=-1+(k+1)*2/rb.length;x.moveTo(ex+a0*30,cy+96);x.lineTo(ex+a0*95,cy+20);x.lineTo(ex+a1*95,cy+20);x.lineTo(ex+a1*30,cy+96);x.closePath();x.fill();}
+      x.fillStyle='#ffffffcc';x.font='900 9px system-ui';x.textAlign='center';x.fillText('O J I Y A',ex,cy+50);x.restore();
+    }else if(yoshitaBalloon()){
       x.fillStyle='#f6f4ef';x.fillRect(ex-90,cy-95,180,190);   // 白い球皮
       if(BALLOON3_IMG.complete&&BALLOON3_IMG.naturalWidth){const iw=74,ih=iw*BALLOON3_IMG.naturalHeight/BALLOON3_IMG.naturalWidth;x.drawImage(BALLOON3_IMG,ex-iw/2+2,cy-74,iw,ih);}
       x.fillStyle='#1a1a1a';x.textAlign='center';x.font='900 11px system-ui';x.fillText('よし太くん',ex,cy+14);
@@ -3054,7 +3075,7 @@ function drawBalloonRaw(part){const bx=goalBX(),lift=state==='goal'||state==='cl
     x.restore();
     x.strokeStyle='#00000033';x.lineWidth=1.5;shape();x.stroke();
     // すそ（口金）
-    const sk=x.createLinearGradient(ex-20,0,ex+20,0);if(yoshitaBalloon()){sk.addColorStop(0,'#141418');sk.addColorStop(.4,'#4a4a52');sk.addColorStop(1,'#101014');}else{sk.addColorStop(0,'#8a2a22');sk.addColorStop(.4,'#d94a4a');sk.addColorStop(1,'#7a2018');}
+    const sk=x.createLinearGradient(ex-20,0,ex+20,0);if(koiBalloon()){sk.addColorStop(0,'#c8b890');sk.addColorStop(.4,'#f4ead0');sk.addColorStop(1,'#b0a07a');}else if(yoshitaBalloon()){sk.addColorStop(0,'#141418');sk.addColorStop(.4,'#4a4a52');sk.addColorStop(1,'#101014');}else{sk.addColorStop(0,'#8a2a22');sk.addColorStop(.4,'#d94a4a');sk.addColorStop(1,'#7a2018');}
     x.fillStyle=sk;x.beginPath();x.moveTo(ex-20,cy+68);x.lineTo(ex+20,cy+68);x.lineTo(ex+13,cy+84);x.lineTo(ex-13,cy+84);x.closePath();x.fill();
     // バーナーの炎
     // バーナーの炎：枠の上から球皮の口へ向かって吹き上がる
