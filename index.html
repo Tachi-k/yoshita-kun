@@ -2527,7 +2527,8 @@ if(p.climb){const c=p.climb;c.t++;p.x+=(c.tx-p.x)*.25;p.y-=c.speed?Math.min(c.sp
 if(inBasement&&roomKind==='village'&&state==='play'&&p.on&&!p.hole){const upNow=keys.jump||padJump,pc=p.x+p.w/2,upPressed=upNow&&!p.prevUp;p.prevUp=upNow;
   if(upPressed&&!p.jumpLock){
     if(insideHouse&&Math.abs(pc-ROOM_DOOR_X)<30){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;exitHouse();return;}
-    if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-houseDoorX(h))<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}}
+    if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-houseDoorX(h))<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}
+    if(talk&&!shopMenu&&!(insideHouse&&insideHouse.i===2&&Math.abs(pc-BREAD_X)<60)){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;advanceTalk();}}   // 会話中は ジャンプボタンも 掘るボタンと同じ（話の つづき）
   if(insideHouse&&!isShop(insideHouse.i)&&!isOnsen(insideHouse.i)&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;collectCoins(30,W-150,ground-110);popup(W-150,ground-80,'ツボの中に コインが30枚！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
 // メニューが ひらいているあいだは 動かない。◀▶で えらび、⬆ジャンプで 決める
 if(shopMenu&&state==='play'){const m=shopMenu,L=keys.left,R=keys.right,U=keys.jump||padJump,n=m.items.length;
@@ -4033,7 +4034,7 @@ function drawTalkBox(){const v=talk.v,L=villageLines(v.kind),txt=L[talk.line%L.l
   const lines=[];let cur='';for(const ch of txt){if(x.measureText(cur+ch).width>bw-60){lines.push(cur);cur='';}cur+=ch;}lines.push(cur);
   lines.slice(0,2).forEach((ln,i)=>x.fillText((i===0?'「':'　')+ln+(i===lines.length-1&&talk.chars>=L[talk.line%L.length].length?'」':''),bx+24,by+68+i*30));
   const done=talk.chars>=L[talk.line%L.length].length,more=talk.line%L.length<L.length-1;
-  x.fillStyle='#ffffffaa';x.font='bold 13px system-ui';x.textAlign='right';x.fillText(done?(more?'⛏ 掘るボタンで つづき':'⛏ 掘るボタンで もう一度'):'',bx+bw-44,by+bh-16);x.textAlign='left';
+  x.fillStyle='#ffffffaa';x.font='bold 13px system-ui';x.textAlign='right';x.fillText(done?(more?'⬆ / ⛏ で つづき':'⬆ / ⛏ で もう一度'):'',bx+bw-44,by+bh-16);x.textAlign='left';
   if(done&&more&&Math.floor(Date.now()/300)%2){x.fillStyle='#fff';x.beginPath();x.moveTo(bx+bw-34,by+bh-28);x.lineTo(bx+bw-22,by+bh-28);x.lineTo(bx+bw-28,by+bh-20);x.closePath();x.fill();}   // ▼
   x.restore();}
 function drawSky(){
@@ -4220,7 +4221,7 @@ function draw(){
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
   if(mode!=='title'&&!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
-  const hint=inBasement&&roomKind==='village'&&insideHouse&&isOnsen(insideHouse.i)?'ひだまり温泉 — 受付で ⬆ジャンプ → のれんの奥の お風呂で ⬆ジャンプ':inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを えらぼう':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⛏掘るボタンで 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  const hint=inBasement&&roomKind==='village'&&insideHouse&&isOnsen(insideHouse.i)?'ひだまり温泉 — 受付で ⬆ジャンプ → のれんの奥の お風呂で ⬆ジャンプ':inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを えらぼう':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⬆か⛏で 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText(boss.lv==='legend'?'黒大王 ドリモグ':'モグラ大王 ドリモグ',595,28,20,boss.lv==='legend'?'blue':'red');if(bossStars()){x.save();x.textAlign='right';fancyText(bossStars(),940,28,16,boss.lv==='legend'?'gold':boss.lv==='super'||boss.lv==='smart'?'red':boss.lv==='weak'?'blue':'gold');x.restore();}x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/(boss.maxHp||3),16);x.strokeStyle='#0008';x.lineWidth=2;{const n=boss.maxHp||3;for(let k=1;k<n;k++){const lx=597+341*k/n;x.beginPath();x.moveTo(lx,38);x.lineTo(lx,54);x.stroke();}}x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
