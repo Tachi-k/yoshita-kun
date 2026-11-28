@@ -483,13 +483,17 @@ const HI_KEY='yoshita-hiscore';let hiScore=0,newRecord=false;try{hiScore=Number(
 const RANK_URL='https://yoshita-kun-default-rtdb.asia-southeast1.firebasedatabase.app';
 let ranking=null,rankAsked=-1,nameOpen=false,rankMine=null;
 function rankOn(){return !!RANK_URL}
+// ランキングの リセット：この時刻より前の記録は 表示しない（みんなの ランキングが 0から やりなおしになる）
+const RANK_RESET_AT=Date.parse('2026-11-28T09:30:00Z');
+// 不自然な点数は のせない：リセット前の記録・キリが良すぎる点数（25000 など 1000の倍数）・10点単位でない点数
+function rankValid(v){return (v.at||0)>=RANK_RESET_AT&&v.score>0&&v.score%10===0&&v.score%1000!==0}
 async function loadRanking(){if(!rankOn())return;
   try{const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000);
-    const r=await fetch(RANK_URL+'/ranking.json?orderBy=%22score%22&limitToLast=10',{cache:'no-store',signal:ctl.signal});clearTimeout(tm);if(!r.ok)return;
+    const r=await fetch(RANK_URL+'/ranking.json?orderBy=%22score%22&limitToLast=300',{cache:'no-store',signal:ctl.signal});clearTimeout(tm);if(!r.ok)return;
     const d=await r.json()||{};
-    ranking=Object.values(d).filter(v=>v&&typeof v.score==='number'&&typeof v.name==='string').sort((a,b)=>b.score-a.score||(a.at||0)-(b.at||0)).slice(0,10);
+    ranking=Object.values(d).filter(v=>v&&typeof v.score==='number'&&typeof v.name==='string'&&rankValid(v)).sort((a,b)=>b.score-a.score||(a.at||0)-(b.at||0)).slice(0,10);
   }catch(_){}}
-function rankPlace(sc){if(!ranking||sc<=0)return 0;const n=ranking.filter(v=>v.score>=sc).length+1;return n<=10?n:0}
+function rankPlace(sc){if(!ranking||sc<=0||sc%1000===0)return 0;const n=ranking.filter(v=>v.score>=sc).length+1;return n<=10?n:0}
 // 名前を考えなくてもいいように、ランダムな名前の候補（8文字まで）
 const NAME_A=['はやい','つよい','ひみつの','そらとぶ','げんきな','きらきら','ねむい','ふしぎな','ちいさな','まぼろし','さすらい','のんびり','ゴールド','スーパー'],
   NAME_B=['モグラ','カエル','ゆうしゃ','ききゅう','ほりや','くも','コイン','ダイヤ','ぼうけん家','ジャンパー','よし太','ひめ','たんけん隊','イノシシ'];
