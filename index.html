@@ -473,7 +473,7 @@ function loadStage(n){
 }
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};signState=null;shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
+function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};signState=null;onsenDone=false;onsen=null;shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
   if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
@@ -1435,7 +1435,7 @@ function inBonus(){return inBasement&&roomKind!=='basement'}
 // ===== 2面の左の先にある「ひだまり村」：敵のいない 平和な村。村人に近づくと話しかけてくる =====
 const VILLAGE_W=6*W,HOUSE_SCALE=1.35,ROOM_DOOR_X=90;
 function houseDoorX(h){return h[0]+(h[3]===2?31*HOUSE_SCALE:0)}   // とびらの位置（パン屋は右よりに とびらがある）
-function villageHouses(){const W2=VILLAGE_W;return [[W2-2300,'#b8483a','#f4e6cc',0],[W2-2900,'#3a5aa8','#f0e2c4',1],[W2-3550,'#3a8a4a','#f6ead2',2],[W2-4350,'#b8783a','#efe0c0',3],[W2-3950,'#4a4a52','#3a2a1e',4],[W2-4950,'#c8302a','#f4e8d0',5]];}
+function villageHouses(){const W2=VILLAGE_W;return [[W2-2300,'#b8483a','#f4e6cc',0],[W2-2900,'#3a5aa8','#f0e2c4',1],[W2-3550,'#3a8a4a','#f6ead2',2],[W2-4350,'#b8783a','#efe0c0',3],[W2-3950,'#4a4a52','#3a2a1e',4],[W2-4950,'#c8302a','#f4e8d0',5],[W2-5400,'#3a3a44','#e8d4b0',6]];}
 let insideHouse=null,housePots={},shopEaten={},shop=null,mealStreak=0,mealCount={};   // mealCount：お店ごとに食べた杯数（それぞれ3杯まで）   // mealStreak：続けて食べた回数（3回目は 食べすぎで ことわられる）   // shop：お店の中での 食券・すわる・食べる の進み具合
 const SHOP_SEATS=[360,480,600],SHOP_TICKET_X=220,TICKET_PRICE=10,BREAD_X=410,BREAD_PRICE=5;
 const BREADS=[{name:'メロンパン',k:1,pts:200,price:5},{name:'クロワッサン',k:2,pts:200,price:5},{name:'バゲット',k:0,pts:300,price:8}];
@@ -1453,13 +1453,18 @@ let shopMenu=null;
 function openMenu(title,items,onPick,onCancel,noCancel){shopMenu={title,noCancel,items:noCancel?[...items]:[...items,{name:'やめる',cancel:true}],cur:0,onPick,onCancel,msg:'',msgT:0,pl:true,pr:true,pu:true};tone(660,.04,'square',.04);}
 function closeMenu(cancel){const m=shopMenu;shopMenu=null;if(cancel&&m&&m.onCancel)m.onCancel();tone(440,.04,'square',.04);}
 let breadAnim=null,breadBuy=0;   // パン屋で買ったパン（上にポンと出る）
-function isShop(i){return i===4||i===5}   // insideHouse：いま入っている家（村の状態をしまっておく）
+function isShop(i){return i===4||i===5}
+function isOnsen(i){return i===6}   // ひだまり温泉
+// 温泉：受付で 入浴料を はらう → のれんの奥の お風呂で ⬆ジャンプ → ゆったり つかる
+const ONSEN_DESK_X=270,ONSEN_GATE_X=450,ONSEN_BATH_X=730,ONSEN_SINK=24;
+const ONSEN_MENU=[{name:'入浴',price:3},{name:'入浴＋コーヒー牛乳',price:5,milk:true}];
+let onsen=null,onsenDone=false;   // onsenDone：はじめての 入浴で ライフ+1（1回だけ）   // insideHouse：いま入っている家（村の状態をしまっておく）
 const ROOM_PEOPLE=[{kind:'grandma',name:'村の おばあさん'},{kind:'girl',name:'村の 女の子'},{kind:'baker',name:'パン屋の おにいさん'},{kind:'scholar',name:'村の おまわりさん'}];
 function enterHouse(i){const p=player,h=villageHouses()[i];
   insideHouse={i,x:p.x,camera,world,platforms,villagers,talk};talk=null;
-  world=W;camera=0;platforms=[{x:0,y:ground,w:W,h:75}];villagers=isShop(i)?[]:[{kind:ROOM_PEOPLE[i].kind,x:W/2+120,home:W/2+120,f:-1,t:0}];shop=isShop(i)?{ticket:false,seat:-1,phase:'',t:0,msg:i===4?'いらっしゃい！ すきな せきに どうぞ':'いらっしゃい！ まずは 食券を 買ってね',msgT:160}:null;
+  world=W;camera=0;platforms=[{x:0,y:ground,w:W,h:75}];villagers=isShop(i)||isOnsen(i)?[]:[{kind:ROOM_PEOPLE[i].kind,x:W/2+120,home:W/2+120,f:-1,t:0}];shop=isShop(i)?{ticket:false,seat:-1,phase:'',t:0,msg:i===4?'いらっしゃい！ すきな せきに どうぞ':'いらっしゃい！ まずは 食券を 買ってね',msgT:160}:null;onsen=isOnsen(i)?{paid:null,t:0,msg:'いらっしゃいませ。ひだまり温泉へ ようこそ',msgT:160}:null;p.bathing=false;
   p.x=ROOM_DOOR_X+20;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;tone(520,.06,'triangle',.05);tone(660,.06,'triangle',.05,.08);}
-function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];shop=null;shopMenu=null;p.seated=false;items=[];if(signState==='no')signState=null;
+function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];shop=null;onsen=null;p.bathing=false;shopMenu=null;p.seated=false;items=[];if(signState==='no')signState=null;
   world=s0.world;camera=s0.camera;platforms=s0.platforms;villagers=s0.villagers;talk=null;insideHouse=null;
   p.x=houseDoorX(h)-p.w/2;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);tone(660,.06,'triangle',.05);tone(520,.06,'triangle',.05,.08);}
 let villagers=[],talk=null,villageSeen=false,signState=null;   // signState：女の子に サインを かいた('yes')／ことわった('no')
@@ -2523,7 +2528,7 @@ if(inBasement&&roomKind==='village'&&state==='play'&&p.on&&!p.hole){const upNow=
   if(upPressed&&!p.jumpLock){
     if(insideHouse&&Math.abs(pc-ROOM_DOOR_X)<30){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;exitHouse();return;}
     if(!insideHouse){const hi=villageHouses().findIndex(h=>Math.abs(pc-houseDoorX(h))<26);if(hi>=0){p.prevJump=true;p.jumpLock=true;p.jumpBuf=0;enterHouse(hi);return;}}}
-  if(insideHouse&&!isShop(insideHouse.i)&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;collectCoins(30,W-150,ground-110);popup(W-150,ground-80,'ツボの中に コインが30枚！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
+  if(insideHouse&&!isShop(insideHouse.i)&&!isOnsen(insideHouse.i)&&!housePots[insideHouse.i]&&Math.abs(pc-(W-150))<30){housePots[insideHouse.i]=true;collectCoins(30,W-150,ground-110);popup(W-150,ground-80,'ツボの中に コインが30枚！ +300','#ffdf50',22,90);sound('treasure');sparkleFx(W-150);}}
 // メニューが ひらいているあいだは 動かない。◀▶で えらび、⬆ジャンプで 決める
 if(shopMenu&&state==='play'){const m=shopMenu,L=keys.left,R=keys.right,U=keys.jump||padJump,n=m.items.length;
   p.vx=0;p.walking=false;if(m.msgT>0)m.msgT--;
@@ -2539,6 +2544,28 @@ if(shopMenu&&state==='play'){const m=shopMenu,L=keys.left,R=keys.right,U=keys.ju
 if(insideHouse&&insideHouse.i===2&&state==='play'&&p.on){const upNow=keys.jump||padJump,up=upNow&&!p.prevBreadUp;p.prevBreadUp=upNow;
   if(up&&!p.jumpLock&&Math.abs(p.x+p.w/2-BREAD_X)<60){p.jumpLock=true;p.jumpBuf=0;
     openMenu('パン屋',BREADS,b=>{score+=b.pts;breadAnim={b,t:0};popup(BREAD_X,ground-170,b.name+'を 買った！ +'+b.pts,'#ffdf50',20,90);tone(880,.05,'square',.05);tone(1320,.08,'triangle',.05,.08);});}}
+// 温泉：受付で ⬆ジャンプ → 入浴料を はらう → のれんの奥の お風呂で ⬆ジャンプ → つかる
+if(insideHouse&&onsen&&state==='play'){const pc=p.x+p.w/2,upNow=keys.jump||padJump,up=upNow&&!p.prevOnsenUp;p.prevOnsenUp=upNow;
+  if(onsen.msgT>0)onsen.msgT--;
+  if(p.bathing){onsen.t++;p.vx=0;p.vy=0;p.on=true;p.walking=false;p.jumping=false;p.jumpLock=true;p.x=ONSEN_BATH_X-p.w/2;p.y=ground-p.h+ONSEN_SINK;
+    if(onsen.t===30){popup(ONSEN_BATH_X,ground-150,'いい湯だな〜 ♪','#fff',24,110);[523,587,659,784,659].forEach((f,k)=>tone(f,.18,'triangle',.04,k*.2));}
+    if(onsen.t===150)popup(ONSEN_BATH_X+40,ground-130,'ぽかぽか〜','#ffb0c8',22,90);
+    if(onsen.t%40===0)tone(900+Math.random()*300,.03,'sine',.02);   // ちゃぷん
+    if(onsen.t>=300){p.bathing=false;p.y=ground-p.h;p.x=ONSEN_BATH_X-240-p.w/2;p.facing=1;score+=100;
+      if(!onsenDone){onsenDone=true;if(lives<MAX_LIVES){lives++;popup(p.x+17,ground-170,'ぽかぽか！ ライフ+1','#ff8ab0',24,110);}else{score+=500;popup(p.x+17,ground-170,'ぽかぽか！ +500','#ffdf50',24,110);}sound('oneup');}
+      else popup(p.x+17,ground-170,'さっぱり！ +100','#fff',22,90);
+      if(onsen.paid&&onsen.paid.milk){onsen.milkT=1;score+=200;}
+      onsen.paid=null;onsen.after=true;onsen.t=0;tone(660,.06,'triangle',.05);}
+    return;}
+  if(onsen.milkT>0){onsen.milkT++;if(onsen.milkT===70){popup(p.x+17,ground-200,'ぷはー！ コーヒー牛乳 +200','#ffe0b0',22,110);sound('treasure');}if(onsen.milkT>130)onsen.milkT=0;}
+  if(onsen.after&&p.x+p.w<ONSEN_GATE_X-10)onsen.after=false;   // おふろあがりは のれんを くぐって もどれる
+  if(!onsen.paid&&!onsen.after&&p.x+p.w>ONSEN_GATE_X){p.x=ONSEN_GATE_X-p.w;p.vx=0;if(onsen.msgT<=0){onsen.msg='お風呂は 受付で 入浴料を はらってからね';onsen.msgT=110;}}
+  if(up&&!p.jumpLock){
+    if(Math.abs(pc-ONSEN_DESK_X)<56){p.jumpLock=true;p.jumpBuf=0;
+      if(onsen.paid){onsen.msg='のれんの 奥が お風呂ですよ。ごゆっくり〜';onsen.msgT=110;}
+      else openMenu('ひだまり温泉 受付',ONSEN_MENU,it=>{onsen.paid=it;onsen.msg='ごゆっくり どうぞ〜 のれんの 奥へ';onsen.msgT=130;tone(880,.05,'square',.05);tone(1180,.08,'square',.05,.08);popup(ONSEN_DESK_X,ground-170,'♨ 入浴券','#ffdf50',22,70);});}
+    else if(onsen.paid&&Math.abs(pc-ONSEN_BATH_X)<150){p.jumpLock=true;p.jumpBuf=0;p.bathing=true;onsen.t=0;onsen.milkT=0;
+      tone(300,.12,'sine',.06);tone(200,.18,'sine',.05,.08);boom(ONSEN_BATH_X,ground-24,18,['#bfe8ff','#ffffff','#8fd0f7'],7);}}}
 // お店：食券機で食券を買う（ラーメン屋）→ いすで ⬆ジャンプ → すわって待つ → 運ばれてきたら 食べる
 if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=keys.jump||padJump,up=upNow&&!p.prevShopUp;p.prevShopUp=upNow;
   if(shop.msgT>0)shop.msgT--;
@@ -3490,6 +3517,81 @@ function drawShopMenu(){const m=shopMenu,bx=W/2-200,by=112,rowH=34,bw=400,bh=70+
   const tip=m.msgT>0?m.msg:m.noCancel?'◀ ▶ で えらぶ　⬆ジャンプで けってい':'◀ ▶ で えらぶ　⬆ジャンプで けってい　⛏ で やめる';
   box(bx,by+bh+8,bw,44);x.fillStyle=m.msgT>0?'#ffb0a0':'#e8eefa';x.font='bold 14px system-ui';x.textAlign='center';x.fillText(tip,bx+bw/2,by+bh+36);
   x.restore();}
+// ===== ひだまり温泉 =====
+function drawOnsenInterior(t){
+  // 入口（木のかべ）
+  x.fillStyle='#ead8b4';x.fillRect(0,0,ONSEN_GATE_X,H);x.fillStyle='#00000010';for(let xx=0;xx<ONSEN_GATE_X;xx+=36)x.fillRect(xx,0,16,ground);
+  x.fillStyle='#6a4428';x.fillRect(0,60,ONSEN_GATE_X,10);x.fillStyle='#8a5a34';x.fillRect(0,ground-40,ONSEN_GATE_X,40);
+  // お風呂の部屋（青いタイル・富士山の絵）
+  x.fillStyle='#dff0f6';x.fillRect(ONSEN_GATE_X,0,W-ONSEN_GATE_X,ground);
+  x.strokeStyle='#b8d4e0';x.lineWidth=1;for(let yy=230;yy<ground;yy+=20){x.beginPath();x.moveTo(ONSEN_GATE_X,yy);x.lineTo(W,yy);x.stroke();}for(let xx=ONSEN_GATE_X;xx<W;xx+=20){x.beginPath();x.moveTo(xx,230);x.lineTo(xx,ground);x.stroke();}
+  {const mx=ONSEN_GATE_X+40,mw=W-ONSEN_GATE_X-80,g=x.createLinearGradient(0,40,0,220);g.addColorStop(0,'#5aa8e8');g.addColorStop(1,'#cfeaff');x.fillStyle=g;x.fillRect(mx,40,mw,180);
+    x.fillStyle='#3a6ab0';x.beginPath();x.moveTo(mx+60,220);x.lineTo(mx+mw/2-40,92);x.lineTo(mx+mw/2+40,92);x.lineTo(mx+mw-60,220);x.closePath();x.fill();   // 富士山
+    x.fillStyle='#fff';x.beginPath();x.moveTo(mx+mw/2-40,92);x.lineTo(mx+mw/2+40,92);x.lineTo(mx+mw/2+66,128);x.lineTo(mx+mw/2+34,118);x.lineTo(mx+mw/2+10,132);x.lineTo(mx+mw/2-14,118);x.lineTo(mx+mw/2-44,130);x.lineTo(mx+mw/2-66,128);x.closePath();x.fill();
+    x.fillStyle='#ff7a4a';x.beginPath();x.arc(mx+70,80,18,0,7);x.fill();ell(mx+mw-90,70,34,10,'#fff');ell(mx+mw-60,62,22,8,'#fff');
+    x.fillStyle='#3a8a5a';for(let k=0;k<6;k++){x.beginPath();x.moveTo(mx+k*mw/5-30,220);x.lineTo(mx+k*mw/5,186);x.lineTo(mx+k*mw/5+30,220);x.fill();}   // 松
+    x.strokeStyle='#8a5a34';x.lineWidth=6;x.strokeRect(mx,40,mw,180);}
+  x.fillStyle='#9aa4ac';x.fillRect(ONSEN_GATE_X,ground-6,W-ONSEN_GATE_X,6);
+  // 湯ぶね（岩ぶろ）のおく
+  const bL=ONSEN_BATH_X-190,bR=ONSEN_BATH_X+190;
+  for(let k=0;k<12;k++){const rx=bL+k*(bR-bL)/11;ell(rx,ground-30,22,12,k%2?'#7a7a82':'#8a8a92');}
+  const wg=x.createLinearGradient(0,ground-26,0,ground);wg.addColorStop(0,'#9ee0e8');wg.addColorStop(1,'#5ab8c8');x.fillStyle=wg;x.fillRect(bL,ground-26,bR-bL,40);
+  // 湯気
+  for(let k=0;k<7;k++){const ph=((t*.0004+k*.143)%1),sx=bL+30+k*50+Math.sin(t*.001+k)*10;x.strokeStyle=`rgba(255,255,255,${.75*(1-ph)})`;x.lineWidth=5;x.beginPath();x.moveTo(sx,ground-30-ph*170);x.bezierCurveTo(sx+16,ground-50-ph*170,sx-16,ground-70-ph*170,sx,ground-90-ph*170);x.stroke();}
+  // 木のおけ
+  for(const [bx,by] of [[ONSEN_GATE_X+50,ground],[ONSEN_GATE_X+86,ground]]){x.fillStyle='#e8c890';x.beginPath();x.moveTo(bx-16,by-24);x.lineTo(bx+16,by-24);x.lineTo(bx+13,by);x.lineTo(bx-13,by);x.closePath();x.fill();x.fillStyle='#8a5a34';x.fillRect(bx-16,by-18,32,3);x.fillRect(bx-15,by-8,30,3);}
+  // のれん（ゆ）
+  {const sw=Math.sin(t*.002)*3;for(let k=0;k<2;k++){x.fillStyle='#24346a';x.beginPath();x.moveTo(ONSEN_GATE_X-46+k*46,72);x.lineTo(ONSEN_GATE_X-2+k*46,72);x.lineTo(ONSEN_GATE_X-2+k*46+sw,250);x.lineTo(ONSEN_GATE_X-46+k*46+sw,250);x.closePath();x.fill();}
+    x.fillStyle='#5a3418';x.fillRect(ONSEN_GATE_X-56,64,112,10);x.fillStyle='#fff';x.font='900 44px system-ui';x.textAlign='center';x.fillText('ゆ',ONSEN_GATE_X+sw/2,180);x.textAlign='left';}
+  // とびら・げた箱
+  x.fillStyle='#5a3418';x.fillRect(ROOM_DOOR_X-32,ground-130,64,130);x.fillStyle='#f4ead0';x.fillRect(ROOM_DOOR_X-26,ground-124,52,60);x.strokeStyle='#5a3418';x.lineWidth=2;for(let k=1;k<4;k++){x.beginPath();x.moveTo(ROOM_DOOR_X-26+k*13,ground-124);x.lineTo(ROOM_DOOR_X-26+k*13,ground-64);x.stroke();}
+  x.fillStyle='#8a5a34';x.fillRect(140,ground-150,56,150);x.fillStyle='#6a4224';for(let r=0;r<5;r++)for(let c=0;c<2;c++)x.fillRect(144+c*26,ground-144+r*28,22,22);x.fillStyle='#e8d4a0';for(let r=0;r<5;r++)for(let c=0;c<2;c++)x.fillRect(150+c*26,ground-138+r*28,10,6);
+  // 受付（番台）と おかみさん
+  x.save();x.translate(0,-50);drawVillagerImg({kind:'woman',x:ONSEN_DESK_X+20,f:-1,t:Math.floor(t/16),walk:false});x.restore();
+  const cg=x.createLinearGradient(0,ground-100,0,ground);cg.addColorStop(0,'#c8945a');cg.addColorStop(1,'#8a5a30');x.fillStyle=cg;x.fillRect(ONSEN_DESK_X-64,ground-96,128,96);x.fillStyle='#6a4224';x.fillRect(ONSEN_DESK_X-70,ground-102,140,10);
+  x.fillStyle='#fff8e8';x.fillRect(ONSEN_DESK_X-40,ground-76,80,40);x.strokeStyle='#8a2a20';x.lineWidth=2;x.strokeRect(ONSEN_DESK_X-40,ground-76,80,40);
+  x.fillStyle='#8a2a20';x.font='bold 13px system-ui';x.textAlign='center';x.fillText('受付',ONSEN_DESK_X,ground-60);x.font='bold 11px system-ui';x.fillText('入浴 3コイン',ONSEN_DESK_X,ground-44);
+  // かべの ♨ かんばん
+  x.fillStyle='#f8f0dc';x.fillRect(ONSEN_DESK_X-80,100,160,56);x.strokeStyle='#5a3418';x.lineWidth=4;x.strokeRect(ONSEN_DESK_X-80,100,160,56);x.fillStyle='#c8302a';x.font='900 24px system-ui';x.fillText('♨ ひだまり温泉',ONSEN_DESK_X,138);
+  if(!player.bathing&&player.on){const pc=player.x+player.w/2;
+    if(Math.abs(pc-ONSEN_DESK_X)<56&&!onsen.paid)fancyText('⬆ジャンプで 受付',ONSEN_DESK_X,ground-170,16,'white');
+    if(onsen.paid&&Math.abs(pc-ONSEN_BATH_X)<150)fancyText('⬆ジャンプで お湯に つかる',ONSEN_BATH_X,ground-170,16,'white');
+    if(Math.abs(pc-ROOM_DOOR_X)<30)fancyText('⬆ジャンプで 外へ',ROOM_DOOR_X,ground-150,18,'white');}
+  x.textAlign='left';
+  // おかみさんの ことば
+  if(onsen.msgT>0){const bx=ONSEN_DESK_X+40,by=ground-216;x.save();x.globalAlpha=Math.min(1,onsen.msgT/15);x.font='bold 15px system-ui';const tw=x.measureText(onsen.msg).width+24,cx0=Math.max(tw/2+8,bx);
+    x.fillStyle='#ffffffee';x.beginPath();if(x.roundRect)x.roundRect(cx0-tw/2,by-22,tw,32,10);else x.rect(cx0-tw/2,by-22,tw,32);x.fill();x.strokeStyle='#2a1a10';x.lineWidth=2;x.stroke();
+    x.fillStyle='#2a1a10';x.textAlign='center';x.fillText(onsen.msg,cx0,by-1);x.restore();}}
+function drawOnsenFront(){const bL=ONSEN_BATH_X-190,bR=ONSEN_BATH_X+190,t=Date.now();
+  const wg=x.createLinearGradient(0,ground-22,0,ground+40);wg.addColorStop(0,'rgba(140,220,230,.88)');wg.addColorStop(1,'rgba(70,170,190,.95)');x.fillStyle=wg;x.fillRect(bL,ground-22,bR-bL,62);
+  x.strokeStyle='#ffffffaa';x.lineWidth=2;x.beginPath();for(let xx=bL;xx<=bR;xx+=6)x.lineTo(xx,ground-22+Math.sin(xx*.08+t*.004)*1.6);x.stroke();   // ゆらゆら
+  if(player.bathing){const cx=ONSEN_BATH_X,ph=(t*.002)%1;x.strokeStyle=`rgba(255,255,255,${.7*(1-ph)})`;x.lineWidth=2;x.beginPath();x.ellipse(cx,ground-20,30+ph*40,5+ph*4,0,0,7);x.stroke();}   // 波もん
+  for(let k=0;k<14;k++){const rx=bL-10+k*(bR-bL+20)/13;ell(rx,ground+28,24,16,k%2?'#6a6a72':'#7c7c86');ell(rx-6,ground+22,10,5,'#ffffff22');}
+  ell(bL-6,ground-6,18,26,'#74747e');ell(bR+6,ground-6,18,26,'#74747e');
+  // おふろあがりの コーヒー牛乳
+  if(onsen&&onsen.milkT>0){const p=player,a=Math.min(1,onsen.milkT/30),bx=p.x+p.w/2+26,by=ground-120;x.save();x.translate(bx,by);x.rotate(-a*1.9);
+    x.fillStyle='#f4f4f0';x.fillRect(-7,-24,14,30);x.fillStyle='#b07a4a';x.fillRect(-6,-10,12,15);x.fillStyle='#ff8a3a';x.fillRect(-7,-28,14,5);x.restore();}}
+// 温泉の たてもの：和風の かわら屋根・大きな のれん・えんとつの 湯気
+function drawOnsen(hx,t){x.save();const L=hx-78,R=hx+78,top=ground-100;
+  x.fillStyle='#00000022';x.beginPath();x.ellipse(hx+8,ground+2,100,10,0,0,7);x.fill();
+  x.fillStyle='#e8d4b0';x.fillRect(L,top,156,100);x.fillStyle='#6a4428';for(let xx=L;xx<=R;xx+=26)x.fillRect(xx,top,5,100);x.fillRect(L,top,156,6);
+  x.fillStyle='#8a8a92';x.fillRect(L-4,ground-8,164,8);
+  // えんとつと 湯気
+  x.fillStyle='#8a4a3a';x.fillRect(R-34,top-78,18,60);x.fillStyle='#6a3a2a';x.fillRect(R-37,top-82,24,6);
+  for(let k=0;k<3;k++){const ph=((t*.0005+k*.33)%1);x.strokeStyle=`rgba(255,255,255,${.7*(1-ph)})`;x.lineWidth=4;x.beginPath();x.moveTo(R-25,top-84-ph*60);x.bezierCurveTo(R-12,top-94-ph*60,R-38,top-106-ph*60,R-25,top-118-ph*60);x.stroke();}
+  // かわら屋根（そりかえり）
+  x.fillStyle='#3a3a48';x.beginPath();x.moveTo(L-24,top+4);x.quadraticCurveTo(L-4,top-4,L+14,top-38);x.lineTo(R-14,top-38);x.quadraticCurveTo(R+4,top-4,R+24,top+4);x.closePath();x.fill();
+  x.strokeStyle='#5a5a6a';x.lineWidth=2;for(let k=1;k<4;k++){x.beginPath();x.moveTo(L-14+k*2,top+2-k*10);x.lineTo(R+14-k*2,top+2-k*10);x.stroke();}
+  x.fillStyle='#2a2a34';x.fillRect(L+10,top-44,R-L-20,8);
+  // かんばん
+  x.fillStyle='#f8f0dc';x.fillRect(hx-46,top-8,92,26);x.strokeStyle='#5a3418';x.lineWidth=3;x.strokeRect(hx-46,top-8,92,26);x.fillStyle='#c8302a';x.font='900 13px system-ui';x.textAlign='center';x.fillText('♨ 温泉',hx,top+10);
+  // のれん（ゆ）と とびら
+  x.fillStyle='#4a3a2a';x.fillRect(hx-30,ground-58,60,58);x.fillStyle='#ffe7a0';x.fillRect(hx-26,ground-54,24,50);x.fillRect(hx+2,ground-54,24,50);
+  const sw=Math.sin(t*.002)*2;for(let k=0;k<3;k++){x.fillStyle='#24346a';x.beginPath();x.moveTo(hx-36+k*24,ground-66);x.lineTo(hx-14+k*24,ground-66);x.lineTo(hx-14+k*24+sw,ground-34);x.lineTo(hx-36+k*24+sw,ground-34);x.closePath();x.fill();}
+  x.fillStyle='#fff';x.font='900 18px system-ui';x.fillText('ゆ',hx+sw/2,ground-44);
+  // ちょうちん
+  for(const lx of[L+16,R-16]){const g=x.createRadialGradient(lx,ground-70,2,lx,ground-70,16);g.addColorStop(0,'#fff0c0');g.addColorStop(1,'#e8a040');x.fillStyle=g;x.beginPath();x.ellipse(lx,ground-70,10,14,0,0,7);x.fill();x.fillStyle='#2a1a14';x.fillRect(lx-6,ground-85,12,3);x.fillRect(lx-6,ground-58,12,3);x.fillStyle='#c8302a';x.font='bold 9px system-ui';x.fillText('♨',lx,ground-66);}
+  x.textAlign='left';x.restore();}
 function drawShopInterior(i,t){const soba=i===4;
   // かべ・のれん・メニューのふだ
   x.fillStyle=soba?'#e8dcc0':'#f4e6d0';x.fillRect(0,0,W,H);x.fillStyle=soba?'#5a3a22':'#8a2a20';x.fillRect(0,60,W,12);
@@ -3528,7 +3630,7 @@ function drawShopInterior(i,t){const soba=i===4;
     x.fillStyle='#ffffffee';x.beginPath();if(x.roundRect)x.roundRect(bx-tw/2,by-22,tw,32,10);else x.rect(bx-tw/2,by-22,tw,32);x.fill();x.strokeStyle='#2a1a10';x.lineWidth=2;x.stroke();
     x.fillStyle='#2a1a10';x.textAlign='center';x.fillText(shop.msg,bx,by-1);x.restore();}
   if(Math.abs(player.x+player.w/2-ROOM_DOOR_X)<30&&player.on&&!player.seated){x.save();x.textAlign='center';fancyText('⬆ジャンプで 外へ',ROOM_DOOR_X,ground-150,18,'white');x.restore();}}
-function drawHouseInterior(){const i=insideHouse.i,t=Date.now();if(isShop(i)){drawShopInterior(i,t);return;}const wallC=['#f4e2c0','#e2eaf4','#eaf0dc','#f2e0d0'][i];
+function drawHouseInterior(){const i=insideHouse.i,t=Date.now();if(isShop(i)){drawShopInterior(i,t);return;}if(isOnsen(i)){drawOnsenInterior(t);return;}const wallC=['#f4e2c0','#e2eaf4','#eaf0dc','#f2e0d0'][i];
   const g=x.createLinearGradient(0,0,0,ground);g.addColorStop(0,wallC);g.addColorStop(1,'#c8b898');x.fillStyle=g;x.fillRect(0,0,W,H);
   x.fillStyle='#00000010';for(let xx=0;xx<W;xx+=40)x.fillRect(xx,0,18,ground-40);   // かべ紙のしま
   x.fillStyle='#7a4a28';x.fillRect(0,60,W,10);for(let xx=40;xx<W;xx+=200)x.fillRect(xx,60,12,ground-60);   // はりと柱
@@ -3752,7 +3854,7 @@ function drawVillageScenery(){if(insideHouse)return;const W2=world,t=Date.now();
   if(W2-1700<camera+W+200&&W2-1150>camera-200){drawBarn(W2-1230);drawField(W2-1700,W2-1360);}
   const houses=villageHouses();
   for(let tx=W2-1850;tx>200;tx-=330){if(tx<camera-80||tx>camera+W+80)continue;drawTree(tx,t);}   // 木
-  for(const [hx,r,w,hi] of houses){if(hx<camera-180||hx>camera+W+180)continue;x.save();x.translate(hx,ground);x.scale(HOUSE_SCALE,HOUSE_SCALE);x.translate(-hx,-ground);if(hi===3)drawKoban(hx,t);else if(hi===2)drawBakery(hx,t);else if(hi===4)drawSobaShop(hx,t);else if(hi===5)drawRamenShop(hx,t);else drawVillageHouse(hx,r,w,t);x.restore();
+  for(const [hx,r,w,hi] of houses){if(hx<camera-180||hx>camera+W+180)continue;x.save();x.translate(hx,ground);x.scale(HOUSE_SCALE,HOUSE_SCALE);x.translate(-hx,-ground);if(hi===3)drawKoban(hx,t);else if(hi===2)drawBakery(hx,t);else if(hi===4)drawSobaShop(hx,t);else if(hi===5)drawRamenShop(hx,t);else if(hi===6)drawOnsen(hx,t);else drawVillageHouse(hx,r,w,t);x.restore();
     const dx0=houseDoorX([hx,r,w,hi]);if(!insideHouse&&Math.abs(player.x+player.w/2-dx0)<26&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで 入る',dx0,ground-120*HOUSE_SCALE-24,18,'white');x.restore();}}
   for(let fx=W2-1850;fx>300;fx-=36){if(fx<camera-40||fx>camera+W+40)continue;x.fillStyle='#c8a070';x.fillRect(fx,ground-30,5,30);x.fillStyle='#a88050';x.fillRect(fx+3,ground-30,2,30);if(fx%72===0){x.fillStyle='#c8a070';x.fillRect(fx-31,ground-24,36,4);x.fillRect(fx-31,ground-12,36,4);}}   // さく
   {const wx=W2-2750;if(wx>camera-80&&wx<camera+W+80){x.fillStyle='#8a8a9a';x.fillRect(wx-26,ground-34,52,34);x.strokeStyle='#5a5a6a';x.lineWidth=1;for(let r=0;r<3;r++)for(let c=0;c<4;c++)x.strokeRect(wx-26+c*13+(r%2)*6,ground-34+r*11,13,11);x.fillStyle='#5a3a24';x.fillRect(wx-30,ground-80,6,46);x.fillRect(wx+24,ground-80,6,46);x.fillStyle='#a84a3a';x.beginPath();x.moveTo(wx-38,ground-80);x.lineTo(wx,ground-100);x.lineTo(wx+38,ground-80);x.closePath();x.fill();x.fillStyle='#6a4a2a';x.fillRect(wx-6,ground-70,12,10);}}   // 井戸
@@ -4057,10 +4159,12 @@ function draw(){
   const strideNow=airSide?8.3:p.walking?p.stride:0;   // 空中では 足を前後にひらいた形   // 立ち止まり中は 足をそろえた形
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
   if(p.digAnim>0&&p.on)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawDigging(p),true);   // スコップで掘る
+  else if(p.bathing)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHeroBack(p.x,p.y,0),true);   // 温泉に つかる（うしろ姿）
   else if(p.seated)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHeroBack(p.x,p.y,shop&&shop.phase==='eat'?shop.t*2:0),true);   // カウンターに すわって 食べる（うしろ姿）
   else if(p.climb&&!p.climb.done)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHeroBack(p.x,p.y,p.climb.t),true);   // はしごを登るときは うしろ姿
   else drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHero(p.x,p.y,p.facing,pose,strideNow),true);
   x.globalAlpha=1;
+  if(insideHouse&&onsen)drawOnsenFront();   // お湯と 手前の岩（よし太くんの体を かくす）
   if(stage===1&&!inBasement)drawBalloon('front');
   drawParts();drawPopups();
   if(arenaOn){x.fillStyle='#2a1d36';x.fillRect(AX-24,140,28,ground-140);}
@@ -4082,7 +4186,7 @@ function draw(){
     x.textAlign='right';fancyText(String(sec),bx0+bw-12,by0+43,38,warn?'red':'white');x.textAlign='left';x.restore();}
   if(mode!=='title'&&!arenaOn&&!inBasement&&!(westSide&&!westVisited))fancyText(stage===1?(westSide?'← GOAL':'GOAL →'):'BOSS →',800,42,26,'gold');   // 西の道は、看板を通るまでゴール表示もかくす
   x.font='700 18px system-ui';x.lineWidth=4;
-  const hint=inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを えらぼう':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⛏掘るボタンで 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
+  const hint=inBasement&&roomKind==='village'&&insideHouse&&isOnsen(insideHouse.i)?'ひだまり温泉 — 受付で ⬆ジャンプ → のれんの奥の お風呂で ⬆ジャンプ':inBasement&&roomKind==='village'&&insideHouse&&insideHouse.i===2?'パン屋 — カウンターで ⬆ジャンプして パンを えらぼう':inBasement&&roomKind==='village'&&insideHouse&&isShop(insideHouse.i)?(insideHouse.i===5?'ラーメン屋 — 入口の食券機で ⬆ジャンプ → いすで ⬆ジャンプして すわろう':'へぎそば屋 — いすで ⬆ジャンプして すわろう'):inBasement&&roomKind==='village'&&insideHouse?'家の中 — 話しかけたり、ツボを しらべたり。左のとびらで ⬆ジャンプで 外へ':inBasement&&roomKind==='village'?'ひだまり村への道 — 村人に近づくと 話しかけてくるよ。⛏掘るボタンで 話のつづき（右へ進むと 谷へもどる）':inBasement?(roomKind==='basement'?'隠し地下室！ お宝を集めたら 右のはしごで ⬆ジャンプ':(roomKind==='cloud'?'雲の上！ タイムが止まっている 🔑と右のゴールをめざそう':'ボーナス！ 時間内に たくさん集めよう')):player.hole?'穴の中！ジャンプで脱出（敵が落ちてくるとミス）':arenaOn?(boss&&boss.st==='stun'?'いまだ！ 大王の頭をふめ！':'穴を掘って大王を落とし、頭をふめ！'):holes.some(h=>inHole(h).length)?'敵をまとめて埋めると得点アップ！ 穴の前で「掘る」をタップで埋める':'キラキラ光る地面を掘るとお宝が出る！';
   if(!bossIntroLong())hudT(hint,22,mode==='game'?98:100);
   if(arenaOn&&boss&&boss.st!=='dead'&&!bossIntroLong()){fancyText(boss.lv==='legend'?'黒大王 ドリモグ':'モグラ大王 ドリモグ',595,28,20,boss.lv==='legend'?'blue':'red');if(bossStars()){x.save();x.textAlign='right';fancyText(bossStars(),940,28,16,boss.lv==='legend'?'gold':boss.lv==='super'||boss.lv==='smart'?'red':boss.lv==='weak'?'blue':'gold');x.restore();}x.fillStyle='#0006';x.fillRect(595,36,345,20);x.fillStyle='#e64040';x.fillRect(597,38,341*boss.hp/(boss.maxHp||3),16);x.strokeStyle='#0008';x.lineWidth=2;{const n=boss.maxHp||3;for(let k=1;k<n;k++){const lx=597+341*k/n;x.beginPath();x.moveTo(lx,38);x.lineTo(lx,54);x.stroke();}}x.strokeStyle='#fff';x.lineWidth=2;x.strokeRect(595,36,345,20);}
   x.restore();
