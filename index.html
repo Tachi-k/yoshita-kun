@@ -3737,10 +3737,13 @@ function draw(){
   if(inBasement&&roomKind==='village')drawVillagers();
   const p=player;
   if(p.climb)p.facing=Math.floor(p.climb.t/14)%2?1:-1;   // 手足を交互に動かして登る
-  const pose=p.climb?'jump':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&p.walking?'walk':'front';
+  if(p.walking)p.standT=0;else p.standT=(p.standT||0)+1;   // 止まってからの時間
+  const sideStand=state==='play'&&p.on&&!p.walking&&p.standT<45;   // 止まってすぐは横向きのまま（約0.75秒たつと前を向く）
+  const pose=p.climb?'jump':state==='victoryFlight'||(state==='play'&&p.jumping&&!p.on)?'jump':state==='play'&&(p.walking||sideStand)?'walk':'front';
+  const strideNow=p.walking?p.stride:0;   // 立ち止まり中は 足をそろえた形
   x.globalAlpha=state==='play'&&mode==='game'&&p.inv>0&&Math.floor(p.inv/7)%2===0?.35:1;
   if(p.digAnim>0&&p.on)drawScaled(p.x+p.w/2,p.y+p.h,()=>drawDigging(p),true);   // スコップで掘る
-  else drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHero(p.x,p.y,p.facing,pose,p.stride),true);
+  else drawScaled(p.x+p.w/2,p.y+p.h,()=>drawHero(p.x,p.y,p.facing,pose,strideNow),true);
   x.globalAlpha=1;
   if(stage===1&&!inBasement)drawBalloon('front');
   drawParts();drawPopups();
