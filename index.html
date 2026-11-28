@@ -473,7 +473,7 @@ function loadStage(n){
 }
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
+function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};signState=null;shopEaten={};mealStreak=0;mealCount={};breadAnim=null;shopMenu=null;hasKey=false;keyDoorUsed=false;
   if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
@@ -550,7 +550,7 @@ function addLife(cx,cy,n=1){
   sound('oneup');
 }
 // ハートは ときどき 金のハート（ライフ1つ＋ボーナス点）になる
-const GOLD_HEART_CHANCE=.25,GOLD_HEART_BONUS=3000;   // 金のハート：ライフ1つ＋3000点
+const GOLD_HEART_CHANCE=.25,GOLD_HEART_BONUS=3000,SIGN_HEART_BONUS=2000;   // 金のハート：ライフ1つ＋3000点
 function heartType(){return Math.random()<GOLD_HEART_CHANCE?'goldHeart':'heart'}
 function collectCoins(count,cx,cy){
   if(bonusLoot&&count===1)bonusLoot.coins++;
@@ -570,6 +570,7 @@ function collectItem(it){const cx=it.x;
     sound('treasure');boom(cx,it.y,30,['#ffdf50','#fff','#ff9a3c']);
   }
   else if(it.type==='heart'){addLife(cx,it.y-20);}
+  else if(it.type==='signHeart'){addLife(cx,it.y-30,1);score+=SIGN_HEART_BONUS;sound('oneup');boom(cx,it.y,30,['#ff9ad5','#fff','#ffd24a']);popup(cx,it.y-70,'ありがとうの ハート！ +'+SIGN_HEART_BONUS,'#ff9ad5',24,120);}
   else if(it.type==='key'){hasKey=true;keyCelebrate={t:0};sound('treasure');sound('oneup');boom(cx,it.y,40,['#ffdf50','#fff','#ff9ad5'],8);}
   else if(it.type==='goldHeart'){addLife(cx,it.y-30,1);score+=GOLD_HEART_BONUS;sound('treasure');boom(cx,it.y,28,['#ffd24a','#fff','#ff9ad5']);popup(cx,it.y-70,'金のハート！ +'+GOLD_HEART_BONUS,'#ffd24a',24,110);}
 }
@@ -1021,6 +1022,7 @@ function doDig(){const s=digSpot();if(!s)return false;player.digAnim=DIG_ANIM;
 // 会話：掘るボタン（Xキー）で 文字を一気に出す → つぎのセリフへ
 function advanceTalk(){const L=villageLines(talk.v.kind),txt=L[talk.line%L.length];
   if(talk.chars<txt.length){talk.chars=txt.length;return;}
+  if(talk.v.kind==='girl'&&!signState&&talk.line===0){askSign();return;}
   talk.line=(talk.line+1)%L.length;talk.chars=0;tone(880,.04,'square',.03);}
 function dig(){if(shopMenu&&state==='play'&&!paused){closeMenu(true);return;}if(talk&&inBasement&&roomKind==='village'&&state==='play'&&!paused){advanceTalk();return;}
   if(state!=='play'||inBasement||paused)return;
@@ -1440,9 +1442,15 @@ const BREADS=[{name:'メロンパン',k:1,pts:200,price:5},{name:'クロワッ�
 const SOBA_MENU=[{name:'へぎそば',price:5,dish:'soba'},{name:'へぎそば＋天丼',price:10,dish:'sobaTen',deluxe:true}];
 const RAMEN_MENU=[{name:'生姜醤油ラーメン',price:8,dish:'ramen'},{name:'チャーシューメン',price:12,dish:'chashu'},{name:'チャーシューメン＋炒飯',price:16,dish:'chashuSet',deluxe:true}];
 const MEAL_LIMIT=2;   // ラーメン・そばは それぞれの店で 2杯まで
+// 女の子に サインを たのまれる：かく → おれいに とくべつな ハート／かかない → ケチって いわれる
+function askSign(){const tk=talk;
+  const after=st=>{signState=st;if(tk){tk.line=0;tk.chars=0;}
+    if(st==='yes'){const pc=player.x+player.w/2;items.push({type:'signHeart',x:pc,y:ground-170,vx:0,vy:-3,t:720});sound('treasure');sparkleFx(pc);}
+    else{tone(330,.12,'square',.05);tone(220,.18,'square',.05,.12);}};
+  openMenu('サインを かきますか？',[{name:'かく'},{name:'かかない'}],it=>after(it.name==='かく'?'yes':'no'),()=>after('no'),true);}
 // ドラクエの お店のような メニュー（◀▶で えらぶ・⬆ジャンプで 決定・⛏掘るで やめる）
 let shopMenu=null;
-function openMenu(title,items,onPick,onCancel){shopMenu={title,items:[...items,{name:'やめる',cancel:true}],cur:0,onPick,onCancel,msg:'',msgT:0,pl:true,pr:true,pu:true};tone(660,.04,'square',.04);}
+function openMenu(title,items,onPick,onCancel,noCancel){shopMenu={title,noCancel,items:noCancel?[...items]:[...items,{name:'やめる',cancel:true}],cur:0,onPick,onCancel,msg:'',msgT:0,pl:true,pr:true,pu:true};tone(660,.04,'square',.04);}
 function closeMenu(cancel){const m=shopMenu;shopMenu=null;if(cancel&&m&&m.onCancel)m.onCancel();tone(440,.04,'square',.04);}
 let breadAnim=null,breadBuy=0;   // パン屋で買ったパン（上にポンと出る）
 function isShop(i){return i===4||i===5}   // insideHouse：いま入っている家（村の状態をしまっておく）
@@ -1451,14 +1459,14 @@ function enterHouse(i){const p=player,h=villageHouses()[i];
   insideHouse={i,x:p.x,camera,world,platforms,villagers,talk};talk=null;
   world=W;camera=0;platforms=[{x:0,y:ground,w:W,h:75}];villagers=isShop(i)?[]:[{kind:ROOM_PEOPLE[i].kind,x:W/2+120,home:W/2+120,f:-1,t:0}];shop=isShop(i)?{ticket:false,seat:-1,phase:'',t:0,msg:i===4?'いらっしゃい！ すきな せきに どうぞ':'いらっしゃい！ まずは 食券を 買ってね',msgT:160}:null;
   p.x=ROOM_DOOR_X+20;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;tone(520,.06,'triangle',.05);tone(660,.06,'triangle',.05,.08);}
-function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];shop=null;shopMenu=null;p.seated=false;
+function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];shop=null;shopMenu=null;p.seated=false;items=[];if(signState==='no')signState=null;
   world=s0.world;camera=s0.camera;platforms=s0.platforms;villagers=s0.villagers;talk=null;insideHouse=null;
   p.x=houseDoorX(h)-p.w/2;p.y=ground-p.h;p.vy=0;p.on=true;p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);tone(660,.06,'triangle',.05);tone(520,.06,'triangle',.05,.08);}
-let villagers=[],talk=null,villageSeen=false;
+let villagers=[],talk=null,villageSeen=false,signState=null;   // signState：女の子に サインを かいた('yes')／ことわった('no')
 function villageCalm(){if(insideHouse)return 1;return inBasement&&roomKind==='village'?Math.max(0,Math.min(1,(world-1000-player.x)/1600)):0}   // 左へ進むほど 青空・平和に
 function villageLines(kind){const hero=princessRound?'ソラ姫さま':'よし太くん';
   const inside={grandma:['おや、いらっしゃい。あったかい お茶でも のんでおいき。','むかしは この谷も 花で いっぱいだったんだよ…','大王を こらしめたら、また 花が さくかねえ。'],
-    girl:['わあ、'+hero+'だ！ サイン ちょうだい！','ソラ姫さまって、とっても やさしいんだよ。','大王なんかに まけないでね！'],
+    girl:signState==='yes'?['わあい！ サイン ありがとう！ 一生の たからものに するね！','おれいに とくべつな ハートを あげる！ 大王なんかに まけないでね！']:signState==='no'?['ふーんだ！ '+hero+'の ケチ！','…もう しらないっ！ （ぷいっ）']:['わあ、'+hero+'だ！ ねえねえ、サイン かいて！','ソラ姫さまって、とっても やさしいんだよ。','大王なんかに まけないでね！'],
     baker:['いらっしゃい！ やきたての パンの いいにおい だろ？','力が でる パンを たくさん 食べて、大王を やっつけてくれよ！'],
     scholar:['本官は この村の おまわりさんで あります！（ビシッ）','2面の 宝物庫は、ダイヤを 3こ あつめると ひらくらしいであります。','雲の上の せかいには、ふしぎな カギが あるとか ないとか…']};
   if(inside[kind])return inside[kind];
@@ -2522,8 +2530,8 @@ if(shopMenu&&state==='play'){const m=shopMenu,L=keys.left,R=keys.right,U=keys.ju
   if(L&&!m.pl){m.cur=(m.cur+n-1)%n;tone(880,.03,'square',.03);}if(R&&!m.pr){m.cur=(m.cur+1)%n;tone(880,.03,'square',.03);}
   if(U&&!m.pu){const it=m.items[m.cur];
     if(it.cancel)closeMenu(true);
-    else if(coinProgress<it.price){m.msg='コインが たりないよ…（あと '+(it.price-coinProgress)+'まい）';m.msgT=100;tone(150,.1,'square',.05);}
-    else{coinProgress-=it.price;closeMenu(false);m.onPick(it);}}
+    else if(it.price&&coinProgress<it.price){m.msg='コインが たりないよ…（あと '+(it.price-coinProgress)+'まい）';m.msgT=100;tone(150,.1,'square',.05);}
+    else{coinProgress-=it.price||0;closeMenu(false);m.onPick(it);}}
   m.pl=L;m.pr=R;m.pu=U;p.jumpLock=true;p.prevShopUp=true;p.prevBreadUp=true;
   if(p.seated){p.x=SHOP_SEATS[shop.seat]-p.w/2;p.y=ground-p.h-26;p.on=true;}
   return;}
@@ -3090,12 +3098,13 @@ function drawKeyDoor(){if(stage!==2||inBasement||arenaOn)return;const dx=KEY_DOO
 function drawItem(it){const ix=it.x,iy=it.y,foot=iy+10;   // 置いてある位置の足もと
   if(it.type==='coin')drawCoin(ix,foot-15,15,Date.now()*.006+ix*.05);
   else if(it.type==='gem')drawGem(ix,foot,34);
-  else if(it.type==='heart'||it.type==='goldHeart'){const bob=Math.sin(Date.now()*.006+ix)*2;{const gold=it.type==='goldHeart',w=gold?46:40,cy=foot-w*.47+bob;
+  else if(it.type==='heart'||it.type==='goldHeart'||it.type==='signHeart'){const bob=Math.sin(Date.now()*.006+ix)*2;{const gold=it.type!=='heart',w=gold?46:40,cy=foot-w*.47+bob;
     // コインのように、くるくる回る（横に細くなって、また広がる。うら側は少し暗く）
     const turn=Math.cos(Date.now()*.004+ix*.05),sx=Math.max(.12,Math.abs(turn));
     x.save();x.translate(ix,cy);x.scale(sx,1);x.translate(-ix,-cy);drawLifeHeart(ix,cy,w,gold);
     if(turn<0){x.globalAlpha=.25*(-turn);heartPath(ix,cy,w);x.fillStyle='#000';x.fill();x.globalAlpha=1;}
     x.restore();
+    if(it.type==='signHeart'&&Math.floor(Date.now()/250)%2)fancyText('✨',ix+22,cy-24,18,'gold');
     if(sx<.4){x.globalAlpha=(.4-sx)*2;x.fillStyle=gold?'#fff3a0':'#ffd0dc';x.fillRect(ix-1.5,cy-w*.45,3,w*.85);x.globalAlpha=1;}}}   // 横を向いたときの光る線
   else if(it.type==='key'){const t=Date.now(),bob=Math.sin(t*.005)*4,ky=foot-24+bob;
     const g=x.createRadialGradient(ix,ky,2,ix,ky,40);g.addColorStop(0,`rgba(255,236,140,${.55+.2*Math.sin(t*.008)})`);g.addColorStop(1,'rgba(255,236,140,0)');x.fillStyle=g;x.fillRect(ix-40,ky-40,80,80);
@@ -3472,13 +3481,13 @@ function drawShopMenu(){const m=shopMenu,bx=W/2-200,by=112,rowH=34,bw=400,bh=70+
   const box=(X0,Y0,w,h)=>{x.fillStyle='#000000ee';x.beginPath();if(x.roundRect)x.roundRect(X0,Y0,w,h,10);else x.rect(X0,Y0,w,h);x.fill();x.strokeStyle='#fff';x.lineWidth=4;x.stroke();x.lineWidth=1.5;x.strokeRect(X0+7,Y0+7,w-14,h-14);};
   box(bx,by,bw,bh);
   x.fillStyle='#ffe36a';x.font='bold 18px system-ui';x.fillText(m.title,bx+26,by+34);
-  x.textAlign='right';x.fillStyle='#fff';x.font='bold 15px system-ui';x.fillText('コイン '+coinProgress+'まい',bx+bw-24,by+34);x.textAlign='left';
+  if(!m.noCancel){x.textAlign='right';x.fillStyle='#fff';x.font='bold 15px system-ui';x.fillText('コイン '+coinProgress+'まい',bx+bw-24,by+34);}x.textAlign='left';
   m.items.forEach((it,k)=>{const yy=by+68+k*rowH;
     if(k===m.cur&&Math.floor(Date.now()/250)%2===0){x.fillStyle='#fff';x.beginPath();x.moveTo(bx+24,yy-12);x.lineTo(bx+36,yy-5);x.lineTo(bx+24,yy+2);x.closePath();x.fill();}   // ▶
-    x.fillStyle=it.cancel?'#cfd8ea':(coinProgress<it.price?'#8a8a90':'#fff');x.font='bold 19px system-ui';x.fillText(it.name,bx+46,yy);
-    if(!it.cancel){x.textAlign='right';x.fillText(it.price+' コイン',bx+bw-26,yy);x.textAlign='left';}});
+    x.fillStyle=it.cancel?'#cfd8ea':(it.price&&coinProgress<it.price?'#8a8a90':'#fff');x.font='bold 19px system-ui';x.fillText(it.name,bx+46,yy);
+    if(!it.cancel&&it.price){x.textAlign='right';x.fillText(it.price+' コイン',bx+bw-26,yy);x.textAlign='left';}});
   // 下の せつめい
-  const tip=m.msgT>0?m.msg:'◀ ▶ で えらぶ　⬆ジャンプで けってい　⛏ で やめる';
+  const tip=m.msgT>0?m.msg:m.noCancel?'◀ ▶ で えらぶ　⬆ジャンプで けってい':'◀ ▶ で えらぶ　⬆ジャンプで けってい　⛏ で やめる';
   box(bx,by+bh+8,bw,44);x.fillStyle=m.msgT>0?'#ffb0a0':'#e8eefa';x.font='bold 14px system-ui';x.textAlign='center';x.fillText(tip,bx+bw/2,by+bh+36);
   x.restore();}
 function drawShopInterior(i,t){const soba=i===4;
@@ -4115,7 +4124,7 @@ function draw(){
     if(bannerText)fancyText(bannerText,W/2,212,58,'gold');
     if(bannerSub)fancyText(bannerSub,W/2,bannerText?262:200,28,'white');x.globalAlpha=1;}
   if(keyCelebrate)drawKeyCelebrate();
-  if(inBasement&&roomKind==='village'&&talk&&state==='play'&&!paused&&mode==='game')drawTalkBox();
+  if(inBasement&&roomKind==='village'&&talk&&!shopMenu&&state==='play'&&!paused&&mode==='game')drawTalkBox();
   if(insideHouse&&shop&&player.seated&&shop.phase==='eat'&&state==='play')drawFoodPopup(insideHouse.i);
   if(shopMenu&&state==='play')drawShopMenu();
   if(breadAnim){const a=breadAnim;a.t++;const k=Math.min(1,a.t/12),fade=a.t>60?1-(a.t-60)/20:1;x.save();x.globalAlpha=Math.max(0,fade);x.translate(player.x+player.w/2-camera,player.y-40-a.t*.8);const sc=(.6+k*1.6)*(1+Math.sin(a.t*.3)*.05);for(let r=0;r<8;r++){x.save();x.rotate(r*Math.PI/4+a.t*.05);x.fillStyle='#ffe9a066';x.fillRect(-2,-40,4,22);x.restore();}breadShape(0,0,a.b.k,sc*1.4);x.restore();if(a.t>80)breadAnim=null;}
