@@ -2513,9 +2513,12 @@ if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=k
     const name=i===4?'へぎそば':'生姜醤油ラーメン';
     if(shop.phase==='order'&&shop.t===2){shop.msg=i===4?'へぎそば ひとつ おねがいします！':'食券 おねがいします！';shop.msgT=80;tone(660,.05,'square',.04);}
     if(shop.phase==='order'&&shop.t===90){shop.msg=i===4?'はい、へぎそば いっちょう！':'へい！ 生姜醤油 いっちょう！';shop.msgT=90;tone(520,.06,'triangle',.05);}
-    if(shop.phase==='order'&&shop.t>=200){shop.phase='eat';shop.t=0;shop.msg='へい、おまち！ '+name+' です';shop.msgT=90;sound('treasure');}
-    if(shop.phase==='eat'&&shop.t%24===12){popup(p.x+p.w/2+14,p.y-30,i===4?'ツルツル':'ズルズル','#fff',18,30);tone(300+Math.random()*80,.05,'triangle',.04,0,200);}
-    if(shop.phase==='eat'&&shop.t>=220){shop.phase='done';shop.t=0;
+    if(shop.phase==='order'&&shop.t>=200){shop.phase='eat';shop.t=0;shop.deluxe=Math.random()<.3;shop.popT=0;   // 3回に1回くらい 豪華セット
+      shop.msg='へい、おまち！ '+(shop.deluxe?(i===4?'へぎそばと 天丼です！':'チャーシューメンと 炒飯です！'):name+' です');shop.msgT=110;sound('treasure');if(shop.deluxe){tone(880,.08,'square',.05,.1);tone(1175,.12,'square',.05,.2);}}
+    if(shop.phase==='eat')shop.popT++;
+    if(shop.phase==='eat'&&shop.t>100&&shop.t%24===12){popup(p.x+p.w/2+14,p.y-30,i===4?'ツルツル':'ズルズル','#fff',18,30);tone(300+Math.random()*80,.05,'triangle',.04,0,200);}
+    if(shop.phase==='eat'&&shop.t>=320){shop.phase='done';shop.t=0;
+      if(shop.deluxe){score+=300;popup(p.x+17,p.y-80,'豪華セット！ +300','#ffdf50',20,100);}
       if(!shopEaten[i]){shopEaten[i]=true;if(lives<MAX_LIVES){lives++;popup(p.x+17,p.y-50,'おなか いっぱい！ ライフ+1','#ff8ab0',22,100);}else{score+=500;popup(p.x+17,p.y-50,'おなか いっぱい！ +500','#ffdf50',22,100);}sound('oneup');}
       else popup(p.x+17,p.y-50,'ごちそうさま！','#fff',22,80);
       shop.msg=i===4?'まいど！ また 来てね':'ありがとうございましたー！';shop.msgT=120;}
@@ -3398,6 +3401,39 @@ function drawSnowman(cx){const b=ground;ell(cx,b-14,16,15,'#f4f9ff');ell(cx,b-38
   x.fillStyle='#d8202e';x.fillRect(cx-12,b-30,24,4);x.fillRect(cx+6,b-30,5,12);x.fillStyle='#222';x.fillRect(cx-9,b-51,18,4);x.fillRect(cx-6,b-62,12,12);
   x.strokeStyle='#6a4428';x.lineWidth=2;x.beginPath();x.moveTo(cx-14,b-20);x.lineTo(cx-26,b-30);x.moveTo(cx+14,b-20);x.lineTo(cx+26,b-30);x.stroke();}
 // ===== ひだまり村の絵 =====
+function drawDish(kind,cx,cy,sc,left=1){x.save();x.translate(cx,cy);x.scale(sc,sc);const t=Date.now();
+  const steam=(dx)=>{for(let k=0;k<2;k++){const ph=((t*.001+k*.5)%1);x.strokeStyle=`rgba(255,255,255,${.7*(1-ph)})`;x.lineWidth=2;x.beginPath();x.moveTo(dx-6+k*12,-22-ph*30);x.bezierCurveTo(dx+k*12,-28-ph*30,dx-12+k*12,-34-ph*30,dx-6+k*12,-40-ph*30);x.stroke();}};
+  if(kind==='soba'){x.fillStyle='#d8c8a0';x.fillRect(-40,-8,80,12);x.strokeStyle='#8a6a40';x.lineWidth=1.6;x.strokeRect(-40,-8,80,12);x.fillStyle='#c8b080';x.fillRect(-40,2,80,3);
+    for(let r=0;r<Math.ceil(6*left);r++){const bx=-30+r*12;x.fillStyle='#a8a888';x.beginPath();x.ellipse(bx,-11,6.4,4,0,0,7);x.fill();x.strokeStyle='#7a7a60';x.lineWidth=.8;for(let k=-1;k<=1;k++){x.beginPath();x.moveTo(bx-5,-11+k*1.6);x.quadraticCurveTo(bx,-13+k*1.6,bx+5,-11+k*1.6);x.stroke();}}
+    ell(48,-4,10,6,'#3a2a20');ell(48,-6,8,3.4,'#5a3a2a');ell(48,-10,4,1.6,'#6ab84a');}
+  else if(kind==='tendon'){x.fillStyle='#2a2a30';x.beginPath();x.moveTo(-22,-14);x.lineTo(22,-14);x.quadraticCurveTo(18,4,0,4);x.quadraticCurveTo(-18,4,-22,-14);x.fill();x.fillStyle='#c8302a';x.fillRect(-21,-12,42,3);
+    ell(0,-14,22,5,'#f8f4ec');if(left>.3){for(const [ex,rot] of[[-8,-.5],[6,.4]]){x.save();x.translate(ex,-18);x.rotate(rot);x.fillStyle='#e8b040';x.beginPath();x.ellipse(0,0,4.6,12,0,0,7);x.fill();for(let k=0;k<5;k++)ell(-1+((k%2)*2),-8+k*3.6,2,1.4,'#f8d070');x.fillStyle='#e8402a';x.beginPath();x.moveTo(-2,-12);x.lineTo(2,-12);x.lineTo(0,-17);x.closePath();x.fill();x.restore();}
+      ell(0,-15,6,3,'#6aa84a');}steam(0);}
+  else if(kind==='ramen'||kind==='chashu'){x.fillStyle='#c8302a';x.beginPath();x.moveTo(-26,-16);x.lineTo(26,-16);x.quadraticCurveTo(22,2,0,2);x.quadraticCurveTo(-22,2,-26,-16);x.fill();x.fillStyle='#fff';x.fillRect(-24,-12,48,3);x.strokeStyle='#c8302a';x.lineWidth=1;for(let k=-20;k<22;k+=6){x.beginPath();x.moveTo(k,-12);x.lineTo(k+3,-9);x.stroke();}
+    ell(0,-16,26,6,'#a8642a');ell(0,-16.6,24,4.6,'#c07838');
+    if(left>.2){if(kind==='chashu'){for(let k=0;k<5;k++){const a=k*1.26;ell(Math.cos(a)*12,-17+Math.sin(a)*2.6,7,3.4,'#d89a6a');ell(Math.cos(a)*12,-17.4+Math.sin(a)*2.6,5,2.2,'#e8c098');}}
+      else{ell(10,-18,6,3,'#d89a6a');ell(10,-18.4,4,1.8,'#e8c098');}
+      ell(-12,-17,6,3.6,'#f8f0e0');ell(-12,-17,2.8,2,'#ffb030');
+      x.fillStyle='#c8a050';x.fillRect(-2,-21,8,3);x.fillRect(-1,-19,8,3);
+      for(let k=0;k<6;k++)ell(-18+k*7,-14.6,1.8,1.1,'#5aa84a');
+      x.fillStyle='#1a2a1a';x.fillRect(16,-28,8,12);}
+    steam(0);}
+  else if(kind==='chahan'){ell(0,-2,26,6,'#f4f4f0');x.strokeStyle='#3a6ac8';x.lineWidth=1.2;x.beginPath();x.ellipse(0,-2,23,4.6,0,0,7);x.stroke();
+    if(left>.2){x.fillStyle='#e8c060';x.beginPath();x.ellipse(0,-6,18,12,0,Math.PI,0);x.fill();for(let k=0;k<14;k++){const a=Math.PI+k*Math.PI/14,r=6+(k%3)*4;ell(Math.cos(a)*r,-6+Math.sin(a)*r*.6,1.6,1.2,['#ffe070','#5aa84a','#e8402a','#ffffff'][k%4]);}}
+    steam(0);}
+  x.restore();}
+// 「へい、おまち！」のあとに 大きく出てくる 料理のポップアップ（へぎそば・天丼・ラーメン・チャーシューメン・炒飯）
+function drawFoodPopup(i){const t=shop.popT;if(t>110)return;const soba=i===4,k=t<16?t/16:t>90?1-(t-90)/20:1,sc=(t<16?.4+.75*Math.sin(k*Math.PI/2)*1.15:1)*k;
+  x.save();x.globalAlpha=Math.min(1,k*1.4);x.translate(W/2,H/2-40);
+  for(let r=0;r<12;r++){x.save();x.rotate(r*Math.PI/6+t*.02);x.fillStyle=r%2?'#fff4b044':'#ffd27a55';x.beginPath();x.moveTo(0,0);x.lineTo(-24,-190);x.lineTo(24,-190);x.closePath();x.fill();x.restore();}
+  x.scale(sc,sc);
+  x.fillStyle='#fffaf0';x.beginPath();if(x.roundRect)x.roundRect(-170,-90,340,190,18);else x.rect(-170,-90,340,190);x.fill();x.strokeStyle=soba?'#2a3a6a':'#c8302a';x.lineWidth=6;x.stroke();
+  x.textAlign='center';fancyText(shop.deluxe?(soba?'へぎそば＋天丼！':'チャーシューメン＋炒飯！'):(soba?'へぎそば！':'生姜醤油ラーメン！'),0,-56,shop.deluxe?24:28,shop.deluxe?'red':'gold');
+  if(shop.deluxe){if(soba){drawDish('soba',-62,56,1.9);drawDish('tendon',90,56,2);}else{drawDish('chashu',-62,60,2.2);drawDish('chahan',88,56,2);}
+    fancyText('★ 豪華セット ★',0,92,16,'gold');}
+  else drawDish(soba?'soba':'ramen',soba?-10:0,soba?56:62,soba?2.7:3);
+  for(let j=0;j<6;j++){const a=t*.05+j*1.05,sx=Math.cos(a)*150,sy=Math.sin(a*1.3)*70,len=5+Math.abs(Math.sin(t*.1+j))*7;x.fillStyle='#ffe36a';x.beginPath();x.moveTo(sx,sy-len);x.lineTo(sx+len*.25,sy);x.lineTo(sx,sy+len);x.lineTo(sx-len*.25,sy);x.closePath();x.fill();}
+  x.textAlign='left';x.restore();}
 function drawShopInterior(i,t){const soba=i===4;
   // かべ・のれん・メニューのふだ
   x.fillStyle=soba?'#e8dcc0':'#f4e6d0';x.fillRect(0,0,W,H);x.fillStyle=soba?'#5a3a22':'#8a2a20';x.fillRect(0,60,W,12);
@@ -3421,13 +3457,9 @@ function drawShopInterior(i,t){const soba=i===4;
   SHOP_SEATS.forEach(sx=>{x.fillStyle='#3a2a1e';x.fillRect(sx-3,ground-26,6,26);x.fillStyle=soba?'#8a5a34':'#c8302a';x.beginPath();x.ellipse(sx,ground-28,18,6,0,0,7);x.fill();x.fillStyle='#ffffff22';x.beginPath();x.ellipse(sx-4,ground-30,10,2.6,0,0,7);x.fill();
     if(!player.seated&&Math.abs(player.x+player.w/2-sx)<26&&player.on){x.save();x.textAlign='center';fancyText('⬆ジャンプで すわる',sx,ground-150,16,'white');x.restore();}});
   // 料理（運ばれてきたら カウンターの上に）
-  if(player.seated&&(shop.phase==='eat'||shop.phase==='done')){const bx=SHOP_SEATS[shop.seat]+62,by=ground-94,left=shop.phase==='done'?.15:1-Math.min(.85,shop.t/260);
-    if(soba){x.fillStyle='#d8c8a0';x.fillRect(bx-34,by-8,68,10);x.strokeStyle='#8a6a40';x.lineWidth=1.4;x.strokeRect(bx-34,by-8,68,10);   // へぎ（木の器）
-      for(let r=0;r<Math.ceil(5*left);r++){x.fillStyle=r%2?'#a8a888':'#b8b898';x.beginPath();x.ellipse(bx-22+r*11,by-10,6,3.6,0,0,7);x.fill();x.strokeStyle='#7a7a60';x.lineWidth=.8;x.stroke();}   // ひとくちずつ 盛ったそば
-      ell(bx+40,by-6,9,5,'#3a2a20');ell(bx+40,by-8,7,3,'#5a3a2a');}   // そばつゆ
-    else{x.fillStyle='#c8302a';x.beginPath();x.moveTo(bx-26,by-16);x.lineTo(bx+26,by-16);x.quadraticCurveTo(bx+22,by+2,bx,by+2);x.quadraticCurveTo(bx-22,by+2,bx-26,by-16);x.fill();x.fillStyle='#fff';x.fillRect(bx-24,by-12,48,3);   // どんぶり
-      ell(bx,by-16,26,6,'#a8642a');if(left>.2){ell(bx-10,by-17,7,4,'#e8d0b0');ell(bx-10,by-17,3,2,'#ffd84a');x.fillStyle='#e8c080';x.fillRect(bx+2,by-20,12,5);ell(bx+12,by-18,6,3,'#c88a5a');for(let k=0;k<5;k++)ell(bx-16+k*7,by-14,2,1.2,'#5aa84a');}   // 味玉・メンマ・チャーシュー・ねぎ
-      for(let k=0;k<2;k++){const ph=((t*.001+k*.5)%1);x.strokeStyle=`rgba(255,255,255,${.6*(1-ph)})`;x.lineWidth=2;x.beginPath();x.moveTo(bx-6+k*12,by-20-ph*30);x.bezierCurveTo(bx+k*12,by-26-ph*30,bx-12+k*12,by-32-ph*30,bx-6+k*12,by-38-ph*30);x.stroke();}}}
+  if(player.seated&&(shop.phase==='eat'||shop.phase==='done')){const bx=SHOP_SEATS[shop.seat]+62,by=ground-94,left=shop.phase==='done'?.15:1-Math.min(.85,Math.max(0,shop.t-100)/240);
+    if(soba){drawDish('soba',bx,by,1,left);if(shop.deluxe)drawDish('tendon',bx+70,by,.9,left);}
+    else{drawDish(shop.deluxe?'chashu':'ramen',bx,by,1,left);if(shop.deluxe)drawDish('chahan',bx+62,by,.9,left);}}
   // 食券機（ラーメン屋）
   if(!soba){const tx=SHOP_TICKET_X;x.fillStyle='#d8dce4';x.fillRect(tx-30,ground-150,60,150);x.strokeStyle='#8a909c';x.lineWidth=2;x.strokeRect(tx-30,ground-150,60,150);
     x.fillStyle='#2a3a5a';x.fillRect(tx-24,ground-144,48,18);x.fillStyle='#8adca0';x.font='bold 9px system-ui';x.textAlign='center';x.fillText('食券',tx,ground-131);
@@ -4035,6 +4067,7 @@ function draw(){
     if(bannerSub)fancyText(bannerSub,W/2,bannerText?262:200,28,'white');x.globalAlpha=1;}
   if(keyCelebrate)drawKeyCelebrate();
   if(inBasement&&roomKind==='village'&&talk&&state==='play'&&!paused&&mode==='game')drawTalkBox();
+  if(insideHouse&&shop&&player.seated&&shop.phase==='eat'&&state==='play')drawFoodPopup(insideHouse.i);
   if(bonusResult&&state==='play'&&!paused){
     const r=bonusResult;
     x.save();x.globalAlpha=Math.min(1,r.t/30);
