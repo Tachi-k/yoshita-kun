@@ -434,6 +434,7 @@ let coinProgress=0,stageStartCoinProgress=0,diamonds=0,stageStartDiamonds=0;
 let diamondVaultUsed=false,bonusLoot=null,bonusResult=null;
 function loadStage(n){
   victoryFlight=null;
+  villagers=[];talk=null;insideHouse=null;
   stopStageClearAudio();
   stopBossSounds();
   stage=n;stageStartScore=score;stageStartCoinProgress=coinProgress;stageStartDiamonds=diamonds;diamondVaultUsed=false;bonusLoot=null;bonusResult=null;try{if(n===1)mp3Restart('field1')}catch(_){}balls=[];cannonWarn=null;cannonShot=null;cannonT=60*8;lastSafeX=stageStartX();bonusUsed[n]=false;rainGapCrossed=false;roomKind='basement';roomT=0;inBasement=false;surface=null;secret={x:n===1?2520:STAGE2_OFFSET+840,used:false};items=[];popups=[];spots=[];holes=[];digCooldown=0;deathTick=0;goalTick=0;camera=0;coins=[];enemies=[];platforms=[];rocks=[];waves=[];parts=[];boss=null;arenaOn=false;shake=0;
@@ -3773,7 +3774,7 @@ function draw(){
     if(bannerText)fancyText(bannerText,W/2,212,58,'gold');
     if(bannerSub)fancyText(bannerSub,W/2,bannerText?262:200,28,'white');x.globalAlpha=1;}
   if(keyCelebrate)drawKeyCelebrate();
-  if(talk&&state==='play'&&!paused&&mode!=='title')drawTalkBox();   // デモ画面では ロゴと重なるので出さない
+  if(inBasement&&roomKind==='village'&&talk&&state==='play'&&!paused&&mode==='game')drawTalkBox();
   if(bonusResult&&state==='play'&&!paused){
     const r=bonusResult;
     x.save();x.globalAlpha=Math.min(1,r.t/30);
