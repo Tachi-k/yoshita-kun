@@ -473,7 +473,7 @@ function loadStage(n){
 }
 // 2周目・3周目…は、前の周のスコア・ハート・コイン・ダイヤを引きついで始まる
 let carry=null,roundBase=null;   // carry：エンディングから次の周へ持ちこむ値／roundBase：今の周のスタート時の値
-function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};hasKey=false;keyDoorUsed=false;
+function reset(){score=0;coinProgress=0;diamonds=0;lives=3;keys={};bonusUsed={};housePots={};shopEaten={};mealStreak=0;hasKey=false;keyDoorUsed=false;
   if(roundBase){score=roundBase.score;lives=Math.max(1,Math.min(MAX_LIVES,roundBase.lives));coinProgress=roundBase.coinProgress;diamonds=roundBase.diamonds;}
   loadStage(1)}
 // ハイスコア（この端末に記録）
@@ -1224,7 +1224,7 @@ function enterBasement(h,returnX=VAULT_X+45,title=''){
   p.x=46;p.y=40;p.vx=0;p.vy=2;p.hole=null;p.on=false;p.kickT=0;
   banner(title||(h?'隠し地下室':'ダイヤの宝物庫'),'お宝を集めて 右のはしごから戻ろう',150);sound('oneup');}
 function exitBasement(){const p=player,sf=surface,h=sf.hole,wasVillage=roomKind==='village',wasBonus=inBonus()&&!wasVillage,wasCloud=roomKind==='cloud';
-  if(wasBonus)finishBonus();talk=null;if(wasVillage)bannerT=0;
+  if(wasBonus)finishBonus();talk=null;if(wasVillage){bannerT=0;mealStreak=0;}
   platforms=sf.platforms;coins=sf.coins;enemies=sf.enemies;items=sf.items;spots=sf.spots;world=sf.world;camera=sf.camera;
   holes=h?sf.holes.filter(x=>x!==h):sf.holes;inBasement=false;surface=null;parts=[];roomKind='basement';balls=[];cannonWarn=null;cannonShot=null;cannonT=Math.max(cannonT,240);
   p.x=h?h.x+h.w+6:sf.returnX;p.y=ground-p.h;p.vy=-8;p.moveLock=300;p.on=false;p.hole=null;p.inv=Math.max(p.inv,90);p.facing=1;lastSafeX=p.x;camera=followCamera(p.x);
@@ -1433,7 +1433,7 @@ function inBonus(){return inBasement&&roomKind!=='basement'}
 const VILLAGE_W=6*W,HOUSE_SCALE=1.35,ROOM_DOOR_X=90;
 function houseDoorX(h){return h[0]+(h[3]===2?31*HOUSE_SCALE:0)}   // とびらの位置（パン屋は右よりに とびらがある）
 function villageHouses(){const W2=VILLAGE_W;return [[W2-2300,'#b8483a','#f4e6cc',0],[W2-2900,'#3a5aa8','#f0e2c4',1],[W2-3550,'#3a8a4a','#f6ead2',2],[W2-4350,'#b8783a','#efe0c0',3],[W2-3950,'#4a4a52','#3a2a1e',4],[W2-4950,'#c8302a','#f4e8d0',5]];}
-let insideHouse=null,housePots={},shopEaten={},shop=null;   // shop：お店の中での 食券・すわる・食べる の進み具合
+let insideHouse=null,housePots={},shopEaten={},shop=null,mealStreak=0;   // mealStreak：続けて食べた回数（3回目は 食べすぎで ことわられる）   // shop：お店の中での 食券・すわる・食べる の進み具合
 const SHOP_SEATS=[360,480,600],SHOP_TICKET_X=220,TICKET_PRICE=10;
 function isShop(i){return i===4||i===5}   // insideHouse：いま入っている家（村の状態をしまっておく）
 const ROOM_PEOPLE=[{kind:'grandma',name:'村の おばあさん'},{kind:'girl',name:'村の 女の子'},{kind:'baker',name:'パン屋の おにいさん'},{kind:'scholar',name:'村の おまわりさん'}];
@@ -2521,7 +2521,7 @@ if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=k
       if(shop.deluxe){score+=300;popup(p.x+17,p.y-80,'豪華セット！ +300','#ffdf50',20,100);}
       if(!shopEaten[i]){shopEaten[i]=true;if(lives<MAX_LIVES){lives++;popup(p.x+17,p.y-50,'おなか いっぱい！ ライフ+1','#ff8ab0',22,100);}else{score+=500;popup(p.x+17,p.y-50,'おなか いっぱい！ +500','#ffdf50',22,100);}sound('oneup');}
       else popup(p.x+17,p.y-50,'ごちそうさま！','#fff',22,80);
-      shop.msg=i===4?'まいど！ また 来てね':'ありがとうございましたー！';shop.msgT=120;}
+      mealStreak++;shop.msg=i===4?'まいど！ また 来てね':'ありがとうございましたー！';shop.msgT=120;}
     if(shop.phase==='done'&&shop.t>=70){p.seated=false;shop.seat=-1;shop.phase='';shop.ticket=false;p.y=ground-p.h;p.x+=30;}
     return;}
   if(up&&i===5&&Math.abs(pc-SHOP_TICKET_X)<34){
@@ -2531,6 +2531,7 @@ if(insideHouse&&shop&&state==='play'){const i=insideHouse.i,pc=p.x+p.w/2,upNow=k
     p.jumpLock=true;}
   else if(up){const si=SHOP_SEATS.findIndex(sx=>Math.abs(pc-sx)<26);
     if(si>=0){if(i===5&&!shop.ticket){shop.msg='先に 食券を 買ってね（入口の 食券機）';shop.msgT=110;}
+      else if(mealStreak>=2){shop.msg=i===4?'こらっ！ 食べすぎだよ！ おなか こわすよ！':'ちょっと！ 食べすぎだって！ また今度ね！';shop.msgT=150;shop.angry=150;popup(SHOP_SEATS[si],ground-170,'💢 食べすぎ！','#ff5a4a',24,90);tone(180,.12,'sawtooth',.06);tone(140,.16,'sawtooth',.06,.12);shake=8;}   // 3回続けて食べようとすると 怒られる
       else{p.seated=true;shop.seat=si;shop.phase='order';shop.t=0;tone(440,.05,'triangle',.05);}
       p.jumpLock=true;}}}
 // 地下室の出口のはしご：重なっただけでは登らない。上（ジャンプ）ボタンを押すと、少し待ってから自動で登る
@@ -3467,6 +3468,7 @@ function drawShopInterior(i,t){const soba=i===4;
     x.fillStyle='#2a2a30';x.fillRect(tx-16,ground-40,32,8);x.textAlign='left';
     if(Math.abs(player.x+player.w/2-tx)<34&&player.on&&!player.seated){x.save();x.textAlign='center';fancyText(shop.ticket?'🎫 食券あり':'⬆ジャンプで 食券を買う（コイン'+TICKET_PRICE+'）',tx+40,ground-170,15,'white');x.restore();}}
   // 店の人の ことば
+  if(shop.angry>0){shop.angry--;x.save();x.textAlign='center';x.font='bold 30px system-ui';x.fillText('💢',W-220+Math.sin(t*.03)*3,ground-150);x.restore();}
   if(shop.msgT>0){const bx=W-250,by=ground-196;x.save();x.globalAlpha=Math.min(1,shop.msgT/15);x.font='bold 15px system-ui';const tw=x.measureText(shop.msg).width+24;
     x.fillStyle='#ffffffee';x.beginPath();if(x.roundRect)x.roundRect(bx-tw/2,by-22,tw,32,10);else x.rect(bx-tw/2,by-22,tw,32);x.fill();x.strokeStyle='#2a1a10';x.lineWidth=2;x.stroke();
     x.fillStyle='#2a1a10';x.textAlign='center';x.fillText(shop.msg,bx,by-1);x.restore();}
