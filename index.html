@@ -1250,18 +1250,18 @@ function enterCafe(){const p=player;
   surface={platforms,coins,enemies,holes,items,spots,world,camera,hole:null,returnX:CAFE_X-p.w/2};inBasement=true;roomKind='cafe';
   world=W;camera=0;holes=[];spots=[];enemies=[];parts=[];rocks=[];waves=[];balls=[];cannonWarn=null;cannonShot=null;items=[];coins=[];
   platforms=[{x:0,y:ground,w:W,h:75}];
-  talk=null;cafe={t:0,asked:false,songAt:0,msg:'いらっしゃい。ゆっくり していって',msgT:140,order:null,drink:null};
+  talk=null;cafe={t:0,asked:false,songAt:0,msg:princessRound?'これは 姫さま！ ようこそ いらっしゃいました':'いらっしゃい。ゆっくり していって',msgT:140,order:null,drink:null};
   p.x=CAFE_DOOR_X+24;p.y=ground-p.h;p.vx=0;p.vy=0;p.on=true;p.hole=null;p.kickT=0;p.facing=1;lastSafeX=p.x;
   tone(988,.08,'triangle',.05);tone(1319,.12,'triangle',.05,.1);}   // カランコロン
 function cafeAsk(){cafe.asked=true;
-  const after=yes=>{cafe.msg=yes?'そうこなくっちゃ！「雪原の気球」って 曲なんだ':'まあまあ、そう言わずに…（かってに かけはじめた）';cafe.msgT=200;cafe.songAt=cafe.t+70;tone(yes?880:330,.08,'square',.04);};
-  openMenu('いい曲 入ったんだけど 聞かない？',[{name:'聞く'},{name:'聞かない'}],it=>after(it.name==='聞く'),()=>after(false),true);}
+  const after=yes=>{cafe.msg=princessRound?(yes?'ありがとうございます！「雪原の気球」という 曲です':'まあまあ、そう おっしゃらずに…（かってに かけはじめた）'):(yes?'そうこなくっちゃ！「雪原の気球」って 曲なんだ':'まあまあ、そう言わずに…（かってに かけはじめた）');cafe.msgT=200;cafe.songAt=cafe.t+70;tone(yes?880:330,.08,'square',.04);};
+  openMenu(princessRound?'いい曲が 入ったのですが 聞きませんか？':'いい曲 入ったんだけど 聞かない？',[{name:'聞く'},{name:'聞かない'}],it=>after(it.name==='聞く'),()=>after(false),true);}
 // 喫茶店の中の うごき（true を返したら update を ここで おわる）
 function updateCafe(p){const c=cafe;c.t++;if(c.msgT>0)c.msgT--;const pc=p.x+p.w/2,upNow=keys.jump||padJump,up=upNow&&!p.prevCafeUp;p.prevCafeUp=upNow;
   if(c.songAt&&c.t>=c.songAt){c.songAt=0;startEndSong('cafe');}
-  if(!c.asked&&!shopMenu&&(c.t>150||Math.abs(pc-CAFE_MASTER_X)<220)){cafeAsk();c.msg='マスター「いい曲 入ったんだ…」';c.msgT=120;}
+  if(!c.asked&&!shopMenu&&(c.t>150||Math.abs(pc-CAFE_MASTER_X)<220)){cafeAsk();c.msg=princessRound?'マスター「姫さま、いい曲が 入りまして…」':'マスター「いい曲 入ったんだ…」';c.msgT=120;}
   if(c.order){c.order.t++;
-    if(c.order.t===80){c.msg='おまちどうさま。'+(c.order.kind==='coffee'?'コーヒー':'ココア')+'です';c.msgT=120;tone(660,.06,'triangle',.05);c.drink={kind:c.order.kind,t:0};c.order=null;}}
+    if(c.order.t===80){c.msg=(princessRound?'おまたせいたしました、姫さま。':'おまちどうさま。')+(c.order.kind==='coffee'?'コーヒー':'ココア')+'です';c.msgT=120;tone(660,.06,'triangle',.05);c.drink={kind:c.order.kind,t:0};c.order=null;}}
   if(c.drink){const d=c.drink,m=d.t++;p.vx=0;p.vy=0;p.walking=false;p.facing=1;p.jumpLock=true;p.standT=999;
     if(m>=40&&m<=130&&(m-40)%30===0){popup(pc+30,ground-190-((m-40)/30%2)*14,'ずずっ','#fff',20,30);tone(260,.08,'sine',.05);}
     if(m===150){popup(pc,ground-215,d.kind==='coffee'?'ほっ… いい かおり':'ほっ… あまくて あったかい','#ffe0b0',24,110);sparkleFx(pc);if(cafeHearts<2){cafeHearts++;addLife(pc,ground-250);}   /* 飲むと ハート（2つまで） */tone(784,.1,'triangle',.05);tone(988,.14,'triangle',.05,.12);}
@@ -1278,7 +1278,7 @@ function updateCafe(p){const c=cafe;c.t++;if(c.msgT>0)c.msgT--;const pc=p.x+p.w/
   return false;}
 const CAFE_MASTER_V={kind:'master'};
 function cafeOrder(){const c=cafe;if(!c||c.order||c.drink)return;
-  openMenu('喫茶 ゆきあかり',CAFE_MENU,it=>{talk=null;c.order={kind:it.kind,t:0};c.msg=(it.kind==='coffee'?'コーヒー':'ココア')+' いっちょう。少々 おまちを';c.msgT=100;tone(880,.05,'square',.05);});}
+  openMenu('喫茶 ゆきあかり',CAFE_MENU,it=>{talk=null;c.order={kind:it.kind,t:0};c.msg=princessRound?'かしこまりました。少々 おまちください':(it.kind==='coffee'?'コーヒー':'ココア')+' いっちょう。少々 おまちを';c.msgT=100;tone(880,.05,'square',.05);});}
 // ボーナス画面（1面：コインの雨）とボーナスステージ（2面：雲の上）
 function finishBonus(){
   const loot=bonusLoot;
@@ -1516,7 +1516,7 @@ function exitHouse(){const p=player,s0=insideHouse,h=villageHouses()[s0.i];shop=
 let villagers=[],talk=null,villageSeen=false,signState=null;   // signState：女の子に サインを かいた('yes')／ことわった('no')
 function villageCalm(){if(insideHouse)return 1;return inBasement&&roomKind==='village'?Math.max(0,Math.min(1,(world-1000-player.x)/1600)):0}   // 左へ進むほど 青空・平和に
 function villageLines(kind){const hero=princessRound?'ソラ姫さま':'よし太くん';
-  if(kind==='master')return princessRound?['これは ソラ姫さま。ようこそ、喫茶 ゆきあかりへ。','よし太くんも よく ここで ココアを のんでいったんですよ。','あの子は この曲を 聞きながら、姫さまの はなしばかり していました…','姫さま、きっと よし太くんを つれもどしてくださいね。','なにか 飲んでいかれますか？']
+  if(kind==='master')return princessRound?['これは ソラ姫さま。ようこそ、喫茶 ゆきあかりへ。','よし太くんも よく ここで ココアを のんでいったんですよ。','この曲を 聞きながら、いつも 姫さまの はなしを していました…','姫さま、きっと よし太くんを つれもどしてくださいね。','なにか 飲んでいかれますか？']
     :['いらっしゃい。ここは 谷で いちばん しずかな 喫茶店さ。','この曲は、雪の 原っぱに 気球が うかぶ 景色を 思って 作られたんだって。','大王の 城は この先だ。ここで ひと休みして いきな。','そうそう、空の 上には 雲の せかいが あるって うわさだよ。','なにか 飲んでくかい？'];
   // 3周目（ソラ姫の周）：姫が 大王に つれさられた よし太くんを さがしにきた
   const insideP={grandma:['おや、ソラ姫さま。こんな ところまで よく来なすった。','よし太くんを さがしておいでかい？ あの子は この前、お茶を のみに 来てくれたよ…','あったかい お茶でも のんで、元気を だしておいき。'],
